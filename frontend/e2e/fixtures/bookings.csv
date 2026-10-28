@@ -1,0 +1,4 @@
+external_id,forwarder,airline_iata,origin,destination,flight_date,booked_at,status,actual_weight,chargeable_weight,volume,revenue,currency,operating_company
+E2E-1,E2E Forwarder (synthetic),,DXB,NBO,2026-10-05,2026-10-01T09:00:00+04:00,confirmed,800,1000,6.1,2500.00,USD,
+E2E-2,E2E Forwarder (synthetic),,NBO,DXB,2026-10-06,2026-10-01T10:00:00+04:00,confirmed,300,300,2,900.50,USD,
+E2E-BAD,E2E Forwarder (synthetic),,DXB,DXB,2026-10-06,2026-10-01T10:00:00+04:00,confirmed,300,300,2,900.50,USD,

@@ -1,0 +1,55 @@
+# Local development stack: web (Next.js), api (FastAPI), worker, migrate, db.
+# Development credentials below are development-only. Production must set
+# every secret explicitly (see docs/ENVIRONMENT.md); config.py refuses to
+# start in production with these defaults.
+name: atlas-wfc
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: dev-only
+      POSTGRES_DB: atlas_wfc
+    volumes: [atlas_wfc_pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas -d atlas_wfc"]
+      interval: 5s
+      retries: 20
+
+  migrate:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: ["alembic", "upgrade", "head"]
+    environment: &api_env
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://atlas:dev-only@db:5432/atlas_wfc
+      LOGIN_USERNAME: ${LOGIN_USERNAME:-ops@wfc.local}
+      LOGIN_BOOTSTRAP_PASSWORD: ${LOGIN_BOOTSTRAP_PASSWORD:-}
+      PUBLIC_ORIGIN: http://localhost:3000
+      TRUSTED_PROXY_HOPS: "1"
+      REPORTING_TIMEZONE: Asia/Dubai
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+    depends_on: { db: { condition: service_healthy } }
+
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    environment: *api_env
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    expose: ["8000"]
+
+  worker:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: ["python", "-m", "app.worker_main"]
+    environment: *api_env
+    depends_on: { migrate: { condition: service_completed_successfully } }
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_INTERNAL_URL: http://api:8000
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+volumes:
+  atlas_wfc_pg:

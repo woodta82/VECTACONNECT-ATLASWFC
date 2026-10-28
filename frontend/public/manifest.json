@@ -1,0 +1,9 @@
+{
+  "name": "VECTA Connect | ATLAS | DYNAMIC MARKET INTELLIGENCE",
+  "short_name": "ATLAS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0B0D",
+  "theme_color": "#0B0B0D",
+  "icons": []
+}

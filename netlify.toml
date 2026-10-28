@@ -1,0 +1,26 @@
+# Netlify hosts the ATLAS web front end ONLY (Next.js through Netlify's OpenNext adapter, which Netlify applies
+# automatically; no plugin entry is needed). The API, the worker and PostgreSQL do NOT run on Netlify: they run on the
+# container host described in docs/DEPLOYMENT.md §7. A static export or a ZIP upload of the frontend is not the system.
+#
+# Before the first deploy, replace API_ORIGIN_PLACEHOLDER below with the https origin of the API host
+# (for example https://api.atlas.example.com). The build refuses to run while the placeholder is present.
+
+[build]
+  base = "frontend"
+  command = "node ../deploy/netlify/preflight.mjs && npm ci && npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Same-origin API: the browser calls /api/* on the Netlify site and Netlify proxies it to the API host, so the session
+# cookie stays first-party and no CORS is needed. `signed` makes Netlify add an x-nf-sign header (HS256) using the
+# site environment variable PROXY_SIGNATURE_SECRET (scope must include Runtime); set the same value on the API so it
+# answers only requests that came through this site. Proxied requests time out after 26 seconds (Netlify limit).
+[[redirects]]
+  from = "/api/*"
+  to = "https://API_ORIGIN_PLACEHOLDER/:splat"
+  status = 200
+  force = true
+  signed = "PROXY_SIGNATURE_SECRET"

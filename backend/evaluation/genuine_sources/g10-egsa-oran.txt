@@ -1,0 +1,8 @@
+URL: https://www.dztenders.com/en/archive/336107/selection-dun-operateur-pour-lexercice-des-services-dassistance-en-escale/
+Captured: 2026-10-27 via the session's web-fetch tool (HTML transcription). Language: French (title) / English (portal fields). Status: Expired.
+
+Captured:
+- "Sélection d'un opérateur pour l'exercice des services d'assistance en escale"
+- "EGSA Etablissement de Gestion de Services Aéroportuaires d'Oran"; "Region: Oran"; withdrawal address "l'aéroport internationnal d'oran ahmed ben bella"
+- "Publication date: 22/05/2023"; "Due date: 20/06/2023 (*)" (dates calculated for information only); reference "2331100263"
+- "Type: National call for tenders"; no eligibility criteria listed

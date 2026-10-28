@@ -1,0 +1,16 @@
+URL: https://dmlib.airindia.com/adobe/assets/urn:aaid:aem:18163681-f450-4a0c-b121-2f47af893c65/original/as/rfp-benin-cote-divoire-togo-senegal-ai-india-group.pdf
+Captured: 2026-10-27 via the session's web-fetch tool (PDF transcription)
+Type: Request for proposal (PDF). Language: English. Territories: Benin, Côte d'Ivoire, Togo, Senegal.
+
+Verbatim quotes captured:
+- "APPOINTMENT OF "GENERAL SALES AGENT" ("GSA") FOR PASSENGER SALES OF AIR INDIA LIMITED"
+- "Date of Issue: 21-05-2026"
+- Last date for queries: 31-05-2026; last date for submission: 12-06-2026 (no time or zone)
+- Annexure C 1: "should have at least 5(five) years of experience in travel business in the Territory"
+- Annexure C 10: "should have Turnover of at least USD 400,000/"
+- Annexure C 9: "provide a separate Bank Guarantee up to USD 100,000/-"
+- Annexure C 5: "should not have been in loss in any of the last 3 (three) financial years"
+- Annexure C 4: "should not be an IATA Accredited agent"
+- Annexure C 7: "should be familiar/have experience with IATA BSP procedures or equivalent in the Territory"
+- Clause 2.6: "Airlines reserve the right to withdraw the RFP (in whole or in part) at any time"
+- Contradictions noted by the capture: submission method (email vs physical), one proposal vs one per territory, bank guarantee "if required" vs a stated requirement.

@@ -1,0 +1,27 @@
+[project]
+name = "atlas-wfc-backend"
+dynamic = ["version"]
+requires-python = ">=3.13"
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B"]
+ignore = ["E501", "B008"]   # B008: FastAPI's Depends()/File() defaults are intentional
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+warn_unused_ignores = false
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "app.domain.*"
+disallow_untyped_defs = false
+strict_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

@@ -1,0 +1,21 @@
+URL: https://dmlib.airindia.com/adobe/assets/urn:aaid:aem:fba7c990-f147-45c4-badc-510bb32e0e1f/original/as/2026-rfp-qatar-air-india-group.pdf
+Listed at: https://www.airindia.com/in/en/airline-rfp.html (Posted October 15, 2026; last date for queries 24/10/2026; last date for submission 06/11/2026)
+Captured: 2026-10-27 via the session's web-fetch tool (PDF transcription; quotes verbatim, structure paraphrased)
+Type: Request for proposal (PDF). Language: English.
+
+Verbatim quotes captured:
+- "REQUEST FOR PROPOSAL FOR APPOINTMENT OF "GENERAL SALES AGENT" ("GSA")"
+- "FOR PASSENGER SALES OF AIR INDIA LIMITED AND AIR INDIA EXPRESS LIMITED IN QATAR"
+- "Date of Issue: 15-10-2026"
+- "AIR INDIA LIMITED AND AIR INDIA EXPRESS LIMITED"
+- Clause 1.1(m): ""Territory" shall mean the geographical limits of the country i.e., Qatar."
+- Disclaimer: "for passenger sales in Kingdom of Saudi Arabia." (conflicts with the Qatar territory)
+- Clause 2.2: "appointment of GSA for sale of air passenger transportation of the Airlines within the Territory"
+- Schedule: "Last date for submission of proposal 06-11-2026" (no time or time zone stated)
+- Schedule: "Last date for submission of queries (if any) by Applicants on the RFP 24-10-2026"
+- Annexure C 1: "at least 5(five) years of experience in travel business in the Territory"
+- Annexure C 8: "should not have been in loss in any of the last 3 (three) financial years"
+- Annexure C 12: "Applicant should provide a Bank Guarantee of USD 1,500,000 /-" ... "to Air India Express"; "USD 425,000. /- to Air India" and "(US Dollars Four Lakh Fifty Thousand Only)" (figures and words disagree)
+- Annexure C 13: "The Applicant should have Turnover of at least USD 14,209,806" "in the last financial year immediately preceding the date of this RFP"
+- Clause 2.6: "Airlines reserve the right to withdraw the RFP (in whole or in part) at any time"
+- Disclaimer: "This RFP is subject to updating, expansion, revision and amendment at the sole discretion of the Airlines"

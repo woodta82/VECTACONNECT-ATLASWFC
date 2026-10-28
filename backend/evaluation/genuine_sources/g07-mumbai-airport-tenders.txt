@@ -1,0 +1,11 @@
+URL: https://csmia-mumbai.adaniairports.com/en/business/tenders
+Captured: 2026-10-27 via the session's web-fetch tool (HTML table transcription; titles condensed by the tool)
+Type: Tender listing table. Language: English. Country: India.
+
+Rows captured (title | reference | category | published | due):
+- Ground handling services concession bidding | Not listed | Commercial | 22/01/2026 | 28/02/2026 05:00 PM
+- Cargo community system for EDI services (AMAX IT) | Not listed | Commercial | 29/05/2025 | 05/06/2025 05:00 PM
+- Cargo community system for EDI services at Air Cargo Complex | Not listed | Commercial | 07/03/2025 | 28/03/2025 05:00 PM
+- Ground handling and BME services concession | Not listed | Commercial | 17/05/2025 | 24/05/2025 12:00 PM
+- Non-aeronautical services concession | Not listed | Commercial | 28/08/2026 | 05/09/2026 05:00 PM
+(no time zone stated on the page)

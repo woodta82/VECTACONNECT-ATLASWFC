@@ -1,0 +1,16 @@
+URL: https://tenders.go.ke/storage/Documents/1776325627896-tender-document.pdf
+Captured: 2026-10-27 via the session's web-fetch tool (PDF transcription; source truncated after Section III item 9)
+Type: Tender document (PDF). Language: English. Procuring entity: Kenya Airports Authority.
+
+Verbatim quotes captured:
+- "PROVISION OF GROUND HANDLING SERVICES AT" (cover page)
+- "The Procuring Entity is Kenya Airports Authority"
+- "The reference number is: KAA/OT/MBD/0018/2025-2026"
+- "Lot 1- Nanyuki Airstrip," / "Lot 2 –Isiolo International Airport."
+- "Completed Tender documents and its attachments shall be submitted online before the closing date 19th February, 2026 at 11.00 am" (time zone not stated)
+- "Tender Security of Kenya shillings one hundred thousand (Kshs. 100,000.00) only"
+- "A valid and current KRA tax compliance certificate. In case of Joint venture both must provide."
+- "Copy of valid and current IATA accreditation certificate."
+- ITT 7.1: "At any time prior to the deadline for submission of Tenders, the Procuring Entity may amend the tendering document by issuing addenda."
+- ITT 37.1: "The Procuring Entity reserves the right to accept or reject any Tender, and to annul the Tendering process and"
+- Discrepancy: validity "126 days" (Invitation) vs "186 days" (TDS).

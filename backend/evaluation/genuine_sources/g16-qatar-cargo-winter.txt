@@ -1,0 +1,11 @@
+URL: https://www.stattimes.com/air-cargo/qatar-airways-cargo-expands-winter-freighter-network-1361002
+Published: 22 Oct 2026 4:36 PM IST
+Captured: 2026-10-27 via the session's web-fetch tool (quotes verbatim, structure paraphrased)
+Type: Trade press article (HTML). Language: English.
+Added for item 7 of the second 27 Oct instruction (capability areas without a genuine example); evaluated once, no rule changed in response.
+
+Verbatim quotes captured:
+- "Qatar Airways Cargo expands winter freighter network"
+- "The carrier will launch a weekly Boeing 777 freighter service from Copenhagen on 25 October."
+- Route Doha–Budapest–Copenhagen–Doha, 100 tonnes of export capacity per week (paraphrased)
+- Two weekly B777F Doha–Liège–Dallas–Doha, 200 tonnes main-deck capacity into Dallas, 100 tonnes outbound per week (paraphrased)

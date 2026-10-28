@@ -1,0 +1,11 @@
+URL: https://www.ungm.org/Public/Notice/291208 (full text: https://www.un.org/Depts/ptd/sites/www.un.org.Depts.ptd/files/pdf/eoi24179.pdf)
+Captured: 2026-10-27 via the session's web-fetch tool (HTML transcription)
+Type: Expression of interest (UN Secretariat). Language: English. Countries: Dominican Republic, Haiti.
+
+Captured:
+- Title: "Provision of Airport Ground Handling Services in support of UNSOH"; Reference: EOIUNPD24179
+- Published: 13-Feb-2026; Deadline: 02-Mar-2026, 23:59 (GMT -4.00)
+- Services: as-needed airport ground handling at major airports in Haiti and the Dominican Republic (passenger and baggage handling, ramp, cargo handling, dangerous goods ...)
+- "This EOI does not constitute a solicitation"
+- G: "At least five years of airport ground handling or aviation services experience for international or humanitarian operations."
+- Vendors must be registered in UNGM at the Basic level or higher.

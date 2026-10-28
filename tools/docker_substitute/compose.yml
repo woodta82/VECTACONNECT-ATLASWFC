@@ -1,0 +1,36 @@
+# SUBSTITUTE of docker-compose.yml using the host-derived base images (see build_bases.py).
+# Same services, dependencies, environment and health gating; no published secrets.
+name: atlas-wfc-substitute
+services:
+  db:
+    build: { context: ../.., dockerfile: tools/docker_substitute/Dockerfile.db }
+    environment: { POSTGRES_USER: atlas, POSTGRES_PASSWORD: dev-only, POSTGRES_DB: atlas_wfc }
+    tmpfs: ["/var/lib/postgresql:uid=998,gid=998"]
+  migrate:
+    build: { context: ../.., dockerfile: tools/docker_substitute/Dockerfile.api }
+    command: ["/usr/local/bin/alembic", "upgrade", "head"]
+    environment: &api_env
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://atlas:dev-only@db:5432/atlas_wfc
+      LOGIN_USERNAME: ops@wfc.local
+      LOGIN_BOOTSTRAP_PASSWORD: ${LOGIN_BOOTSTRAP_PASSWORD:?set LOGIN_BOOTSTRAP_PASSWORD}
+      PUBLIC_ORIGIN: http://localhost:3000
+      TRUSTED_PROXY_HOPS: "1"
+      REPORTING_TIMEZONE: Asia/Dubai
+      BUILD_ID: docker-substitute
+    depends_on: { db: { condition: service_healthy } }
+  api:
+    build: { context: ../.., dockerfile: tools/docker_substitute/Dockerfile.api }
+    environment: *api_env
+    depends_on: { migrate: { condition: service_completed_successfully } }
+  worker:
+    build: { context: ../.., dockerfile: tools/docker_substitute/Dockerfile.api }
+    command: ["/usr/local/bin/python", "-m", "app.worker_main"]
+    environment: *api_env
+    healthcheck: { disable: true }
+    depends_on: { migrate: { condition: service_completed_successfully } }
+  web:
+    build: { context: ../.., dockerfile: tools/docker_substitute/Dockerfile.web }
+    environment: { BACKEND: "http://api:8000" }
+    ports: ["127.0.0.1:3300:3000"]
+    depends_on: { api: { condition: service_healthy } }

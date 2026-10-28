@@ -1,0 +1,38 @@
+# VECTA Connect | ATLAS | DYNAMIC MARKET INTELLIGENCE — production override EXAMPLE.
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.production.yml --env-file /secure/atlas.env up -d --build
+# Uses an external PostgreSQL 16 (DATABASE_URL); the bundled dev database is not started.
+# TLS terminates at your reverse proxy in front of the web service (PUBLIC_ORIGIN must be https://).
+services:
+  db:
+    profiles: ["dev-only"]
+  migrate:
+    environment: &prod_env
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      LOGIN_USERNAME: ${LOGIN_USERNAME:?set LOGIN_USERNAME}
+      LOGIN_BOOTSTRAP_PASSWORD: ${LOGIN_BOOTSTRAP_PASSWORD:-}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?set PUBLIC_ORIGIN}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
+      REPORTING_TIMEZONE: ${REPORTING_TIMEZONE:-Asia/Dubai}
+      CUSTOMER_NAME: ${CUSTOMER_NAME:-World Freight Company}
+      BUILD_ID: ${BUILD_ID:-unknown}
+      API_DOCS_ENABLED: "false"
+      SNAPSHOT_DIR: /var/lib/atlas/snapshots
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_PRICE_INPUT_PER_MTOK: ${AI_PRICE_INPUT_PER_MTOK:-}
+      AI_PRICE_OUTPUT_PER_MTOK: ${AI_PRICE_OUTPUT_PER_MTOK:-}
+    depends_on: !reset {}
+  api:
+    environment: *prod_env
+    volumes: [atlas_snapshots:/var/lib/atlas/snapshots]
+    restart: unless-stopped
+  worker:
+    environment: *prod_env
+    volumes: [atlas_snapshots:/var/lib/atlas/snapshots]
+    restart: unless-stopped
+  web:
+    ports: ["127.0.0.1:3000:3000"]     # reverse proxy (TLS) in front
+    restart: unless-stopped
+volumes:
+  atlas_snapshots:

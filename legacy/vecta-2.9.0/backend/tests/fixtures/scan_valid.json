@@ -1,0 +1,423 @@
+{
+  "schema_version": "2.0",
+  "records": [
+    {
+      "schema_version": "2.0",
+      "title": "Saudi Ministry of Sport \u2014 National Coach Education Framework Delivery Partner",
+      "issuing_organisation": "Saudi Ministry of Sport",
+      "summary": "Open tender for a delivery partner to design and run a national coach education framework across 12 sports.",
+      "classification": "confirmed_opportunity",
+      "classification_rationale": "Tier 1 official procurement notice confirms a live open tender with a stated deadline.",
+      "primary_vertical": "pathways",
+      "contributing_verticals": [
+        "connect",
+        "intelligence"
+      ],
+      "vertical_rationale": "Core coach-education pathway work, with federation relationship value and a performance-data component.",
+      "primary_commercial_type": "coach_education",
+      "secondary_commercial_types": [
+        "government_advisory"
+      ],
+      "routes_to_market": [
+        "open_competition",
+        "local_entity_required",
+        "prequalification_required"
+      ],
+      "region": "mena",
+      "market": "Saudi Arabia",
+      "publication_date": "2026-06-02",
+      "deadline": "2026-12-15",
+      "evidence": [
+        {
+          "url": "https://etimad.sa/tenders/coach-education-2026",
+          "page_title": "National Coach Education Framework \u2014 Request for Proposals",
+          "publisher": "Etimad (Saudi Government Procurement)",
+          "source_tier": "tier_1",
+          "evidence_type": "tender_notice",
+          "publication_date": "2026-06-02",
+          "is_official_source": true,
+          "is_definitive": true,
+          "claims_supported": [
+            "opportunity_existence",
+            "live_status",
+            "issuing_organisation",
+            "deadline",
+            "procurement_route",
+            "eligibility"
+          ],
+          "confidence": "high"
+        },
+        {
+          "url": "https://www.mos.gov.sa/news/coach-education-programme",
+          "page_title": "Ministry announces national coach education programme",
+          "publisher": "Saudi Ministry of Sport",
+          "source_tier": "tier_2",
+          "evidence_type": "press_release",
+          "publication_date": "2026-05-28",
+          "is_official_source": true,
+          "is_definitive": false,
+          "claims_supported": [
+            "programme_description",
+            "geographic_scope"
+          ],
+          "confidence": "high"
+        }
+      ],
+      "verified_fact_candidates": [
+        {
+          "content": "Submission deadline is 15 December 2026.",
+          "claim_type": "deadline",
+          "evidence_url": "https://etimad.sa/tenders/coach-education-2026"
+        },
+        {
+          "content": "Issued by the Saudi Ministry of Sport.",
+          "claim_type": "issuing_organisation",
+          "evidence_url": "https://etimad.sa/tenders/coach-education-2026"
+        }
+      ],
+      "ai_interpretation": [
+        "The 12-sport scope suggests a multi-year programme rather than a single cohort.",
+        "Prequalification plus local-entity requirements imply a local partner is effectively mandatory."
+      ],
+      "assumptions": [
+        {
+          "content": "Programme likely spans 3 years based on comparable frameworks.",
+          "basis": "Comparable regional coach-education programmes"
+        }
+      ],
+      "missing_information": [
+        {
+          "content": "Contract value is not published in the notice.",
+          "blocks_qualification": false
+        },
+        {
+          "content": "Local entity requirements not yet confirmed in detail.",
+          "blocks_qualification": true
+        }
+      ],
+      "verification_actions": [
+        {
+          "action": "Download the full RFP pack from Etimad and confirm eligibility criteria.",
+          "reason": "Eligibility is referenced but not detailed in the public notice."
+        }
+      ],
+      "commercial_value": {
+        "value_status": "estimated_range",
+        "currency": "USD",
+        "estimated_contract_min": 2500000.0,
+        "estimated_contract_max": 6000000.0,
+        "estimated_vecta_revenue": 3000000.0,
+        "estimate_methodology": "Benchmarked against comparable national coach-education programmes in the region; range reflects uncertainty over programme duration.",
+        "partner_share_assumption": 0.3,
+        "confidence": "medium"
+      },
+      "scores": {
+        "strategic_alignment": {
+          "factors": [
+            {
+              "factor_key": "primary_vertical_fit",
+              "score": 85,
+              "rationale": "Assessed against the primary vecta vertical fit anchors."
+            },
+            {
+              "factor_key": "contributing_vertical_fit",
+              "score": 85,
+              "rationale": "Assessed against the contributing vertical fit anchors."
+            },
+            {
+              "factor_key": "geographic_priority",
+              "score": 85,
+              "rationale": "Assessed against the geographic priority anchors."
+            },
+            {
+              "factor_key": "government_federation_relevance",
+              "score": 85,
+              "rationale": "Assessed against the government/federation relevance anchors."
+            },
+            {
+              "factor_key": "long_term_ecosystem_value",
+              "score": 85,
+              "rationale": "Assessed against the long-term ecosystem value anchors."
+            },
+            {
+              "factor_key": "cross_vertical_value",
+              "score": 85,
+              "rationale": "Assessed against the cross-vertical value anchors."
+            },
+            {
+              "factor_key": "brand_positioning_value",
+              "score": 85,
+              "rationale": "Assessed against the brand and positioning value anchors."
+            },
+            {
+              "factor_key": "strategic_account_value",
+              "score": 85,
+              "rationale": "Assessed against the strategic-account value anchors."
+            },
+            {
+              "factor_key": "current_priority_alignment",
+              "score": 85,
+              "rationale": "Assessed against the alignment with current vecta priorities anchors."
+            }
+          ],
+          "confidence": "high"
+        },
+        "commercial_attractiveness": {
+          "factors": [
+            {
+              "factor_key": "potential_revenue",
+              "score": 70,
+              "rationale": "Assessed against the potential vecta revenue anchors."
+            },
+            {
+              "factor_key": "expected_gross_margin",
+              "score": 70,
+              "rationale": "Assessed against the expected gross margin anchors."
+            },
+            {
+              "factor_key": "contract_duration",
+              "score": 70,
+              "rationale": "Assessed against the contract duration anchors."
+            },
+            {
+              "factor_key": "recurring_revenue_potential",
+              "score": 70,
+              "rationale": "Assessed against the recurring-revenue potential anchors."
+            },
+            {
+              "factor_key": "payment_profile",
+              "score": 70,
+              "rationale": "Assessed against the payment profile anchors."
+            },
+            {
+              "factor_key": "mobilisation_efficiency",
+              "score": 70,
+              "rationale": "Assessed against the mobilisation efficiency anchors."
+            },
+            {
+              "factor_key": "pursuit_cost_efficiency",
+              "score": 70,
+              "rationale": "Assessed against the pursuit-cost efficiency anchors."
+            },
+            {
+              "factor_key": "scalability",
+              "score": 70,
+              "rationale": "Assessed against the scalability anchors."
+            },
+            {
+              "factor_key": "upsell_expansion_potential",
+              "score": 70,
+              "rationale": "Assessed against the upsell or expansion potential anchors."
+            },
+            {
+              "factor_key": "retained_revenue_potential",
+              "score": 70,
+              "rationale": "Assessed against the retained revenue potential anchors."
+            }
+          ],
+          "confidence": "medium"
+        },
+        "win_probability": {
+          "factors": [
+            {
+              "factor_key": "eligibility",
+              "score": 65,
+              "rationale": "Assessed against the eligibility anchors."
+            },
+            {
+              "factor_key": "relevant_credentials",
+              "score": 65,
+              "rationale": "Assessed against the relevant vecta credentials anchors."
+            },
+            {
+              "factor_key": "relationship_strength",
+              "score": 65,
+              "rationale": "Assessed against the existing relationship strength anchors."
+            },
+            {
+              "factor_key": "decision_maker_access",
+              "score": 65,
+              "rationale": "Assessed against the decision-maker access anchors."
+            },
+            {
+              "factor_key": "competitive_position",
+              "score": 65,
+              "rationale": "Assessed against the competitive position anchors."
+            },
+            {
+              "factor_key": "delivery_readiness",
+              "score": 65,
+              "rationale": "Assessed against the delivery readiness anchors."
+            },
+            {
+              "factor_key": "partner_availability",
+              "score": 65,
+              "rationale": "Assessed against the availability of required partners anchors."
+            },
+            {
+              "factor_key": "time_remaining",
+              "score": 65,
+              "rationale": "Assessed against the time remaining before deadline anchors."
+            },
+            {
+              "factor_key": "local_market_capability",
+              "score": 65,
+              "rationale": "Assessed against the local-market capability anchors."
+            },
+            {
+              "factor_key": "procurement_accessibility",
+              "score": 65,
+              "rationale": "Assessed against the procurement accessibility anchors."
+            }
+          ],
+          "confidence": "medium"
+        },
+        "risk": {
+          "factors": [
+            {
+              "factor_key": "financial_exposure",
+              "score": 35,
+              "rationale": "Assessed against the financial exposure anchors."
+            },
+            {
+              "factor_key": "delivery_complexity",
+              "score": 35,
+              "rationale": "Assessed against the delivery complexity anchors."
+            },
+            {
+              "factor_key": "legal_risk",
+              "score": 35,
+              "rationale": "Assessed against the legal risk anchors."
+            },
+            {
+              "factor_key": "regulatory_risk",
+              "score": 35,
+              "rationale": "Assessed against the regulatory risk anchors."
+            },
+            {
+              "factor_key": "reputational_risk",
+              "score": 35,
+              "rationale": "Assessed against the reputational risk anchors."
+            },
+            {
+              "factor_key": "payment_risk",
+              "score": 35,
+              "rationale": "Assessed against the payment risk anchors."
+            },
+            {
+              "factor_key": "partner_dependency",
+              "score": 35,
+              "rationale": "Assessed against the partner dependency anchors."
+            },
+            {
+              "factor_key": "political_sensitivity",
+              "score": 35,
+              "rationale": "Assessed against the political or stakeholder sensitivity anchors."
+            },
+            {
+              "factor_key": "evidence_uncertainty",
+              "score": 35,
+              "rationale": "Assessed against the evidence uncertainty anchors."
+            },
+            {
+              "factor_key": "deadline_mobilisation_risk",
+              "score": 35,
+              "rationale": "Assessed against the deadline or mobilisation risk anchors."
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "qualification": {
+        "checklist": [
+          {
+            "item_key": "live_status_verified",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "reliable_source_present",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "deadline_achievable",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "basic_eligibility_met",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "relevant_vecta_vertical",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "commercial_value_meaningful",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "buyer_identifiable",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "plausible_route_to_market",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "delivery_partner_understood",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "local_entity_understood",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "credible_delivery_model",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "strategically_desirable",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "cost_to_pursue_proportionate",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "commercial_risk_acceptable",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "reputational_risk_acceptable",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          },
+          {
+            "item_key": "evidence_sufficient",
+            "answer": "yes",
+            "explanation": "Confirmed from the official notice."
+          }
+        ],
+        "recommended_state": "qualified",
+        "rationale": "Live Tier 1 tender, achievable deadline, clear vertical fit."
+      },
+      "commercial_confidence": "high"
+    }
+  ],
+  "raw_source_references": [
+    "https://etimad.sa/tenders/coach-education-2026"
+  ]
+}

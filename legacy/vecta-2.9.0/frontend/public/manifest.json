@@ -1,0 +1,13 @@
+{
+  "name": "ATLAS by VECTA Sports — Commercial Intelligence",
+  "short_name": "ATLAS",
+  "description": "Continuous commercial intelligence across global sport for VECTA Sports.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14172B",
+  "theme_color": "#14172B",
+  "icons": [
+    { "src": "/vecta-logo.jpg", "sizes": "192x192", "type": "image/jpeg" },
+    { "src": "/vecta-logo.jpg", "sizes": "512x512", "type": "image/jpeg" }
+  ]
+}

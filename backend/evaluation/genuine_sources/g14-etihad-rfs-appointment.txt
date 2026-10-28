@@ -1,0 +1,12 @@
+URL: https://www.ajot.com/news/etihad-cargo-appoints-road-feeder-service-providers-in-the-usa
+Published: Apr 18 2022
+Captured: 2026-10-27 via the session's web-fetch tool (quotes verbatim, structure paraphrased)
+Type: Trade press article (HTML). Language: English.
+Added for item 7 of the second 27 Oct instruction (capability areas without a genuine example); evaluated once, no rule changed in response.
+
+Verbatim quotes captured:
+- "Etihad Cargo appoints road feeder service providers in the USA"
+- "has appointed Accelerated, Inc. and Jet Airways of the US, Inc."
+- "as its road feeder service (RFS) providers for customers in US territories."
+- "appointed as Regional Ground Handling Trucker for Etihad Cargo."
+- "connect offline points with the carrier's main gateways, including international airports in Chicago, New York and Washington"

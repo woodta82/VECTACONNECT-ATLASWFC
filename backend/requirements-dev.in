@@ -1,0 +1,7 @@
+-r requirements.in
+pytest>=8.3
+httpx>=0.28
+ruff>=0.8
+mypy>=1.13
+pip-audit>=2.7
+playwright>=1.63,<2     # browser journeys (e2e/)

@@ -1,0 +1,10 @@
+URL: https://ted.europa.eu/es/notice/120109-2026/pdfs
+Captured: 2026-10-27 via the session's web-fetch tool (HTML transcription). Language: Spanish. Notice type: contract notice (licitación).
+
+Verbatim quotes captured:
+- "Servicios de transporte aéreo sometidos a obligaciones de servicio público en la ruta Menorca-Madrid."
+- "Dirección General de Aviación Civil"; "Madrid (ES300)", País: "España"
+- "El objeto de la presente licitación es la prestación de servicios de transporte aéreo regular"
+- Identifiers: "367A2025"; notice "120109-2026"
+- "10/03/2026 14:30:00 (UTC+01:00) Hora de Europa Central, hora de verano de Europa Occidental"
+- Selection criteria: "Volumen de negocios anual general"; "Referencias sobre servicios específicos"

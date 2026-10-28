@@ -1,0 +1,11 @@
+# SUBSTITUTE web image: serves the verification bundle (frontend/verify, the same
+# page components bundled with esbuild and Next shims) and proxies /api to the API.
+# The production image is frontend/Dockerfile (next build), which needs npm access.
+FROM atlas-substitute/node:local
+WORKDIR /web
+COPY frontend/verify/dist ./dist
+COPY frontend/verify/server.mjs ./server.mjs
+ENV HOST=0.0.0.0 PORT=3000
+USER atlas
+EXPOSE 3000
+CMD ["/usr/local/bin/node", "server.mjs"]

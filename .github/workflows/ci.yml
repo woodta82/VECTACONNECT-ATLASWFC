@@ -1,0 +1,245 @@
+# VECTA Connect | ATLAS | DYNAMIC MARKET INTELLIGENCE: continuous validation.
+# Every job uploads its reports with `if: always()`. Skipped, failed and
+# unavailable checks are reported separately from passed ones; nothing is
+# silenced with `|| true`.
+#
+# Locks (release gate): backend/requirements.lock, backend/requirements-dev.lock
+# and frontend/package-lock.json must be COMMITTED. The `locks` job fails when
+# any is missing or unhashed, and every other job depends on it, so no release
+# check runs on dependencies that were not committed. Build, audit, browser and
+# container jobs all install from exactly those files (`--require-hashes`,
+# `npm ci`); none generates its own. The build environment of 26 Oct 2026 could
+# not reach PyPI or npm, so the locks are generated once by the manual
+# `commit-locks` workflow (Run workflow), which verifies a clean install from
+# them and opens a pull request; merge it and the gate opens.
+name: CI
+
+on:
+  push:
+    branches: [main, "wfc/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  locks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Committed dependency locks must be present and hashed (release gate)
+        run: tools/check_locks.sh
+
+  backend-static:
+    runs-on: ubuntu-24.04
+    needs: locks
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: python-locks, path: backend }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install --require-hashes -r requirements-dev.lock
+      - run: ruff check app tests ../e2e ../tools
+      - run: mypy app
+      - name: Domain tests (no database, no network, no AI spend)
+        run: pytest tests/domain -q --junitxml=test-reports/domain.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: backend-static-reports, path: backend/test-reports/ }
+
+  backend-postgres:
+    runs-on: ubuntu-24.04
+    needs: locks
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: atlas, POSTGRES_PASSWORD: test_only_pw, POSTGRES_DB: postgres }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U atlas" --health-interval 5s --health-retries 20
+    defaults: { run: { working-directory: backend } }
+    env:
+      PGPASSWORD: test_only_pw
+      WFC_TEST_PG: "host=127.0.0.1 port=5432 user=atlas"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: python-locks, path: backend }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install --require-hashes -r requirements-dev.lock
+      - name: Schema, query, service, HTTP, integration and process tests on PostgreSQL 16
+        run: mkdir -p test-reports && pytest tests -q -rs --junitxml=test-reports/postgres.xml
+      - name: Alembic clean install (empty database)
+        env: { ENVIRONMENT: test, DATABASE_URL: "postgresql+psycopg://atlas:test_only_pw@127.0.0.1:5432/migrate_ci" }
+        run: |
+          psql -h 127.0.0.1 -U atlas -d postgres -c "CREATE DATABASE migrate_ci"
+          alembic upgrade head 2>&1 | tee test-reports/migration.log
+          psql -h 127.0.0.1 -U atlas -d migrate_ci -Atc "SELECT value FROM schema_meta WHERE key='revision'" | grep -x wfc_0010
+          psql -h 127.0.0.1 -U atlas -d migrate_ci -Atc "SELECT count(*) FROM countries" | tee -a test-reports/migration.log
+      - name: Alembic refuses a non-empty database
+        env: { ENVIRONMENT: test, DATABASE_URL: "postgresql+psycopg://atlas:test_only_pw@127.0.0.1:5432/nonempty_ci" }
+        run: |
+          psql -h 127.0.0.1 -U atlas -d postgres -c "CREATE DATABASE nonempty_ci"
+          psql -h 127.0.0.1 -U atlas -d nonempty_ci -c "CREATE TABLE opportunities (id int)"
+          if alembic upgrade head; then echo "::error::wfc_0001 ran on a non-empty database"; exit 1; fi
+      - name: Backup and restore rehearsal
+        run: |
+          pg_dump -h 127.0.0.1 -U atlas -Fc migrate_ci -f test-reports/backup.dump
+          psql -h 127.0.0.1 -U atlas -d postgres -c "CREATE DATABASE restore_ci"
+          pg_restore -h 127.0.0.1 -U atlas -d restore_ci test-reports/backup.dump
+          test "$(psql -h 127.0.0.1 -U atlas -d restore_ci -Atc "SELECT value FROM schema_meta WHERE key='revision'")" = wfc_0010
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: backend-postgres-reports, path: backend/test-reports/ }
+
+  frontend:
+    runs-on: ubuntu-24.04
+    needs: locks
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Offline lint (same rules as used where ESLint cannot be installed)
+        run: npm run lint:offline
+      - name: Production build (Next.js)
+        env: { BACKEND_INTERNAL_URL: "http://127.0.0.1:8000" }
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: frontend-build, path: "frontend/package-lock.json\nfrontend/.next/\n!frontend/.next/cache/", include-hidden-files: true }
+
+  e2e:
+    runs-on: ubuntu-24.04
+    needs: [backend-postgres, frontend]
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: atlas, POSTGRES_PASSWORD: test_only_pw, POSTGRES_DB: postgres }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U atlas" --health-interval 5s --health-retries 20
+    env:
+      PGPASSWORD: test_only_pw
+      WFC_STACK_PG: "host=127.0.0.1 port=5432 user=atlas"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: python-locks, path: backend }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: pip install --require-hashes -r backend/requirements-dev.lock && python -m playwright install --with-deps chromium
+      - name: Build the production Next app against the local API
+        working-directory: frontend
+        env: { BACKEND_INTERNAL_URL: "http://127.0.0.1:8000" }
+        run: |
+          npm ci && npm run build
+      - name: Browser journeys and responsive/accessibility checks (fixture site + SIMULATED AI provider)
+        env: { PYTHON: python, STACK_WEB_CMD: "cd ../frontend && npx next start -p 3000" }
+        run: tools/run_journeys.sh e2e-artifacts
+      - name: Legacy TypeScript spec against the same kind of stack
+        working-directory: frontend
+        env: { LOGIN_USERNAME: ops@wfc.example, LOGIN_BOOTSTRAP_PASSWORD: "Local-Verify-Pass-2026!", PYTHON: python,
+               STACK_WEB_CMD: "cd ../frontend && npx next start -p 3000" }
+        run: |
+          python ../tools/local_stack.py up --db atlas_ts --logs ../e2e-artifacts/ts-stack-logs
+          npx playwright install chromium && npx playwright test; rc=$?
+          python ../tools/local_stack.py down --logs ../e2e-artifacts/ts-stack-logs
+          exit $rc
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-artifacts
+          path: |
+            e2e-artifacts/
+            frontend/playwright-report/
+            frontend/test-results/
+
+  docker:
+    runs-on: ubuntu-24.04
+    needs: locks
+    env:
+      LOGIN_BOOTSTRAP_PASSWORD: CI-Only-Password-2026!
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start (db, migrate, api, worker, web) from the committed locks
+        run: docker compose up -d --build --wait
+      - name: Health and readiness through the web container
+        run: |
+          curl -fsS http://localhost:3000/api/health/live | tee docker-health.json
+          curl -fsS http://localhost:3000/api/health/ready | tee -a docker-health.json
+          grep -q '"schema_revision":"wfc_0010"' docker-health.json
+      - name: Container logs
+        if: always()
+        run: docker compose logs --no-color > compose.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: docker-artifacts, path: "compose.log\ndocker-health.json" }
+
+  security:
+    runs-on: ubuntu-24.04
+    needs: locks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: Secret scan
+        run: python3 tools/secret_scan.py
+      - name: Python dependency audit of the committed lock (fails on findings; exceptions must be listed with a review date)
+        run: |
+          pip install pip-audit
+          cd backend && pip-audit -r requirements.lock --require-hashes $(python3 ../tools/audit_exceptions.py --pip-args)
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: npm audit of the committed lock (high and critical fail)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+
+  # Run manually once the repository is on GitHub: generates the locks that this build environment could not
+  # (no registry access) and opens a pull request that commits them. After that PR is merged, every job above
+  # installs from the committed locks unchanged.
+  commit-locks:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    permissions: { contents: write, pull-requests: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Generate hash locks (constrained to the verified pins) and package-lock.json
+        run: |
+          pip install uv
+          cd backend
+          for f in requirements requirements-dev; do
+            [ -f "$f.lock" ] || uv pip compile "$f.in" -c requirements.verified.txt --generate-hashes --python-version 3.13 -o "$f.lock"
+          done
+          cd ../frontend && [ -f package-lock.json ] || npm install --package-lock-only --ignore-scripts
+      - name: Verify a clean install from the generated locks
+        run: |
+          python -m venv /tmp/lockcheck && /tmp/lockcheck/bin/pip install --require-hashes --no-deps -r backend/requirements-dev.lock
+          /tmp/lockcheck/bin/pip check
+          rm -rf /tmp/fe && cp -r frontend /tmp/fe && rm -rf /tmp/fe/node_modules && (cd /tmp/fe && npm ci --ignore-scripts && npx tsc --noEmit)
+          tools/check_locks.sh
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: wfc/commit-locks
+          title: "Commit dependency locks (generated in CI)"
+          commit-message: "Commit backend hash locks and frontend package-lock.json generated in CI"
+          body: "Locks generated by the `commit-locks` job, constrained to `backend/requirements.verified.txt`. Review the diff before merging."
+          add-paths: |
+            backend/requirements.lock
+            backend/requirements-dev.lock
+            frontend/package-lock.json

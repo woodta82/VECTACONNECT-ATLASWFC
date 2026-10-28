@@ -1,0 +1,34 @@
+# Overlay for running the authenticated browser journeys (e2e/) against the container stack.
+#   docker compose -f compose.yml -f compose.e2e.yml up -d --wait
+# Adds the SYNTHETIC fixture site and the SIMULATED AI provider as containers, points the API and worker at them,
+# uses the journeys' shared login, and publishes the web (3000) and database (127.0.0.1:5434) ports for the tests.
+# Verification only: development environment, private fixture host allowed, simulated provider. Never for production.
+services:
+  db:
+    ports: ["127.0.0.1:5434:5432"]
+  fixture:
+    build: { context: ../.., dockerfile: tools/docker_substitute/Dockerfile.api }
+    command: ["/usr/local/bin/python", "/tools/fixture_site.py", "--port", "8089"]
+    environment: { FIXTURE_BIND_HOST: 0.0.0.0, PYTHONPATH: /app }
+    volumes: ["../../tools:/tools:ro"]
+    healthcheck: { disable: true }
+  ai_stub:
+    build: { context: ../.., dockerfile: tools/docker_substitute/Dockerfile.api }
+    command: ["/usr/local/bin/python", "/tools/fake_ai_provider.py", "--port", "8090"]
+    environment: { FIXTURE_BIND_HOST: 0.0.0.0, PYTHONPATH: /app }
+    volumes: ["../../tools:/tools:ro"]
+    healthcheck: { disable: true }
+  migrate: &e2e_env
+    environment:
+      LOGIN_USERNAME: ops@wfc.example
+      PUBLIC_ORIGIN: http://127.0.0.1:3000
+      RETRIEVAL_ALLOW_PRIVATE_HOSTS: fixture:8089
+      ANTHROPIC_API_KEY: local-stub-key-not-real
+      AI_MODEL: stub-model (simulated provider)
+      AI_PRICE_INPUT_PER_MTOK: "3"
+      AI_PRICE_OUTPUT_PER_MTOK: "15"
+      AI_API_BASE_URL: http://ai_stub:8090
+  api: *e2e_env
+  worker: *e2e_env
+  web:
+    ports: ["127.0.0.1:3000:3000"]
