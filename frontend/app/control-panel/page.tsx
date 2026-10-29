@@ -14,6 +14,8 @@ type Scored = { id: string; kind: "opportunity" | "signal"; title: string; organ
                 record_type_label: string; category: string; countries: string[]; countries_named: string[];
                 tender_status_label: string | null; coverage_label: string; score: number; band: string; band_label: string;
                 components: Component[] };
+type Summary = { key: string; title: string; count: number; detail: string; link: string; secondary?: { label: string; link: string; count: number }[];
+                 items: { id: string | null; title: string; detail: string | null; link?: string }[] };
 type Panel = {
   scope: string; rule: string; market_rule: string;
   totals: { live: number; tenders_open: number; commercial: number; signals: number; deadline_30_days: number; avg_score: number | null;
@@ -42,12 +44,36 @@ export default function ControlPanelPage() {
       <PageHeader eyebrow="Control panel" title="Opportunities by market, scored out of 100"
                   description="Live opportunities and market signals per region, market and country, with each opportunity's score out of 100 and how it was reached."
                   actions={<><Link className="btn" href="/opportunities">All opportunities</Link><Link className="btn btn-primary" href="/discovery">Discover</Link></>} />
+      <Summaries />
       <RecordFilters value={filters} onChange={setFilters} />
       {r.stale && <StaleBanner onRetry={r.reload} />}
       {r.status === "loading" && <Loading what="control panel" />}
       {r.status === "error" && !r.data && <ErrorState error={r.error} onRetry={r.reload} />}
       {r.data && <Body p={r.data} />}
     </>
+  );
+}
+
+/** The full system in six separated summaries (29 Oct 2026); each opens the filtered records. The analytics below stay secondary. */
+function Summaries() {
+  const s = useApi<{ summaries: Summary[] }>("/control-panel/summaries");
+  if (!s.data) return null;
+  const href = (x: { id: string | null; link?: string }, key: string) =>
+    x.link ?? (key === "companies" ? `/companies?country=${x.id}` : key === "market" ? `/signals/${x.id}` : `/opportunities/${x.id}`);
+  return (
+    <section className="panel" aria-label="System summaries">
+      <div className="grid grid-3 questions">
+        {s.data.summaries.map((x) => (
+          <div className="question" key={x.key} role="region" aria-label={x.title}>
+            <h3><Link href={x.link}>{x.title}</Link> <span className="num">{x.count}</span></h3>
+            <p className="small muted">{x.detail}</p>
+            {x.items.length > 0 && <ul className="list-plain small">{x.items.map((it, i) => (
+              <li key={`${it.id ?? i}`}>{it.id ? <Link href={href(it, x.key)}>{it.title}</Link> : it.title}{it.detail && <span className="muted"> · {it.detail}</span>}</li>))}</ul>}
+            <p className="small"><Link href={x.link}>Open records</Link>{(x.secondary ?? []).map((sec) => <Fragment key={sec.link}> · <Link href={sec.link}>{sec.label} ({sec.count})</Link></Fragment>)}</p>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

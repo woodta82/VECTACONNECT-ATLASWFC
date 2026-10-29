@@ -76,6 +76,7 @@ class _Run:
     limits_hit: list[str] = field(default_factory=list)
     robots: dict[str, urllib.robotparser.RobotFileParser | None] = field(default_factory=dict)
     ai_rejected: list[str] = field(default_factory=list)
+    company_mode: bool = False               # company research (29 Oct 2026): profile pages are followed too
 
 
 def _country_name(code: str | None) -> str | None:
@@ -412,10 +413,10 @@ def _follow(db: Database, run: _Run, d: dict[str, Any], links: list[tuple[str, s
     if not (d["origin"] in ("organisation_page", "user_url") or (d["origin"] == "followed_link" and d.get("page_kind") == "news")):
         return
     keywords = [org["name"]] + [w for w in re.findall(r"[A-Za-z]{4,}", run.subject[0] if run.subject else "")]
-    picks = plan.links_to_follow(links, page_url, keywords)
+    picks = plan.links_to_follow(links, page_url, keywords, company=run.company_mode)
     for url, anchor, kind in picks:
         _queue(db, run, origin="followed_link", url=url, org_id=str(org["id"]), title=anchor or None,
-               page_kind={"leadership": "leadership", "news": "news"}.get(kind, "other"),   # a news item is read, not followed further
+               page_kind={"leadership": "leadership", "news": "news", "profile": "other"}.get(kind, "other"),   # a news item is read, not followed further
                found_via=f"link '{anchor[:80]}' on {page_url}" if anchor else f"linked from {page_url}")
     if not picks and d["origin"] == "organisation_page" and d.get("page_kind") == "other":
         base = f"{urlsplit(page_url).scheme}://{urlsplit(page_url).netloc}/"

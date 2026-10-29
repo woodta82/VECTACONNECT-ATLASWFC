@@ -36,7 +36,7 @@ const SETUP_ORDER = ["operating_companies", "airports", "airlines", "territories
 
 export default function DataSourcesPage() {
   const r = useApi<Data>("/data-sources");
-  const [tab, setTab] = useState<"setup" | "operational" | "history" | "connectors">("setup");
+  const [tab, setTab] = useState<"setup" | "operational" | "supplied" | "history" | "connectors">("setup");
   return (
     <>
       <PageHeader eyebrow="Data Sources and Imports" title="Set up reference data and load operational files"
@@ -48,7 +48,7 @@ export default function DataSourcesPage() {
       {r.data && (
         <section className="panel">
           <Tabs label="Data sources" value={tab} onChange={setTab} tabs={[
-            { id: "setup", label: "Setup (master data)" }, { id: "operational", label: "Operational data" },
+            { id: "setup", label: "Setup (master data)" }, { id: "operational", label: "Operational data" }, { id: "supplied", label: "Supplied lists" },
             { id: "history", label: "Import history", count: r.data.imports.length }, { id: "connectors", label: "Connectors" },
           ]} />
           {tab === "setup" && (
@@ -58,6 +58,7 @@ export default function DataSourcesPage() {
             </>
           )}
           {tab === "operational" && <ImportWorkflow datasets={r.data.datasets.filter((d) => d.category === "operational")} onDone={r.reload} />}
+          {tab === "supplied" && <SuppliedLists />}
           {tab === "history" && <History rows={r.data.imports} datasets={r.data.datasets} onDone={r.reload} />}
           {tab === "connectors" && (
             <TableWrap label="Connectors">
@@ -224,5 +225,66 @@ function History({ rows, datasets, onDone }: { rows: Data["imports"]; datasets: 
         </table>
       </TableWrap>
     </>
+  );
+}
+
+
+/* Supplied lists (29 Oct 2026): a station's GSA or airline list as an example of the research output expected everywhere. Preserved row by
+   row; every company, address and represented airline from it is marked supplied — awaiting verification — never assumed current. */
+type SuppliedImport = { id: string; name: string; filename: string | null; airport_iata: string | null; country: string | null; rows_total: number; organisations: number;
+                        relationships: number; contacts: number; imported_at: string; imported_by: string | null; rows_linked: number; organisations_verified: number; notes: string | null };
+type SuppliedResult = { id: string; name: string; airport_iata: string | null; country: string | null; rows: number; organisations: number; relationships: number;
+                        contacts: number; skipped: string[]; note: string };
+
+function SuppliedLists() {
+  const r = useApi<{ items: SuppliedImport[] }>("/supplied-data");
+  const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
+  const [notes, setNotes] = useState("");
+  const [result, setResult] = useState<SuppliedResult | null>(null);
+  const a = useAction();
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    if (name) fd.append("name", name);
+    if (notes) fd.append("notes", notes);
+    const res = await a.run(() => api.post<SuppliedResult>("/supplied-data", fd), (x) => x.note);
+    if (res) { setResult(res); setFile(null); r.reload(); }
+  }
+  return (
+    <div className="stack">
+      <p className="muted small">An Excel station list (for example a GSA list for one airport: company, represented airlines, e-mail; and airlines by type) is read as a
+        benchmark of the research output expected globally, not as a database and not as a scope. Rows are preserved as supplied; nothing from them is shown as
+        current until research sources it (Discover → Companies) or a person verifies it on the company&apos;s page.</p>
+      <form className="form-grid" onSubmit={submit}>
+        <label className="field">Workbook (.xlsx)<input className="input" type="file" accept=".xlsx,.xlsm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+        <label className="field">Name (optional)<input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. GSA list BRU (supplied Oct 2026)" /></label>
+        <label className="field">Notes (optional)<input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
+        <div className="actions"><button className="btn btn-primary" type="submit" disabled={!file || a.busy}>{a.busy ? "Reading…" : "Load as supplied data"}</button></div>
+      </form>
+      <ActionNote state={a} />
+      {result && (
+        <div className="notice notice-info" role="status">{result.name}: {result.rows} row(s) → {result.organisations} compan{result.organisations === 1 ? "y" : "ies"}, {result.relationships} represented-airline
+          entries, {result.contacts} address(es), all marked supplied{result.airport_iata ? ` · station ${result.airport_iata}` : ""}.{" "}
+          <Link href={`/companies?origin=supplied${result.airport_iata ? `&airport=${result.airport_iata}` : ""}`}>Open the companies</Link>
+          {result.skipped.length > 0 && <ul className="small">{result.skipped.map((x) => <li key={x}>{x}</li>)}</ul>}</div>
+      )}
+      {r.data && (r.data.items.length === 0 ? <Empty title="No supplied list loaded yet" /> : (
+        <TableWrap label="Supplied lists">
+          <table><thead><tr><th>Loaded</th><th>Name</th><th>Station</th><th className="num">Rows</th><th className="num">Companies</th><th className="num">Verified</th><th className="num">Represented airlines</th><th className="num">Addresses</th></tr></thead>
+            <tbody>{r.data.items.map((i) => (
+              <tr key={i.id}>
+                <td>{dateTime(i.imported_at)}<span className="muted small">{i.imported_by ?? ""}</span></td>
+                <td>{i.name}<span className="muted small">{i.filename}</span></td>
+                <td>{i.airport_iata ?? "—"}{i.country && <span className="muted small">{i.country}</span>}</td>
+                <td className="num">{i.rows_total}</td>
+                <td className="num"><Link href={`/companies?origin=supplied${i.airport_iata ? `&airport=${i.airport_iata}` : ""}`}>{i.organisations}</Link></td>
+                <td className="num">{i.organisations_verified}</td><td className="num">{i.relationships}</td><td className="num">{i.contacts}</td>
+              </tr>))}</tbody></table>
+        </TableWrap>
+      ))}
+    </div>
   );
 }

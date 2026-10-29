@@ -106,6 +106,8 @@ class SearchSpec:
     name: str | None = None
     saved: bool = False
     date_filter: str = "include_unknown"
+    purpose: str = "opportunities"          # or 'market' (29 Oct 2026: research purposes)
+    brief: str | None = None                # plain-language research request
 
 
 def validate_spec(db: Database, spec: SearchSpec) -> SearchSpec:
@@ -138,16 +140,19 @@ def validate_spec(db: Database, spec: SearchSpec) -> SearchSpec:
         raise DiscoveryRejected(422, "a saved search needs a name")
     if spec.date_filter not in ("include_unknown", "strict"):
         raise DiscoveryRejected(422, "date_filter must be include_unknown or strict")
+    if spec.purpose not in ("opportunities", "market"):
+        raise DiscoveryRejected(422, "purpose must be opportunities or market")
+    brief = " ".join((spec.brief or "").split())[:600] or None
     return SearchSpec(spec.geo_mode, countries, regions, modules, (spec.organisation or "").strip() or None,
                       (spec.airline or "").strip() or None, (spec.keywords or "").strip() or None, spec.date_from, spec.date_to,
-                      (spec.name or "").strip() or None, spec.saved, spec.date_filter)
+                      (spec.name or "").strip() or None, spec.saved, spec.date_filter, spec.purpose, brief)
 
 
 def create_search(db: Database, spec: SearchSpec) -> str:
     s = validate_spec(db, spec)
     return str(db.scalar("search_insert", name=s.name, saved=s.saved, geo_mode=s.geo_mode, countries=s.countries, regions=s.regions,
                          modules=s.modules, organisation=s.organisation, airline=s.airline, keywords=s.keywords,
-                         date_from=s.date_from, date_to=s.date_to, date_filter=s.date_filter))
+                         date_from=s.date_from, date_to=s.date_to, date_filter=s.date_filter, purpose=s.purpose, brief=s.brief))
 
 
 def _custom_regions(db: Database) -> dict[str, tuple[str, ...]]:
@@ -187,6 +192,10 @@ def plan(db: Database, search: dict[str, Any] | None, source_id: str | None, set
             mod_ok = not modules or not (s["modules"] or []) or bool(set(s["modules"]) & set(modules))
             if geo_ok and mod_ok:
                 sources.append(s)
+        if (search.get("purpose") or "opportunities") == "market":
+            # Market intelligence is read from public pages, feeds and the open web; procurement-portal search templates and listings
+            # are tender sources and are not searched for it.
+            sources = [s for s in sources if s["source_type"] not in ("search_template", "listing")]
     # The open web is searched for every search when a connector is configured. Without one, it is planned only when nothing else
     # covers the search, so the run says "search not configured" rather than "nothing searched"; beside configured monitoring
     # sources it is reported as not configured in the plan and not counted as a failed source.
@@ -208,10 +217,7 @@ def plan(db: Database, search: dict[str, Any] | None, source_id: str | None, set
     open_web = [s for s in sources if s["source_type"] == "web_search"]
     web_enabled = bool(open_web) or (not source_id and any(s["source_type"] == "web_search" for s in db.all("sources_discoverable")))
     n_countries = len(wanted) if wanted is not None else 1
-    web_queries = min(len(ow.build_queries(countries=sorted(wanted) if wanted is not None else [None], country_names={c: v[0] for c, v in COUNTRIES.items()},
-                                           modules=modules, keywords=(search or {}).get("keywords"), organisation=(search or {}).get("organisation"),
-                                           airline=(search or {}).get("airline"), max_per_country=MAX_WEB_QUERIES_PER_COUNTRY)),
-                      MAX_WEB_QUERIES_PER_RUN) if open_web else 0
+    web_queries = min(len(_web_queries(open_web[0], search, wanted)), MAX_WEB_QUERIES_PER_RUN) if open_web else 0
     return {
         "open_web": {"planned": bool(open_web), "enabled": web_enabled, "connected": search_reason is None, "reason": search_reason,
                      "provider": settings.search_provider or None, "queries": web_queries, "countries": n_countries,
@@ -476,10 +482,17 @@ def _issue(counts: dict[str, Any], issues: list[dict[str, Any]], url: str, reaso
 
 
 def _web_queries(src: dict[str, Any], search: dict[str, Any] | None, wanted: set[str] | None) -> list[ow.WebQuery]:
-    return ow.build_queries(countries=sorted(wanted) if wanted is not None else [None], country_names={c: v[0] for c, v in COUNTRIES.items()},
-                            modules=list((search or {}).get("modules") or []), keywords=(search or {}).get("keywords"),
-                            organisation=(search or {}).get("organisation"), airline=(search or {}).get("airline"),
-                            max_per_country=MAX_WEB_QUERIES_PER_COUNTRY)
+    from ..domain.company_intel import brief_terms
+    s = search or {}
+    names = {c: v[0] for c, v in COUNTRIES.items()}
+    countries = sorted(wanted) if wanted is not None else [None]
+    if s.get("purpose") == "market":
+        return ow.build_market_queries(countries=countries, country_names=names, brief_terms=brief_terms(s.get("brief")), keywords=s.get("keywords"),
+                                       organisation=s.get("organisation"), airline=s.get("airline"), max_per_country=MAX_WEB_QUERIES_PER_COUNTRY)
+    # a brief narrows the opportunity queries like keywords do, without filtering the results by its words
+    kw = s.get("keywords") or (brief_terms(s.get("brief")) or None)
+    return ow.build_queries(countries=countries, country_names=names, modules=list(s.get("modules") or []), keywords=kw,
+                            organisation=s.get("organisation"), airline=s.get("airline"), max_per_country=MAX_WEB_QUERIES_PER_COUNTRY)
 
 
 def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, Any], search: dict[str, Any] | None,

@@ -94,6 +94,8 @@ class SearchIn(BaseModel):
     name: str | None = Field(None, max_length=200)
     save: bool = False
     run_now: bool = True
+    purpose: Literal["opportunities", "market"] = "opportunities"      # 29 Oct 2026: research purposes within Discover
+    brief: str | None = Field(None, max_length=600)                    # plain-language research request
 
 
 @router.get("/discovery/options", tags=["Discovery"])
@@ -121,7 +123,7 @@ def create_search(request: Request, body: SearchIn):
     try:
         sid = dsc.create_search(db, dsc.SearchSpec(body.geo_mode, body.countries, body.regions, list(body.modules), body.organisation,
                                                    body.airline, body.keywords, body.date_from, body.date_to, body.name, body.save,
-                                                   date_filter=body.date_filter))
+                                                   date_filter=body.date_filter, purpose=body.purpose, brief=body.brief))
         run = dsc.start_run(db, _settings(request), search_id=sid) if body.run_now else None
     except dsc.DiscoveryRejected as exc:
         _raise(exc)

@@ -5,11 +5,12 @@ import { useState, type FormEvent } from "react";
 import { Tag } from "@/components/Records";
 import { Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
 import { ActionNote, Tabs } from "@/components/Ui";
-import { CountryPicker, useGeography } from "@/components/Geo";
+import { useGeography } from "@/components/Geo";
 import { DuplicateReview, type Duplicate } from "@/components/Duplicates";
 import { HealthBadge, MOMENTUM_TONE, PersonLine, STAKEHOLDER_TYPES } from "@/components/Intelligence";
+import { RecentResearch, ResearchForm, ResearchResult, type Discovery, type DiscoveryDetail } from "@/components/Research";
 import { api, qs } from "@/lib/api";
-import { dateOnly, dateTime, label } from "@/lib/format";
+import { dateOnly } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
 import { useApi } from "@/lib/useApi";
 
@@ -28,24 +29,8 @@ type Gap = { opportunity_id: string; opportunity_title: string; missing: string;
              recommended_action: string };
 type Questions = { who_matters_most: QPerson[]; who_are_we_missing: Gap[]; improving: QPerson[]; at_risk: QPerson[]; where_to_invest_time: QPerson[];
                    totals: { people: number; assessed: number; at_risk: number; not_judged: number }; rule: string };
-type Discovery = { id: string; organisation: string | null; countries_named: string[]; region_name: string | null; capability_area_label: string | null;
-                   role_focus: string | null; brief: string; status: string; outcome: string | null; people_found: number; runs: number; started_at: string;
-                   finished_at: string | null; requested_by_label: string | null; methods: string[] };
-type DiscoveryDetail = Discovery & {
-  people: { person_id: string; full_name: string; role_title: string | null; organisation: string | null; relevance_score: number; new_record: boolean;
-            relevance: { components: { key: string; label: string; points: number; max: number; reason: string }[] }; state_label: string;
-            linkedin_search_url: string; source_url: string | null; quote: string | null }[];
-  documents: { id: string; origin: string; url: string | null; title: string | null; status: string; status_reason: string | null; found_via: string | null }[];
-  searches: { purpose: string; query: string; status: string; results: number; link: string; reason?: string }[];
-  unavailable: { method: string; reason: string }[]; actions: string[]; rule: string;
-  coverage: { remaining: string[]; not_searched: string[]; limits_hit?: string[] };
-};
-
 const STATE_TONE: Record<string, string> = { existing_relationship: "b-good", introduction_available: "b-good", identity_confirmed: "b-info",
                                              research_candidate: "b-warn" };
-const OUTCOME_TONE: Record<string, string> = { people_found: "b-good", no_people_found: "b-none", incomplete: "b-warn", not_run: "b-bad" };
-const OUTCOME_LABEL: Record<string, string> = { people_found: "People found", no_people_found: "No people found", incomplete: "Incomplete", not_run: "Not run" };
-const outcomeLabel = (o: string | null) => OUTCOME_LABEL[o ?? "not_run"] ?? "Running";
 
 export default function RelationshipsPage() {
   const [tab, setTab] = useState<StateTab>("");
@@ -61,7 +46,7 @@ export default function RelationshipsPage() {
   const r = useApi<Page>(`/people${qs({ states: tab, q, has_action: actions ? "true" : undefined, country, module, stakeholder_type: stype, sort,
                                         min_health: minHealth, limit: 100 })}`);
   const qu = useApi<Questions>("/relationships/questions");
-  const disc = useApi<{ items: Discovery[] }>("/contacts/discoveries?limit=8");
+  const disc = useApi<{ items: Discovery[] }>("/contacts/discoveries?limit=8&purpose=people");
   const areas = r.data?.capability_areas ?? {};
   const exportHref = `/api/people/export.csv${qs({ states: tab, q, country, module, stakeholder_type: stype, sort })}`;
   const reloadAll = () => { r.reload(); qu.reload(); disc.reload(); };
@@ -72,8 +57,8 @@ export default function RelationshipsPage() {
                   actions={<><a className="btn" href={exportHref}>Export CSV</a>
                              <button type="button" className="btn btn-primary" aria-expanded={discoverOpen} onClick={() => setDiscoverOpen((v) => !v)}>
                                {discoverOpen ? "Close" : "Discover contacts"}</button></>} />
-      {discoverOpen && <DiscoverForm areas={areas} onDone={(d) => { setLatest(d); reloadAll(); }} />}
-      {latest && <DiscoveryResult d={latest} onContinue={async () => { const d = await api.post<DiscoveryDetail>(`/contacts/discoveries/${latest.id}/continue`); setLatest(d); reloadAll(); }} />}
+      {discoverOpen && <ResearchForm purpose="people" areas={areas} onDone={(d) => { setLatest(d); reloadAll(); }} />}
+      {latest && <ResearchResult d={latest} onContinue={async () => { const d = await api.post<DiscoveryDetail>(`/contacts/discoveries/${latest.id}/continue`); setLatest(d); reloadAll(); }} />}
 
       {qu.data && <FiveQuestions q={qu.data} />}
 
@@ -122,7 +107,7 @@ export default function RelationshipsPage() {
         ))}
       </section>
 
-      <Discoveries items={disc.data?.items ?? []} onOpen={async (id) => setLatest(await api.get<DiscoveryDetail>(`/contacts/discoveries/${id}`))} />
+      <RecentResearch title="Recent contact discoveries" items={disc.data?.items ?? []} onOpen={async (id) => setLatest(await api.get<DiscoveryDetail>(`/contacts/discoveries/${id}`))} />
       <Duplicates onChanged={r.reload} />
       <AddPerson onAdded={reloadAll} />
     </>
@@ -176,99 +161,6 @@ function FiveQuestions({ q }: { q: Questions }) {
         </div>
       </div>
       <p className="small muted">{q.rule}</p>
-    </section>
-  );
-}
-
-/* ----------------------------------------------------------------- open-market contact discovery */
-function DiscoverForm({ areas, onDone }: { areas: Record<string, string>; onDone: (d: DiscoveryDetail) => void }) {
-  const geo = useGeography();
-  const [f, setF] = useState({ organisation_name: "", capability_area: "", role_focus: "", region: "", requested_by_label: "" });
-  const [countries, setCountries] = useState<string[]>([]);
-  const [mode, setMode] = useState<"countries" | "region">("countries");
-  const a = useAction();
-  const ready = f.organisation_name.trim() || f.role_focus.trim() || (mode === "countries" ? countries.length > 0 : !!f.region);
-  return (
-    <section className="panel" aria-label="Discover contacts">
-      <h2>Discover contacts in the open market</h2>
-      <p className="small muted">A search for named people by organisation, country or region, WFC capability area and role focus. ATLAS reads the organisation&apos;s
-        own pages and the authorised web search&apos;s results; every contact carries the passage that names them and a relevance to this brief. Public pages only; no
-        LinkedIn profile is fetched and nothing is sent.</p>
-      <form className="form-grid" onSubmit={async (e: FormEvent) => { e.preventDefault();
-        const body = { organisation_name: f.organisation_name || null, capability_area: f.capability_area || null, role_focus: f.role_focus || null,
-                       region: mode === "region" ? f.region || null : null, countries: mode === "countries" ? countries : [], requested_by_label: f.requested_by_label || null };
-        const d = await a.run(() => api.post<DiscoveryDetail>("/contacts/discover", body), "Discovery run");
-        if (d) onDone(d); }}>
-        <label className="field">Organisation (optional)<input className="input" value={f.organisation_name} onChange={(e) => setF({ ...f, organisation_name: e.target.value })} placeholder="e.g. Example Air" /></label>
-        <label className="field">Capability area<select className="select" value={f.capability_area} onChange={(e) => setF({ ...f, capability_area: e.target.value })}>
-          <option value="">Any</option>{Object.entries(areas).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
-        <label className="field">Role focus (optional)<input className="input" value={f.role_focus} onChange={(e) => setF({ ...f, role_focus: e.target.value })} placeholder="e.g. head of procurement" /></label>
-        <label className="field">Requested by<input className="input" value={f.requested_by_label} onChange={(e) => setF({ ...f, requested_by_label: e.target.value })} /></label>
-        <div className="field" style={{ gridColumn: "1 / -1" }}>Geography
-          <div className="segmented" role="group" aria-label="Geography mode">
-            <button type="button" aria-pressed={mode === "countries"} onClick={() => setMode("countries")}>Countries</button>
-            <button type="button" aria-pressed={mode === "region"} onClick={() => setMode("region")}>Region</button>
-          </div>
-        </div>
-        {mode === "countries" ? <div style={{ gridColumn: "1 / -1" }}><CountryPicker value={countries} onChange={setCountries} max={5} /></div> : (
-          <label className="field">Region<select className="select" value={f.region} onChange={(e) => setF({ ...f, region: e.target.value })}>
-            <option value="">Choose a region</option>{(geo?.regions ?? []).map((rg) => <option key={rg.code} value={rg.code}>{rg.name}</option>)}</select></label>)}
-        <div className="actions"><button className="btn btn-primary" type="submit" disabled={a.busy || !ready}>{a.busy ? "Researching…" : "Find contacts"}</button></div>
-        <p className="small muted" style={{ gridColumn: "1 / -1" }}>Usually 10–60 seconds. Found people are added to the directory as research candidates.</p>
-        <ActionNote state={a} />
-      </form>
-    </section>
-  );
-}
-
-function DiscoveryResult({ d, onContinue }: { d: DiscoveryDetail; onContinue: () => Promise<void> }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const a = useAction();
-  return (
-    <section className="panel" aria-label="Discovery result">
-      <div className="panel-head"><h2>Discovery: {d.brief}</h2><Tag text={outcomeLabel(d.outcome)} tone={OUTCOME_TONE[d.outcome ?? "not_run"]} /></div>
-      <p className="small muted">{d.people.length} contact(s) · {d.documents.filter((x) => x.status === "read").length} page(s) read of {d.documents.length} ·{" "}
-        {d.searches.filter((s) => s.status === "run").length} search(es) run, {d.searches.filter((s) => s.status === "not_run").length} not run · run {d.runs} time(s)</p>
-      {d.actions.length > 0 && <ul className="small">{d.actions.map((x) => <li key={x}>{x}</li>)}</ul>}
-      {d.outcome === "incomplete" && <button type="button" className="btn btn-small" disabled={a.busy} onClick={() => a.run(onContinue, "Discovery continued")}>Continue discovery</button>}
-      {d.people.length > 0 && (
-        <TableWrap label="Discovered contacts">
-          <table><thead><tr><th className="num">Relevance</th><th>Person</th><th>Organisation</th><th>Evidence</th><th>Status</th><th>LinkedIn</th><th>Why</th></tr></thead>
-            <tbody>{d.people.map((p) => (
-              <tr key={p.person_id}>
-                <td className="num"><b>{p.relevance_score}</b><span className="muted small">/100</span></td>
-                <td><Link href={`/relationships/${p.person_id}`}>{p.full_name}</Link><div className="small muted">{p.role_title ?? "title not bound"}{p.new_record ? "" : " · already known"}</div></td>
-                <td className="small">{p.organisation ?? <span className="muted">not established</span>}</td>
-                <td className="small">{p.quote ? <>“{p.quote.slice(0, 140)}{p.quote.length > 140 ? "…" : ""}”</> : ""}{p.source_url && <> <a href={p.source_url} target="_blank" rel="noreferrer noopener">source</a></>}</td>
-                <td><Tag text={p.state_label} tone="b-warn" /></td>
-                <td className="small"><a href={p.linkedin_search_url} target="_blank" rel="noreferrer noopener">Search</a></td>
-                <td><button type="button" className="btn btn-small" aria-expanded={open === p.person_id} onClick={() => setOpen(open === p.person_id ? null : p.person_id)}>{open === p.person_id ? "Hide" : "Breakdown"}</button>
-                  {open === p.person_id && <ul className="small list-plain">{p.relevance.components.map((c) => <li key={c.key}><b>{c.points}/{c.max}</b> {c.label}: {c.reason}</li>)}</ul>}</td>
-              </tr>))}</tbody></table>
-        </TableWrap>
-      )}
-      <details className="small"><summary>What was read and searched</summary>
-        <ul className="list-plain">{d.documents.map((x) => <li key={x.id}><Tag text={label(x.status)} tone={x.status === "read" ? "b-good" : x.status === "failed" ? "b-bad" : "b-none"} /> {x.url ? <a href={x.url} target="_blank" rel="noreferrer noopener">{x.title ?? x.url}</a> : x.title}
-          <span className="muted"> · {label(x.origin)}{x.found_via ? ` · ${x.found_via}` : ""}{x.status_reason ? ` · ${x.status_reason}` : ""}</span></li>)}</ul>
-        <ul className="list-plain">{d.searches.map((s) => <li key={s.query}><Tag text={s.status === "run" ? `run: ${s.results} result(s)` : label(s.status)} tone={s.status === "run" ? "b-good" : "b-warn"} /> {s.purpose}:{" "}
-          <a href={s.link} target="_blank" rel="noreferrer noopener">{s.query}</a>{s.reason ? <span className="muted"> · {s.reason}</span> : null}</li>)}</ul>
-        <ul className="list-plain muted">{d.unavailable.map((u) => <li key={u.method + u.reason}>{label(u.method)}: {u.reason}</li>)}</ul>
-      </details>
-      <p className="small muted">{d.rule}</p>
-      <ActionNote state={a} />
-    </section>
-  );
-}
-
-function Discoveries({ items, onOpen }: { items: Discovery[]; onOpen: (id: string) => void }) {
-  if (items.length === 0) return null;
-  return (
-    <section className="panel" aria-label="Recent discoveries">
-      <h2>Recent contact discoveries</h2>
-      <ul className="list-plain small">{items.map((d) => (
-        <li key={d.id}><button type="button" className="link-button" onClick={() => onOpen(d.id)}>{d.brief}</button>{" "}
-          <Tag text={outcomeLabel(d.outcome)} tone={OUTCOME_TONE[d.outcome ?? "not_run"]} />
-          <span className="muted"> · {d.people_found} contact(s) · {dateTime(d.started_at)}{d.requested_by_label ? ` · ${d.requested_by_label}` : ""}</span></li>))}</ul>
     </section>
   );
 }

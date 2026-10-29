@@ -16,3 +16,9 @@ named are invented.
 site (navigation to a leadership page, a media centre with news items, a page `robots.txt` disallows) and a trade-press
 appointment page. `/search-api/res/v1/web/search` is a SIMULATED stand-in for the Brave Search API with a fixed index of
 fixture pages; the local stack points `SEARCH_API_BASE_URL` at it. Every person and organisation named is invented.
+
+`kgl-directory/`, `thousandhills/` and `rw-news/` (29 Oct 2026, journey R — research purposes without a tender): an invented
+directory of air cargo agents at Kigali, an invented cargo GSSA's own site (airlines it represents, a passenger ticket-sales
+agent named as NOT the same thing, a leadership page, a contact page) and an invented route announcement. No tender exists for
+Rwanda in the fixture: the journey shows companies, people and market developments found from public pages alone. Everything
+is invented.

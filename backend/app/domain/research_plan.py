@@ -92,10 +92,16 @@ _NEWSROOM = re.compile(r"\bnews\b|newsroom|press|media[- ]?(?:centre|center|room
 _ITEM = re.compile(r"appoint|join|names|welcome|promot|cargo|freight|gsa|gssa|tender|procure|partner|director|manager|head of|chief", re.I)
 
 
-def link_kind(url: str, anchor: str) -> str | None:
+_PROFILE = re.compile(r"airlines|represent|principals|partners?|services|contact|locations?|offices|stations?|network|about|company|group", re.I)
+
+
+def link_kind(url: str, anchor: str, *, company: bool = False) -> str | None:
     path = urlsplit(url).path
     hay = f"{path} {anchor}"
     segs = [x for x in path.split("/") if x]
+    if company and _PROFILE.search(hay) and not _NEWSROOM.search(hay):
+        # company research (29 Oct 2026): the pages that describe what an organisation does, whom it represents and how to reach it
+        return "leadership" if _LEADER.search(hay) else "profile"
     if _LEADER.search(hay) and not (len(anchor.split()) >= 5 and _ITEM.search(anchor)):
         return "leadership"
     if _NEWSROOM.search(hay):
@@ -109,8 +115,8 @@ def link_kind(url: str, anchor: str) -> str | None:
     return None
 
 
-def links_to_follow(links: list[tuple[str, str]], page_url: str, keywords: list[str], limit: int = MAX_FOLLOWED_PER_ORG
-                    ) -> list[tuple[str, str, str]]:
+def links_to_follow(links: list[tuple[str, str]], page_url: str, keywords: list[str], limit: int = MAX_FOLLOWED_PER_ORG, *,
+                    company: bool = False) -> list[tuple[str, str, str]]:
     """(url, anchor text, kind) on the same site, in priority order: leadership pages, the newsroom, then news items whose
     link text or address mentions the organisation, an appointment, cargo or the opportunity's keywords."""
     host = (urlsplit(page_url).hostname or "").lower()
@@ -124,14 +130,14 @@ def links_to_follow(links: list[tuple[str, str]], page_url: str, keywords: list[
             continue
         if u in seen or re.search(r"\.(jpg|jpeg|png|gif|svg|css|js|zip|xlsx?|pptx?)$", parts.path, re.I):
             continue
-        kind = link_kind(u, anchor or "")
+        kind = link_kind(u, anchor or "", company=company)
         hay = f"{parts.path} {anchor}".lower()
         if kind is None and kw and any(k in hay for k in kw):
             kind = "article"
         if kind is None:
             continue
         seen.add(u)
-        rank = {"leadership": 0, "news": 1, "article": 2}[kind]
+        rank = {"leadership": 0, "profile": 1, "news": 1, "article": 2}[kind]
         ranked.append((rank, i, u, anchor or "", kind))
     ranked.sort()
     return [(u, a, k) for _r, _i, u, a, k in ranked[:limit]]

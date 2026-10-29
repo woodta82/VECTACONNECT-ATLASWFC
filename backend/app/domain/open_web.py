@@ -107,6 +107,38 @@ def build_queries(*, countries: Iterable[str | None], country_names: dict[str, s
     return uniq
 
 
+# Market intelligence (29 Oct 2026: the fourth research purpose): what is changing — routes, appointments, representation changes,
+# investments, developments, market reports, emerging demand. Signals, never tenders; the classification keeps them apart.
+MARKET_TERMS = [("New routes, freighters and capacity", '(airline OR carrier) cargo ("new route" OR launches OR "freighter service" OR "adds capacity" OR "belly capacity")'),
+                ("Appointments and representation changes", 'cargo (appoints OR appointed OR "new GSSA" OR "GSA agreement" OR "representation agreement")'),
+                ("Investments, terminals and partnerships", 'air cargo (investment OR expansion OR "new terminal" OR "cargo hub" OR partnership OR "joint venture")'),
+                ("Market reports and demand", 'air cargo ("market report" OR outlook OR "cargo volumes" OR tonnage OR demand OR "e-commerce")'),
+                ("Regulation and infrastructure developments", '(airport OR aviation authority) cargo (regulation OR customs OR "new facility" OR development)')]
+
+
+def build_market_queries(*, countries: Iterable[str | None], country_names: dict[str, str], brief_terms: str | None, keywords: str | None,
+                         organisation: str | None, airline: str | None, max_per_country: int) -> list[WebQuery]:
+    focus = " ".join(f'"{x.strip()}"' for x in (organisation, airline) if x and x.strip())
+    kw = " ".join(x for x in ((keywords or "").strip(), (brief_terms or "").strip()) if x)
+    out: list[WebQuery] = []
+    for c in list(countries) or [None]:
+        where = f' "{country_names.get(c, c)}"' if c else ""
+        tail = f" in {country_names.get(c, c)}" if c else " (worldwide)"
+        per: list[WebQuery] = []
+        if kw or focus:
+            per.append(WebQuery("Brief and named organisation" + tail, " ".join(x for x in (focus, kw) if x) + " air cargo OR freight" + where, None, c))
+        for purpose, terms in MARKET_TERMS:
+            per.append(WebQuery(purpose + tail, " ".join(x for x in (focus, terms) if x) + where, None, c))
+        out.extend(per[:max_per_country])
+    seen: set[str] = set()
+    uniq = []
+    for q in out:
+        if q.text.lower() not in seen:
+            seen.add(q.text.lower())
+            uniq.append(q)
+    return uniq
+
+
 def corroboration_query(title: str | None, url: str) -> str | None:
     """A query for a public original or corroborating copy of a restricted item: its title, else the slug of its address."""
     t = " ".join((title or "").split())

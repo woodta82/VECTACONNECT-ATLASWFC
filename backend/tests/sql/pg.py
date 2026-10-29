@@ -22,7 +22,7 @@ SCHEMA_FILES = [SCHEMA, _SQL_DIR / "wfc_0002_directive.sql", _SQL_DIR / "wfc_000
                 _SQL_DIR / "wfc_0004_legacy_deadlines.sql", _SQL_DIR / "wfc_0005_validation_version.sql", _SQL_DIR / "wfc_0006_revalidation_v3.sql", _SQL_DIR / "wfc_0007_relevance_v4.sql", _SQL_DIR / "wfc_0008_meaning_relevance_v5.sql",
                 _SQL_DIR / "wfc_0009_status_freshness_v6.sql",
                 _SQL_DIR / "wfc_0010_status_chronology_v7.sql", _SQL_DIR / "wfc_0011_relationship_intelligence.sql",
-                _SQL_DIR / "wfc_0012_relationship_research.sql", _SQL_DIR / "wfc_0013_open_market_relationships.sql", _SQL_DIR / "wfc_0014_open_web_discovery.sql"]
+                _SQL_DIR / "wfc_0012_relationship_research.sql", _SQL_DIR / "wfc_0013_open_market_relationships.sql", _SQL_DIR / "wfc_0014_open_web_discovery.sql", _SQL_DIR / "wfc_0015_company_intelligence.sql"]
 CONN = os.environ.get("WFC_TEST_PG")
 
 

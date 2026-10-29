@@ -21,7 +21,8 @@ export const NAV: Item[] = [
   { href: "/control-panel", label: "Control panel", short: "Panel", icon: Gauge, also: [] },
   { href: "/opportunities", label: "Opportunities", short: "Opps", icon: Target, also: ["/records", "/signals"] },
   { href: "/discovery", label: "Discover", short: "Discover", icon: Search, also: [] },
-  { href: "/relationships", label: "Relationships", short: "People", icon: Users, also: ["/airlines-forwarders", "/organisations"] },
+  { href: "/companies", label: "Companies", short: "Companies", icon: Building2, also: ["/airlines-forwarders", "/organisations"] },
+  { href: "/relationships", label: "Relationships", short: "People", icon: Users, also: [] },
   { href: "/settings", label: "Settings", short: "Settings", icon: Settings,
     also: ["/sources", "/review", "/data-sources", "/areas", "/lanes", "/service", "/capabilities", "/network", "/reports"] },
 ];

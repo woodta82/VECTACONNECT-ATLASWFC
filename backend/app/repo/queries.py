@@ -1154,24 +1154,24 @@ Q["region_add_country"] = """
 INSERT INTO region_countries (region_code, country_code) VALUES (CAST(:region AS text), CAST(:country AS text)) ON CONFLICT DO NOTHING"""
 Q["search_insert"] = """
 INSERT INTO discovery_searches (name, saved, geo_mode, countries, regions, modules, organisation, airline, keywords, date_from, date_to,
-                                date_filter)
+                                date_filter, purpose, brief)
 VALUES (CAST(:name AS text), CAST(:saved AS boolean), CAST(:geo_mode AS text),
         ARRAY(SELECT jsonb_array_elements_text(CAST(:countries AS jsonb)))::char(2)[],
         ARRAY(SELECT jsonb_array_elements_text(CAST(:regions AS jsonb))),
         ARRAY(SELECT jsonb_array_elements_text(CAST(:modules AS jsonb))),
         CAST(:organisation AS text), CAST(:airline AS text), CAST(:keywords AS text), CAST(:date_from AS date), CAST(:date_to AS date),
-        CAST(:date_filter AS text))
+        CAST(:date_filter AS text), CAST(:purpose AS text), CAST(:brief AS text))
 RETURNING id"""
 Q["search_set_cursor"] = """
 UPDATE discovery_searches SET coverage_cursor = coverage_cursor || jsonb_build_object(CAST(:source AS text), CAST(:cursor AS jsonb))
 WHERE id = CAST(:id AS uuid)"""
 Q["search_get"] = """
 SELECT id, name, saved, geo_mode, ARRAY(SELECT unnest(countries)::text) AS countries, regions, modules, organisation, airline,
-       keywords, date_from, date_to, date_filter, coverage_cursor, created_at, updated_at, deleted_at
+       keywords, date_from, date_to, date_filter, coverage_cursor, created_at, updated_at, deleted_at, purpose, brief
 FROM discovery_searches WHERE id = CAST(:id AS uuid)"""
 Q["searches_saved"] = """
 SELECT s.id, s.name, s.geo_mode, ARRAY(SELECT unnest(s.countries)::text) AS countries, s.regions, s.modules, s.organisation, s.airline,
-       s.keywords, s.date_from, s.date_to, s.date_filter, s.coverage_cursor, s.updated_at,
+       s.keywords, s.date_from, s.date_to, s.date_filter, s.coverage_cursor, s.updated_at, s.purpose, s.brief,
        (SELECT count(*) FROM discovery_link_queue q WHERE q.scope_key = 'search:' || s.id::text AND q.status = 'pending') AS queued_links,
        (SELECT row_to_json(x) FROM (SELECT r.id, r.status, r.outcome, r.created_at, r.finished_at, r.counts FROM discovery_runs r
           WHERE r.search_id = s.id ORDER BY r.created_at DESC LIMIT 1) x) AS last_run,
@@ -2610,9 +2610,10 @@ SELECT r.id, r.person_id, p.full_name AS person, r.holder_label, r.nature, r.bas
 # ---------------------------------------------------------------- wfc_0013 (29 Oct 2026: ATLAS v1.0 relationship parameters, open-market discovery)
 Q["disc_insert"] = """
 INSERT INTO contact_discoveries (organisation_id, organisation_label, countries, region_code, capability_area, role_focus, brief,
-                                 requested_by_label, session_ref)
+                                 requested_by_label, session_ref, purpose, brief_text, airport_iata, organisation_kinds)
 VALUES (CAST(:org AS uuid), CAST(:org_label AS text), ARRAY(SELECT jsonb_array_elements_text(CAST(:countries AS jsonb)))::char(2)[],
-        CAST(:region AS text), CAST(:module AS text), CAST(:role_focus AS text), CAST(:brief AS text), CAST(:by AS text), CAST(:session_ref AS text))
+        CAST(:region AS text), CAST(:module AS text), CAST(:role_focus AS text), CAST(:brief AS text), CAST(:by AS text), CAST(:session_ref AS text),
+        CAST(:purpose AS text), CAST(:brief_text AS text), CAST(:airport AS char(3)), ARRAY(SELECT jsonb_array_elements_text(CAST(:kinds AS jsonb))))
 RETURNING id"""
 Q["disc_finish"] = """
 UPDATE contact_discoveries SET status = 'finished', outcome = CAST(:outcome AS text),
@@ -2624,10 +2625,13 @@ UPDATE contact_discoveries SET status = 'finished', outcome = CAST(:outcome AS t
 Q["disc_reopen"] = "UPDATE contact_discoveries SET status = 'running' WHERE id = CAST(:id AS uuid) RETURNING id"
 _DISC_COLS = """d.id, d.organisation_id, coalesce(o.canonical_name, d.organisation_label) AS organisation, o.kind AS organisation_kind,
        o.website, d.countries::text[] AS countries, d.region_code, d.capability_area, d.role_focus, d.brief, d.status, d.outcome, d.methods,
-       d.unavailable, d.coverage, d.searches, d.people_found, d.runs, d.cost_usd, d.started_at, d.finished_at, d.requested_by_label"""
+       d.unavailable, d.coverage, d.searches, d.people_found, d.runs, d.cost_usd, d.started_at, d.finished_at, d.requested_by_label,
+       d.purpose, d.brief_text, d.airport_iata::text AS airport_iata, d.organisation_kinds,
+       (SELECT count(*) FROM discovery_organisations x WHERE x.discovery_id = d.id) AS organisations_found"""
 Q["disc_get"] = f"SELECT {_DISC_COLS} FROM contact_discoveries d LEFT JOIN organisations o ON o.id = d.organisation_id WHERE d.id = CAST(:id AS uuid)"
 Q["disc_list"] = f"""
 SELECT {_DISC_COLS} FROM contact_discoveries d LEFT JOIN organisations o ON o.id = d.organisation_id
+ WHERE (CAST(:purpose AS text) IS NULL OR d.purpose = CAST(:purpose AS text))
  ORDER BY d.started_at DESC LIMIT CAST(:limit AS int)"""
 Q["disc_person_link"] = """
 INSERT INTO discovery_people (discovery_id, person_id, new_record) VALUES (CAST(:disc AS uuid), CAST(:person AS uuid), CAST(:new AS boolean))
@@ -2754,3 +2758,230 @@ Q["document_set_web_publisher"] = """
 UPDATE source_documents SET doc_family = CAST(:family AS text), doc_authority = CAST(:authority AS text) WHERE id = CAST(:id AS uuid)"""
 Q["organisation_websites"] = "SELECT website FROM organisations WHERE website IS NOT NULL AND merged_into_id IS NULL"
 Q["source_open_web"] = "SELECT * FROM sources WHERE source_type = 'web_search' AND deleted_at IS NULL ORDER BY created_at LIMIT 1"
+
+
+# ---------------------------------------------------------------- wfc_0015 (29 Oct 2026: research purposes; company intelligence; supplied data)
+Q["rdoc_bodies"] = f"""
+SELECT {_RDOC_COLS}, rd.body_text FROM research_documents rd LEFT JOIN organisations org ON org.id = rd.organisation_id
+ WHERE rd.discovery_id = CAST(:disc AS uuid) AND rd.status IN ('read','partial') AND rd.body_text IS NOT NULL ORDER BY rd.added_at"""
+Q["org_airline_names"] = "SELECT canonical_name FROM organisations WHERE kind = 'airline' AND merged_into_id IS NULL"
+Q["org_website"] = "SELECT website FROM organisations WHERE id = CAST(:id AS uuid)"
+Q["rdoc_set_org"] = "UPDATE research_documents SET organisation_id = coalesce(organisation_id, CAST(:org AS uuid)) WHERE id = CAST(:id AS uuid)"
+Q["org_insert_profile"] = """
+INSERT INTO organisations (canonical_name, kind, country, website, origin, airport_iata, carrier_type, supplied_at, resolution_status)
+VALUES (CAST(:name AS text), CAST(:kind AS text), CAST(:country AS text), CAST(:website AS text), CAST(:origin AS text), CAST(:airport AS char(3)),
+        CAST(:carrier_type AS text), CASE WHEN CAST(:origin AS text) = 'supplied' THEN now() END,
+        CASE WHEN CAST(:origin AS text) IN ('discovery','supplied') THEN 'auto_created' ELSE 'resolved' END)
+RETURNING id"""
+Q["org_profile_fill"] = """
+UPDATE organisations SET website = coalesce(website, CAST(:website AS text)), country = coalesce(country, CAST(:country AS text)),
+       kind = CASE WHEN kind = 'other' AND CAST(:kind AS text) IS NOT NULL THEN CAST(:kind AS text) ELSE kind END,
+       description = coalesce(description, CAST(:description AS text)), services_text = coalesce(services_text, CAST(:services AS text)),
+       locations_text = coalesce(locations_text, CAST(:locations AS text)), parent_group = coalesce(parent_group, CAST(:parent AS text)),
+       airport_iata = coalesce(airport_iata, CAST(:airport AS char(3))),
+       carrier_type = CASE WHEN carrier_type IS NULL OR carrier_type = 'unknown' THEN coalesce(CAST(:carrier_type AS text), carrier_type) ELSE carrier_type END,
+       capability_areas = (SELECT ARRAY(SELECT DISTINCT x FROM unnest(capability_areas || ARRAY(SELECT jsonb_array_elements_text(CAST(:areas AS jsonb)))) x)),
+       last_researched_at = CASE WHEN CAST(:researched AS boolean) THEN now() ELSE last_researched_at END, updated_at = now()
+ WHERE id = CAST(:id AS uuid) RETURNING id"""
+Q["org_profile_edit"] = """
+UPDATE organisations SET website = coalesce(CAST(:website AS text), website), kind = coalesce(CAST(:kind AS text), kind),
+       country = coalesce(CAST(:country AS text), country), description = coalesce(CAST(:description AS text), description),
+       services_text = coalesce(CAST(:services AS text), services_text), locations_text = coalesce(CAST(:locations AS text), locations_text),
+       parent_group = coalesce(CAST(:parent AS text), parent_group), airport_iata = coalesce(CAST(:airport AS char(3)), airport_iata),
+       carrier_type = coalesce(CAST(:carrier_type AS text), carrier_type), updated_at = now()
+ WHERE id = CAST(:id AS uuid) AND merged_into_id IS NULL RETURNING id"""
+Q["org_verify"] = """
+UPDATE organisations SET verified_at = now(), verification_basis = CAST(:basis AS text), updated_at = now()
+ WHERE id = CAST(:id AS uuid) AND merged_into_id IS NULL RETURNING id"""
+Q["org_contact_upsert"] = """
+INSERT INTO organisation_contacts (organisation_id, kind, value, purpose, status, source_url, source_note, evidence_id, session_ref)
+VALUES (CAST(:org AS uuid), CAST(:kind AS text), CAST(:value AS text), CAST(:purpose AS text), CAST(:status AS text), CAST(:url AS text),
+        CAST(:note AS text), CAST(:evidence AS uuid), CAST(:session_ref AS text))
+ON CONFLICT (organisation_id, kind, lower(value)) DO UPDATE
+   SET status = CASE WHEN organisation_contacts.status = 'verified' THEN 'verified'
+                     WHEN EXCLUDED.status = 'published' THEN 'published' ELSE organisation_contacts.status END,
+       source_url = coalesce(EXCLUDED.source_url, organisation_contacts.source_url),
+       evidence_id = coalesce(EXCLUDED.evidence_id, organisation_contacts.evidence_id), observed_at = now()
+RETURNING id, (xmax = 0) AS inserted"""
+Q["org_contact_status"] = """
+UPDATE organisation_contacts SET status = CAST(:status AS text), verified_at = CASE WHEN CAST(:status AS text) = 'verified' THEN now() END,
+       source_note = coalesce(CAST(:note AS text), source_note)
+ WHERE id = CAST(:id AS uuid) AND organisation_id = CAST(:org AS uuid) RETURNING id"""
+Q["org_evidence_add"] = """
+INSERT INTO organisation_evidence (organisation_id, supports, source_kind, research_document_id, url, quote, note, supplied_import_id, session_ref)
+VALUES (CAST(:org AS uuid), CAST(:supports AS text), CAST(:source_kind AS text), CAST(:rdoc AS uuid), CAST(:url AS text), CAST(:quote AS text),
+        CAST(:note AS text), CAST(:import_id AS uuid), CAST(:session_ref AS text))
+ON CONFLICT DO NOTHING RETURNING id"""
+Q["org_evidence_find"] = """
+SELECT id FROM organisation_evidence WHERE organisation_id = CAST(:org AS uuid) AND supports = CAST(:supports AS text)
+   AND source_kind = CAST(:source_kind AS text) AND coalesce(research_document_id::text, '') = coalesce(CAST(:rdoc AS text), '')
+   AND coalesce(url, '') = coalesce(CAST(:url AS text), '') AND md5(coalesce(quote, '')) = md5(coalesce(CAST(:quote AS text), ''))
+   AND md5(coalesce(note, '')) = md5(coalesce(CAST(:note AS text), '')) LIMIT 1"""
+Q["org_rel_upsert"] = """
+INSERT INTO organisation_relationships (organisation_id, counterparty_id, counterparty_code, counterparty_label, relationship, territory_countries,
+                                        airport_iata, status, basis, evidence_id, session_ref)
+VALUES (CAST(:org AS uuid), CAST(:counterparty AS uuid), CAST(:code AS text), CAST(:label AS text), CAST(:relationship AS text),
+        ARRAY(SELECT jsonb_array_elements_text(CAST(:territories AS jsonb)))::char(2)[], CAST(:airport AS char(3)), CAST(:status AS text),
+        CAST(:basis AS text), CAST(:evidence AS uuid), CAST(:session_ref AS text))
+ON CONFLICT (organisation_id, relationship, coalesce(counterparty_id::text, ''), coalesce(upper(counterparty_code), ''), coalesce(lower(counterparty_label), ''),
+             coalesce(airport_iata, '')) DO UPDATE
+   SET status = CASE WHEN organisation_relationships.status IN ('confirmed','lapsed','not_established') THEN organisation_relationships.status
+                     WHEN EXCLUDED.status = 'sourced' THEN 'sourced' ELSE organisation_relationships.status END,
+       basis = CASE WHEN EXCLUDED.status = 'sourced' AND organisation_relationships.status = 'supplied' THEN EXCLUDED.basis ELSE organisation_relationships.basis END,
+       evidence_id = coalesce(EXCLUDED.evidence_id, organisation_relationships.evidence_id), observed_at = now()
+RETURNING id, (xmax = 0) AS inserted"""
+Q["org_rel_status"] = """
+UPDATE organisation_relationships SET status = CAST(:status AS text), basis = CAST(:basis AS text), verified_at = now(), verified_by_label = CAST(:by AS text)
+ WHERE id = CAST(:id AS uuid) AND organisation_id = CAST(:org AS uuid) RETURNING id"""
+Q["org_relationships"] = """
+SELECT r.id, r.counterparty_id, coalesce(c.canonical_name, r.counterparty_label) AS counterparty, r.counterparty_code, r.relationship,
+       r.territory_countries::text[] AS territory_countries, r.airport_iata::text AS airport_iata, r.status, r.basis, r.observed_at, r.verified_at,
+       r.verified_by_label, c.carrier_type AS counterparty_carrier_type, e.url AS evidence_url, e.quote AS evidence_quote, e.source_kind AS evidence_source
+  FROM organisation_relationships r LEFT JOIN organisations c ON c.id = r.counterparty_id LEFT JOIN organisation_evidence e ON e.id = r.evidence_id
+ WHERE r.organisation_id = CAST(:org AS uuid)
+ ORDER BY CASE r.status WHEN 'confirmed' THEN 0 WHEN 'sourced' THEN 1 WHEN 'supplied' THEN 2 ELSE 3 END, r.relationship, coalesce(c.canonical_name, r.counterparty_label)"""
+Q["org_represented_by"] = """
+SELECT r.id, r.organisation_id AS agent_id, a.canonical_name AS agent, a.country::text AS agent_country, r.relationship, r.status, r.basis,
+       r.airport_iata::text AS airport_iata, r.territory_countries::text[] AS territory_countries
+  FROM organisation_relationships r JOIN organisations a ON a.id = r.organisation_id
+ WHERE r.counterparty_id = CAST(:org AS uuid) ORDER BY a.canonical_name"""
+Q["org_contacts"] = """
+SELECT c.id, c.kind, c.value, c.purpose, c.status, c.source_url, c.source_note, c.observed_at, c.verified_at, e.quote AS evidence_quote
+  FROM organisation_contacts c LEFT JOIN organisation_evidence e ON e.id = c.evidence_id
+ WHERE c.organisation_id = CAST(:org AS uuid)
+ ORDER BY CASE c.status WHEN 'verified' THEN 0 WHEN 'published' THEN 1 WHEN 'supplied' THEN 2 ELSE 3 END, c.value"""
+Q["org_evidence"] = """
+SELECT e.id, e.supports, e.source_kind, e.research_document_id, coalesce(e.url, rd.url) AS url, e.quote, e.note, e.observed_at, rd.title AS document_title,
+       i.name AS supplied_import
+  FROM organisation_evidence e LEFT JOIN research_documents rd ON rd.id = e.research_document_id LEFT JOIN supplied_imports i ON i.id = e.supplied_import_id
+ WHERE e.organisation_id = CAST(:org AS uuid) ORDER BY e.observed_at, e.supports"""
+Q["org_people"] = """
+SELECT p.id, p.full_name, p.role_title, p.remit_countries::text[] AS remit_countries, p.linkedin_profile_url, p.origin, ps.state,
+       (SELECT e.quote FROM person_evidence e WHERE e.person_id = p.id AND e.supports IN ('role','relevance') ORDER BY e.supports = 'role' DESC, e.observed_at LIMIT 1) AS quote,
+       (SELECT coalesce(e.url, rd.url) FROM person_evidence e LEFT JOIN research_documents rd ON rd.id = e.research_document_id
+         WHERE e.person_id = p.id AND e.supports IN ('role','relevance') ORDER BY e.supports = 'role' DESC, e.observed_at LIMIT 1) AS source_url,
+       (SELECT count(*) FROM person_relationships r WHERE r.person_id = p.id AND r.status = 'active') AS relationships
+  FROM people p LEFT JOIN person_state ps ON ps.person_id = p.id
+ WHERE p.organisation_id = CAST(:org AS uuid) AND p.merged_into_id IS NULL ORDER BY p.full_name"""
+Q["org_profile_get"] = """
+SELECT o.id, o.canonical_name, o.kind, o.country::text AS country, o.website, o.newsroom_url, o.leadership_url, o.origin, o.description, o.services_text,
+       o.locations_text, o.parent_group, o.airport_iata::text AS airport_iata, o.carrier_type, o.supplied_at, o.verified_at, o.verification_basis,
+       o.last_researched_at, o.capability_areas, o.resolution_status, o.created_at, o.updated_at, a.iata_code,
+       (SELECT coalesce(json_agg(al.alias ORDER BY al.alias), '[]'::json) FROM organisation_aliases al WHERE al.organisation_id = o.id) AS aliases,
+       (SELECT count(*) FROM opportunities op WHERE op.merged_into_id IS NULL AND (op.organisation_id = o.id OR op.airline_id = o.id OR op.origin_organisation_id = o.id)) AS opportunities,
+       (SELECT coalesce(json_agg(json_build_object('id', op.id, 'title', op.title, 'record_type', op.record_type, 'progress', op.progress, 'origin_interpretation', op.origin_interpretation)
+                ORDER BY op.created_at DESC), '[]'::json)
+          FROM opportunities op WHERE op.merged_into_id IS NULL AND (op.organisation_id = o.id OR op.airline_id = o.id OR op.origin_organisation_id = o.id)) AS opportunity_list,
+       (SELECT coalesce(json_agg(json_build_object('discovery_id', d.id, 'brief', d.brief, 'purpose', d.purpose, 'started_at', d.started_at,
+                                                   'relevance_score', x.relevance_score) ORDER BY d.started_at DESC), '[]'::json)
+          FROM discovery_organisations x JOIN contact_discoveries d ON d.id = x.discovery_id WHERE x.organisation_id = o.id) AS discoveries
+  FROM organisations o LEFT JOIN airlines a ON a.organisation_id = o.id WHERE o.id = CAST(:id AS uuid) AND o.merged_into_id IS NULL"""
+Q["companies_list"] = """
+SELECT o.id, o.canonical_name, o.kind, o.country::text AS country, o.website, o.origin, o.airport_iata::text AS airport_iata, o.carrier_type,
+       o.supplied_at, o.verified_at, o.last_researched_at, o.capability_areas, o.updated_at, a.iata_code,
+       (SELECT count(*) FROM organisation_contacts c WHERE c.organisation_id = o.id AND c.kind = 'email') AS emails,
+       (SELECT count(*) FROM organisation_contacts c WHERE c.organisation_id = o.id AND c.status IN ('published','verified')) AS emails_current,
+       (SELECT count(*) FROM organisation_relationships r WHERE r.organisation_id = o.id AND r.status <> 'not_established') AS relationships,
+       (SELECT count(*) FROM organisation_relationships r WHERE r.organisation_id = o.id AND r.status IN ('sourced','confirmed')) AS relationships_current,
+       (SELECT count(*) FROM organisation_relationships r WHERE r.counterparty_id = o.id AND r.status <> 'not_established') AS represented_by,
+       (SELECT count(*) FROM people p WHERE p.organisation_id = o.id AND p.merged_into_id IS NULL) AS people,
+       (SELECT count(*) FROM organisation_evidence e WHERE e.organisation_id = o.id) AS evidence,
+       (SELECT count(*) FROM opportunities op WHERE op.merged_into_id IS NULL AND (op.organisation_id = o.id OR op.airline_id = o.id OR op.origin_organisation_id = o.id)) AS opportunities,
+       (SELECT max(x.relevance_score) FROM discovery_organisations x WHERE x.organisation_id = o.id) AS best_relevance,
+       count(*) OVER () AS total
+  FROM organisations o LEFT JOIN airlines a ON a.organisation_id = o.id
+ WHERE o.merged_into_id IS NULL
+   AND (CAST(:kind AS text) IS NULL OR o.kind = CAST(:kind AS text))
+   AND (CAST(:country AS text) IS NULL OR o.country = CAST(:country AS text))
+   AND (CAST(:airport AS text) IS NULL OR o.airport_iata = CAST(:airport AS char(3)))
+   AND (CAST(:origin AS text) IS NULL OR o.origin = CAST(:origin AS text))
+   AND (CAST(:carrier_type AS text) IS NULL OR o.carrier_type = CAST(:carrier_type AS text))
+   AND (CAST(:state AS text) IS NULL
+        OR (CAST(:state AS text) = 'verified' AND o.verified_at IS NOT NULL)
+        OR (CAST(:state AS text) = 'awaiting_verification' AND o.verified_at IS NULL AND o.supplied_at IS NOT NULL)
+        OR (CAST(:state AS text) = 'researched' AND o.last_researched_at IS NOT NULL)
+        OR (CAST(:state AS text) = 'unverified' AND o.verified_at IS NULL))
+   AND (CAST(:discovery AS uuid) IS NULL OR EXISTS (SELECT 1 FROM discovery_organisations x WHERE x.organisation_id = o.id AND x.discovery_id = CAST(:discovery AS uuid)))
+   AND (CAST(:q AS text) IS NULL OR o.canonical_name ILIKE '%' || CAST(:q AS text) || '%'
+        OR EXISTS (SELECT 1 FROM organisation_aliases al WHERE al.organisation_id = o.id AND al.alias ILIKE '%' || CAST(:q AS text) || '%')
+        OR EXISTS (SELECT 1 FROM organisation_relationships r WHERE r.organisation_id = o.id AND (r.counterparty_label ILIKE '%' || CAST(:q AS text) || '%' OR r.counterparty_code = upper(CAST(:q AS text)))))
+ ORDER BY CASE WHEN CAST(:sort AS text) = 'relevance' THEN -(SELECT coalesce(max(x.relevance_score), 0) FROM discovery_organisations x WHERE x.organisation_id = o.id) END,
+          CASE WHEN CAST(:sort AS text) = 'recent' THEN o.updated_at END DESC NULLS LAST, o.canonical_name
+ LIMIT CAST(:limit AS int) OFFSET CAST(:offset AS int)"""
+Q["disc_org_link"] = """
+INSERT INTO discovery_organisations (discovery_id, organisation_id, new_record) VALUES (CAST(:disc AS uuid), CAST(:org AS uuid), CAST(:new AS boolean))
+ON CONFLICT (discovery_id, organisation_id) DO NOTHING"""
+Q["disc_org_relevance"] = """
+UPDATE discovery_organisations SET relevance_score = CAST(:score AS int), relevance = CAST(:relevance AS jsonb)
+ WHERE discovery_id = CAST(:disc AS uuid) AND organisation_id = CAST(:org AS uuid)"""
+Q["disc_orgs"] = """
+SELECT x.organisation_id, x.relevance_score, x.relevance, x.new_record, o.canonical_name, o.kind, o.country::text AS country, o.website, o.origin,
+       o.airport_iata::text AS airport_iata, o.carrier_type, o.verified_at, o.supplied_at, o.services_text, o.locations_text, o.parent_group,
+       (SELECT coalesce(json_agg(json_build_object('value', c.value, 'status', c.status) ORDER BY c.value), '[]'::json) FROM organisation_contacts c
+         WHERE c.organisation_id = o.id AND c.kind = 'email') AS emails,
+       (SELECT coalesce(json_agg(json_build_object('counterparty', coalesce(c2.canonical_name, r.counterparty_label), 'code', r.counterparty_code,
+                                                   'relationship', r.relationship, 'status', r.status) ORDER BY r.observed_at), '[]'::json)
+          FROM organisation_relationships r LEFT JOIN organisations c2 ON c2.id = r.counterparty_id WHERE r.organisation_id = o.id) AS relationships,
+       (SELECT count(*) FROM people p WHERE p.organisation_id = o.id AND p.merged_into_id IS NULL) AS people,
+       (SELECT count(*) FROM organisation_evidence e WHERE e.organisation_id = o.id) AS evidence,
+       (SELECT e.quote FROM organisation_evidence e WHERE e.organisation_id = o.id AND e.source_kind <> 'supplied' ORDER BY e.supports = 'identity' DESC, e.observed_at LIMIT 1) AS quote,
+       (SELECT coalesce(e.url, rd.url) FROM organisation_evidence e LEFT JOIN research_documents rd ON rd.id = e.research_document_id
+         WHERE e.organisation_id = o.id AND e.source_kind <> 'supplied' ORDER BY e.supports = 'identity' DESC, e.observed_at LIMIT 1) AS source_url
+  FROM discovery_organisations x JOIN organisations o ON o.id = x.organisation_id
+ WHERE x.discovery_id = CAST(:id AS uuid) ORDER BY x.relevance_score DESC, o.canonical_name"""
+Q["org_by_code"] = """
+SELECT a.organisation_id AS id FROM airlines a JOIN organisations o ON o.id = a.organisation_id WHERE a.iata_code = CAST(:code AS text) AND o.merged_into_id IS NULL LIMIT 1"""
+Q["supplied_import_insert"] = """
+INSERT INTO supplied_imports (name, filename, sha256, airport_iata, country, notes, imported_by, session_ref)
+VALUES (CAST(:name AS text), CAST(:filename AS text), CAST(:sha AS text), CAST(:airport AS char(3)), CAST(:country AS char(2)), CAST(:notes AS text),
+        CAST(:by AS text), CAST(:session_ref AS text)) RETURNING id"""
+Q["supplied_import_by_sha"] = "SELECT id, name, imported_at FROM supplied_imports WHERE sha256 = CAST(:sha AS text) ORDER BY imported_at LIMIT 1"
+Q["supplied_import_finish"] = """
+UPDATE supplied_imports SET rows_total = CAST(:rows AS int), organisations = CAST(:orgs AS int), relationships = CAST(:rels AS int), contacts = CAST(:contacts AS int)
+ WHERE id = CAST(:id AS uuid)"""
+Q["supplied_row_insert"] = """
+INSERT INTO supplied_rows (import_id, sheet, row_number, raw, organisation_id, note)
+VALUES (CAST(:import_id AS uuid), CAST(:sheet AS text), CAST(:row AS int), CAST(:raw AS jsonb), CAST(:org AS uuid), CAST(:note AS text)) RETURNING id"""
+Q["supplied_imports_list"] = """
+SELECT i.*, i.airport_iata::text AS airport_iata, i.country::text AS country,
+       (SELECT count(*) FROM supplied_rows r WHERE r.import_id = i.id AND r.organisation_id IS NOT NULL) AS rows_linked,
+       (SELECT count(DISTINCT r.organisation_id) FROM supplied_rows r JOIN organisations o ON o.id = r.organisation_id WHERE r.import_id = i.id AND o.verified_at IS NOT NULL) AS organisations_verified
+  FROM supplied_imports i ORDER BY i.imported_at DESC"""
+Q["supplied_import_get"] = "SELECT i.*, i.airport_iata::text AS airport_iata, i.country::text AS country FROM supplied_imports i WHERE i.id = CAST(:id AS uuid)"
+Q["supplied_rows_for"] = """
+SELECT r.id, r.sheet, r.row_number, r.raw, r.organisation_id, o.canonical_name AS organisation, o.verified_at, r.note
+  FROM supplied_rows r LEFT JOIN organisations o ON o.id = r.organisation_id WHERE r.import_id = CAST(:id AS uuid) ORDER BY r.sheet, r.row_number"""
+Q["opportunity_from_company"] = """
+INSERT INTO opportunities (module, dedup_key, title, organisation_id, origin_organisation_id, origin_interpretation, record_type, progress, owner_label)
+VALUES (CAST(:module AS text), 'company:' || CAST(:org AS text) || ':' || CAST(:module AS text) || ':' || md5(CAST(:title AS text)), CAST(:title AS text),
+        CAST(:org AS uuid), CAST(:org AS uuid), CAST(:interpretation AS text), 'commercial', 'new', CAST(:by AS text))
+ON CONFLICT (module, dedup_key) DO UPDATE SET updated_at = now() RETURNING id, (xmax = 0) AS inserted"""
+Q["opportunity_geo_add"] = """
+INSERT INTO opportunity_geography (opportunity_id, country_code, role, support) VALUES (CAST(:opp AS uuid), CAST(:country AS char(2)), 'delivery', 'supported')
+ON CONFLICT DO NOTHING"""
+Q["cp_company_summary"] = """
+SELECT (SELECT count(*) FROM organisations o WHERE o.merged_into_id IS NULL AND o.origin IN ('discovery','research')) AS researched,
+       (SELECT count(*) FROM organisations o WHERE o.merged_into_id IS NULL AND o.origin = 'supplied' AND o.verified_at IS NULL) AS awaiting_verification,
+       (SELECT count(*) FROM organisations o WHERE o.merged_into_id IS NULL AND o.verified_at IS NOT NULL) AS verified,
+       (SELECT count(*) FROM organisations o WHERE o.merged_into_id IS NULL AND o.last_researched_at > now() - interval '30 days') AS researched_30d,
+       (SELECT count(*) FROM organisation_relationships r WHERE r.status IN ('sourced','confirmed')) AS representation_sourced,
+       (SELECT count(*) FROM organisation_relationships r WHERE r.status = 'supplied') AS representation_supplied,
+       (SELECT count(*) FROM people p WHERE p.merged_into_id IS NULL AND p.origin IN ('discovery','research','document')) AS people_identified,
+       (SELECT count(*) FROM people p LEFT JOIN person_state ps ON ps.person_id = p.id WHERE p.merged_into_id IS NULL AND coalesce(ps.state,'research_candidate') = 'research_candidate') AS people_candidates,
+       (SELECT count(*) FROM people p JOIN person_state ps ON ps.person_id = p.id WHERE p.merged_into_id IS NULL AND ps.state = 'confirmed') AS people_confirmed,
+       (SELECT count(*) FROM contact_discoveries d WHERE d.started_at > now() - interval '30 days') AS discoveries_30d"""
+Q["cp_companies_by_country"] = """
+SELECT o.country::text AS country, count(*) AS companies, count(*) FILTER (WHERE o.verified_at IS NOT NULL) AS verified,
+       count(*) FILTER (WHERE o.origin = 'supplied' AND o.verified_at IS NULL) AS awaiting
+  FROM organisations o WHERE o.merged_into_id IS NULL AND o.country IS NOT NULL AND o.origin IN ('discovery','research','supplied')
+ GROUP BY o.country ORDER BY companies DESC, o.country LIMIT 12"""
+Q["cp_market_signals"] = """
+SELECT s.id, s.title, s.classification, s.first_published_at, s.module,
+       (SELECT g.country_code::text FROM signal_geography g WHERE g.signal_id = s.id ORDER BY g.support = 'supported' DESC LIMIT 1) AS country
+  FROM signals s WHERE s.merged_into_id IS NULL AND s.classification IN ('market_signal','freight_candidate')
+ ORDER BY coalesce(s.first_published_at, s.created_at) DESC LIMIT CAST(:limit AS int)"""
+Q["cp_market_counts"] = """
+SELECT count(*) FILTER (WHERE s.classification = 'market_signal') AS market_signals,
+       count(*) FILTER (WHERE s.classification = 'market_signal' AND coalesce(s.first_published_at, s.created_at) > now() - interval '30 days') AS market_signals_30d,
+       count(*) FILTER (WHERE s.classification = 'freight_candidate') AS freight_candidates
+  FROM signals s WHERE s.merged_into_id IS NULL"""

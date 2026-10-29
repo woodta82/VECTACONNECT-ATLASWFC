@@ -491,7 +491,7 @@ def test_p_open_market_discovery_judgement_health_questions_and_outreach(page: P
     form.get_by_label("Countries").fill("UG")
     page.get_by_role("option", name=re.compile("Uganda")).first.click()
     form.get_by_role("button", name="Find contacts").click()
-    result = page.get_by_role("region", name="Discovery result")
+    result = page.get_by_role("region", name="Research result")
     expect(result).to_be_visible(timeout=90_000)
     expect(result).to_contain_text("Savanna Example Air")
     found = result.get_by_role("region", name="Discovered contacts")

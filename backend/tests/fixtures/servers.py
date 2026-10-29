@@ -42,6 +42,13 @@ SEARCH_STANDIN = [
     (("united arab emirates", "road feeder"), "/procure/ae-rfs-sample-airways.html", "RFQ SAW-RFS-2026-07: Road feeder services, UAE"),
     (("côte d'ivoire", "outsourcing"), "/procure/ci-formation-fret.html", "Appel d'offres : formation du personnel fret"),
     (("ivory coast", "outsourcing"), "/procure/ci-formation-fret.html", "Appel d'offres : formation du personnel fret"),
+    # 29 Oct 2026, journey R: a new country (Rwanda) with no tender — companies, people and market developments from public pages
+    (("rwanda", "gssa"), "/kgl-directory/cargo-agents.html", "Kigali air cargo agents and service providers — directory"),
+    (("rwanda", "represented airlines"), "/thousandhills/airlines.html", "Airlines we represent — Thousand Hills Cargo Services"),
+    (("rwanda", "forwarder"), "/kgl-directory/cargo-agents.html", "Kigali air cargo agents and service providers — directory"),
+    (("rwanda", "head of cargo"), "/thousandhills/team.html", "Our leadership — Thousand Hills Cargo Services"),
+    (("rwanda", "new route"), "/rw-news/freighter.html", "Savanna Example Air adds weekly freighter to Kigali"),
+    (("rwanda", "tender"), "/rw-news/freighter.html", "Savanna Example Air adds weekly freighter to Kigali"),
 ]
 
 
@@ -298,6 +305,8 @@ QSK = ("Savanna Example Air invites proposals from cargo general sales and servi
        "Proposals must be submitted by 15 March 2027.")
 QSU = ("Savanna Example Air invites proposals from cargo general sales and service agents for Uganda. Reference SEA-CGO-2026-82. "
        "Proposals must be submitted by 22 March 2027.")
+QKGL = ("Savanna Example Air will operate a weekly Boeing 737 freighter service between Nairobi (NBO) and Kigali (KGL) from 12 January 2027, "
+        "citing growing horticulture and pharmaceutical exports from Rwanda.")
 QSR = "Savanna Example Air will start a twice-weekly freighter service between Nairobi and Dubai from 5 January 2027"
 QSC = "Tender SEA-CGO-2026-81 (cargo GSSA, Kenya, Savanna Example Air) has been cancelled."
 
@@ -317,6 +326,9 @@ CANNED += [
     ("freighter service between Nairobi and Dubai", {"language": "en", "claims": [
         {"claim_type": "route_launch", "stance": "supports", "quote": QSR,
          "fields": {"airline": _f("Savanna Example Air", QSR), "origin": _f("Kenya", QSR), "destination": _f("United Arab Emirates", QSR)}}]}),
+    ("freighter service between Nairobi (NBO) and Kigali (KGL)", {"language": "en", "claims": [
+        {"claim_type": "route_launch", "stance": "supports", "quote": QKGL,
+         "fields": {"airline": _f("Savanna Example Air", QKGL), "origin": _f("Kenya", QKGL), "destination": _f("Rwanda", QKGL)}}]}),
 ]
 
 # SIMULATED replies to the people-reading prompt (app/ai/people.py): the people each fixture document names, with a quote.

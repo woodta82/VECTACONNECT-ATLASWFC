@@ -1,4 +1,79 @@
 # VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE
+## Release `4.5.0-wfc.16`, 29 October 2026: four research purposes; company and people intelligence without a tender
+
+Clarification of 29 Oct 2026 (superseding any tender-led reading of the earlier instructions) and the BRU spreadsheet instruction
+("Use the attached BRU spreadsheet as an example of the research output required globally — not as the complete database or a
+Belgium-only scope … Preserve the spreadsheet's original information as supplied data awaiting verification … Company and people
+discovery must work without a tender being present. Include passenger airlines carrying belly cargo; distinguish them from
+passenger-ticket-sales mandates. Keep the current design and simple workflow unchanged."). Continues from 4.4.0-wfc.15; nothing is
+removed. Design, Poppins, colours, components and the single shared login are unchanged; the public marketing website is not in
+this repository and is untouched. Schema `wfc_0015` (additive).
+
+**1. Four independent research purposes within Discover.** "What are you looking for?": Opportunities, Companies, People, Market
+intelligence. None needs a tender or opportunity first. Companies and People run through the open-market research pipeline of 4.3
+(organisation pages, authorised web search, robots.txt, per-run limits, evidence rules) with the purpose recorded on the discovery
+(`contact_discoveries.purpose`); Opportunities and Market intelligence run through the discovery pipeline of 4.4 with the purpose
+on the search (`discovery_searches.purpose`). The Relationships page keeps its "Discover contacts" button (People purpose).
+
+**2. A commercial brief.** Every purpose accepts a plain-language research request (up to 600 characters) beside country, region,
+worldwide scope, airport and the nine capability categories. The brief's content words narrow the public web queries
+(`domain/company_intel.build_purpose_queries`, `domain/open_web.build_market_queries`) without filtering results by its words;
+"Keywords" keep their stricter meaning. Public websites, directories, press releases, biographies, reports and accessible documents
+are read; tender-platform registration is never a dependency (market intelligence does not use procurement-portal search templates).
+
+**3. Company and people intelligence built directly.** A company result records: official website (only when a page is on a site
+carrying the company's name), published e-mail addresses (from the sentence naming the company, a directory entry's contact line,
+or the company's own pages — never from the model's memory), locations, services, parent or group (as stated), represented airlines
+or partners (from statements such as "GSSA for X and Y"; cargo representation kept apart from passenger ticket-sales mandates and
+from representation of unstated scope), relevant individuals (the people the company's pages bind to it, through the unchanged
+attribution rules), and evidence per fact (`organisation_evidence`). A name alone creates no record: a legal or trade suffix or a
+known name is required, and kind, addresses and representation bind to the subject of the sentence. People results are unchanged
+(name, current role, organisation, remit, LinkedIn search or confirmed profile, evidence) and gain the brief. Nothing missing is
+invented: a kind, website or country not stated stays "not established". The BRU spreadsheet is the benchmark: a supplied list is
+loaded (Data sources → Supplied lists), preserved row by row, and everything from it is marked **supplied — awaiting verification**
+(organisations, addresses, represented-airline entries by IATA code; "ALL" records nothing as represented; designators are resolved
+from a reference list as a reading aid only). Airlines from the list are typed passenger-belly or cargo-only. Nothing supplied is
+assumed current until research sources it or a person verifies it on the company page (verify record; confirm / lapsed per address
+and per representation, each with a basis).
+
+**4. Record types kept distinct.** Companies, individuals, representation and business relationships (`organisation_relationships`),
+market intelligence (signals), commercial opportunities and tenders are separate, linked records. A researched company leads to a
+commercial opportunity only when a person records it with an interpretation (shown on the opportunity, `origin_interpretation`); a
+market signal only when a person tracks it (unchanged). Neither becomes a tender.
+
+**5. Qualification appropriate to the result.** Tender deadline and procurement checks apply to tenders only. Companies, people,
+partnerships and market signals are never blocked for lacking a deadline, reference or invitation to bid; evidence, freshness,
+relevance (a company relevance out of 100 with every point explained: kind 30, geography 25, profile completeness 20, brief terms 15,
+evidence 10), duplication (no second record for the same name at the same site; the person duplicate review is unchanged) and
+uncertainty controls (supplied / sourced / confirmed / lapsed / not established) apply to every record type.
+
+**6. Control panel.** Six clearly separated summaries at the top — Commercial opportunities, Companies researched, Relevant people
+identified, Relationship gaps and next actions, Important market developments, Tender deadlines — each with counts, a few items and
+the link that opens the filtered records (`GET /control-panel/summaries`). The analytics below are unchanged and secondary.
+
+**7. The broader workflow, verified** (SIMULATED: fixture pages, a scripted search stand-in and a scripted AI provider; no real site
+or key): journey R (`e2e/test_b_research_purposes_journey.py`) in Rwanda, where the fixture holds no tender — company discovery from a
+brief (a directory, a GSSA's own site: website, two published addresses, two cargo representations sourced, a passenger ticket-sales
+agent recorded separately, two people bound by the leadership page; no opportunity created), the company page (confirm a
+representation, verify the record), standalone people discovery with a brief, market intelligence (a route announcement becomes a
+market signal with no deadline and no tender status; "Track as a commercial opportunity" available), a supplied BRU-style list
+loaded as data awaiting verification (LOT Polish Airlines resolved, an unknown designator kept as written, belly carriers listed),
+the six Control-panel summaries opening filtered records, and a commercial opportunity recorded from the company with an
+interpretation (counted under opportunities, never under tender deadlines).
+
+**Checks on this release:**
+- backend: **1323 passed** (new: `tests/domain/test_company_intel.py`, `tests/sql/test_migration_0015.py`,
+  `tests/integration/test_company_intelligence.py`: company discovery in a new country without a tender; people with a brief and
+  market research; a supplied list preserved, verified and leading to an opportunity only with an interpretation);
+- browser journeys: **34 passed**, including journey R above and every earlier journey;
+- type check, lint and ESLint clean.
+
+**Real public-source demonstration: NOT available in this session** (no search or AI key; no outbound access). Every result in the
+evidence is SIMULATED. With keys set, the same Discover purposes run against the public web; the limits (queries per run, pages per
+run, AI sections per run, monthly budget) apply unchanged. No LinkedIn integration exists: LinkedIn links are searches.
+
+**One shared login**, unchanged. No WFC operational data is needed for any of this.
+
 ## Release `4.4.0-wfc.15`, 29 October 2026: open-web discovery as the default
 
 Instruction of 29 Oct 2026 ("Continue from atlas-wfc-4.2.0-wfc.13 … using atlas-vecta-v1.0-FINAL as the functional reference for

@@ -1,4 +1,12 @@
-# Release 4.4.0-wfc.15: open-web discovery by default, relationships to the ATLAS v1.0 parameters, Control panel, electric cyan
+# Release 4.5.0-wfc.16: four research purposes, company intelligence, open-web discovery, relationships, Control panel, electric cyan
+
+**4.5.0-wfc.16** (sixth commit) adds the four research purposes within Discover (Opportunities, Companies, People, Market
+intelligence) against a plain-language brief, with company and people intelligence built directly from public pages — website,
+published e-mail, locations, services, parent or group, represented airlines (cargo kept apart from passenger ticket sales),
+relevant people and evidence per fact — without any tender; a Companies directory and company page with verification; supplied
+station lists (the BRU benchmark) preserved as data awaiting verification; distinct record types with a company → opportunity step
+that requires an interpretation; and six separated Control-panel summaries that open filtered records. Schema `wfc_0015`
+(additive). Details: `BUILD_REPORT.md`, first section.
 
 **4.4.0-wfc.15** (fifth commit) makes open-web discovery the default: a country, region or worldwide search for the nine
 capability categories searches public information directly through the server's search connector, reads every page it finds,

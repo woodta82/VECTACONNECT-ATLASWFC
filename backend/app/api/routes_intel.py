@@ -15,6 +15,7 @@ from ..domain import overview as ov
 from ..domain import relationship_health as rh
 from ..domain import relationships as rel
 from ..reference.geography import COUNTRIES
+from ..services import company_intelligence as cmp
 from ..services import contact_discovery as cd
 from ..services import relationship_intelligence as ri
 from ..services import relationship_service as rs
@@ -30,7 +31,7 @@ def _translate(fn):
     def wrapper(*a, **k):
         try:
             return fn(*a, **k)
-        except (rs.RelationshipRejected, cd.DiscoveryRejected, ri.IntelligenceRejected) as exc:
+        except (rs.RelationshipRejected, cd.DiscoveryRejected, ri.IntelligenceRejected, cmp.CompanyRejected) as exc:
             raise HTTPException(exc.status, exc.detail) from exc
     return wrapper
 
@@ -633,10 +634,14 @@ def outreach_status(request: Request, draft_id: str, body: OutreachStatusIn):
 
 # ------------------------------------------------------------------ Open-market contact discovery
 class DiscoveryIn(BaseModel):
+    purpose: Literal["people", "companies"] = "people"                 # 29 Oct 2026: research purposes
+    brief: str | None = Field(None, max_length=600)                    # plain-language research request
     organisation_name: str | None = Field(None, max_length=200)
     countries: list[str] = Field(default_factory=list, max_length=5)
     region: str | None = Field(None, max_length=40)
+    airport_iata: str | None = Field(None, min_length=3, max_length=3)
     capability_area: str | None = None
+    organisation_kinds: list[str] = Field(default_factory=list, max_length=12)
     role_focus: str | None = Field(None, max_length=120)
     requested_by_label: str | None = Field(None, max_length=200)
 
@@ -663,8 +668,203 @@ def discovery_continue(request: Request, disc_id: str):
 
 @router.get("/contacts/discoveries", tags=["Relationships"])
 @exact
-def discoveries(request: Request, limit: int = Query(20, ge=1, le=100)):
-    return {"items": cd.list_discoveries(db_of(request), limit=limit)}
+def discoveries(request: Request, limit: int = Query(20, ge=1, le=100), purpose: Literal["people", "companies"] | None = None):
+    return {"items": cd.list_discoveries(db_of(request), limit=limit, purpose=purpose)}
+
+
+# ------------------------------------------------------------------ Companies (29 Oct 2026: company intelligence; supplied data)
+@router.get("/companies", tags=["Companies"])
+@exact
+def companies(request: Request, kind: str | None = None, country: str | None = None, airport: str | None = None, origin: str | None = None,
+              carrier_type: str | None = None, state: Literal["verified", "awaiting_verification", "researched", "unverified"] | None = None,
+              discovery: str | None = None, q: str | None = None, sort: Literal["name", "relevance", "recent"] = "name",
+              limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
+    """The companies ATLAS knows: discovered from public pages, supplied by a dataset (awaiting verification), or from WFC data."""
+    out = cmp.list_companies(db_of(request), kind=kind or None, country=(country or "").upper() or None, airport=(airport or "").upper() or None,
+                             origin=origin or None, carrier_type=carrier_type or None, state=state, discovery=discovery or None, q=q or None,
+                             sort=sort, limit=limit, offset=offset)
+    from ..domain import company_intel as ci
+    return {**out, "limit": limit, "offset": offset, "kinds": ci.KIND_LABELS, "carrier_types": ci.CARRIER_LABELS, "states": cmp.STATE_LABELS}
+
+
+@router.get("/companies/{org_id}", tags=["Companies"])
+@exact
+@_translate
+def company(request: Request, org_id: str):
+    return cmp.profile(db_of(request), org_id)
+
+
+class CompanyEditIn(BaseModel):
+    website: str | None = Field(None, max_length=300, pattern=r"^https?://[^\s]+$")
+    kind: str | None = None
+    country: str | None = Field(None, min_length=2, max_length=2)
+    airport_iata: str | None = Field(None, min_length=3, max_length=3)
+    carrier_type: str | None = None
+    description: str | None = Field(None, max_length=1000)
+    services_text: str | None = Field(None, max_length=1000)
+    locations_text: str | None = Field(None, max_length=600)
+    parent_group: str | None = Field(None, max_length=200)
+    basis: str | None = Field(None, max_length=500)
+    source_url: str | None = Field(None, max_length=1000, pattern=r"^https?://")
+
+
+@router.post("/companies/{org_id}/edit", tags=["Companies"])
+@exact
+@_translate
+def company_edit(request: Request, org_id: str, body: CompanyEditIn):
+    cmp.edit(db_of(request), org_id, body.model_dump(), meta_of(request))
+    return {"ok": True}
+
+
+class VerifyIn(BaseModel):
+    basis: str = Field(min_length=10, max_length=1000)
+    source_url: str | None = Field(None, max_length=1000, pattern=r"^https?://")
+
+
+@router.post("/companies/{org_id}/verify", tags=["Companies"])
+@exact
+@_translate
+def company_verify(request: Request, org_id: str, body: VerifyIn):
+    """A person records that the company's identity, website and kind were checked against current sources."""
+    cmp.verify(db_of(request), org_id, body.basis, body.source_url, meta_of(request))
+    return {"ok": True}
+
+
+class ContactStatusIn(BaseModel):
+    status: Literal["verified", "lapsed"]
+    note: str | None = Field(None, max_length=500)
+
+
+@router.post("/companies/{org_id}/contacts/{contact_id}/status", tags=["Companies"])
+@exact
+@_translate
+def company_contact_status(request: Request, org_id: str, contact_id: str, body: ContactStatusIn):
+    cmp.set_contact_status(db_of(request), org_id, contact_id, body.status, body.note, meta_of(request))
+    return {"ok": True}
+
+
+class RelStatusIn(BaseModel):
+    status: Literal["confirmed", "lapsed", "not_established"]
+    basis: str = Field(min_length=10, max_length=1000)
+    by_label: str | None = Field(None, max_length=200)
+
+
+@router.post("/companies/{org_id}/relationships/{rel_id}/status", tags=["Companies"])
+@exact
+@_translate
+def company_relationship_status(request: Request, org_id: str, rel_id: str, body: RelStatusIn):
+    """Confirm, mark as lapsed or mark as not established a representation or business relationship, with the basis."""
+    cmp.set_relationship_status(db_of(request), org_id, rel_id, body.status, body.basis, body.by_label, meta_of(request))
+    return {"ok": True}
+
+
+class CompanyOpportunityIn(BaseModel):
+    module: str
+    interpretation: str = Field(min_length=20, max_length=2000)
+    title: str | None = Field(None, max_length=200)
+    country: str | None = Field(None, min_length=2, max_length=2)
+    by_label: str | None = Field(None, max_length=200)
+
+
+@router.post("/companies/{org_id}/opportunities", tags=["Companies"])
+@exact
+@_translate
+def company_opportunity(request: Request, org_id: str, body: CompanyOpportunityIn):
+    """A potential commercial opportunity from a researched company, recorded by a person with the interpretation. Never automatic."""
+    return cmp.create_opportunity(db_of(request), org_id, body.model_dump(), meta_of(request))
+
+
+@router.post("/supplied-data", tags=["Companies"])
+@exact
+async def supplied_upload(request: Request, file: UploadFile = File(...), name: str | None = Form(None), notes: str | None = Form(None),
+                          by_label: str | None = Form(None)):
+    """A supplied dataset (an .xlsx station list such as a GSA list) preserved row by row; everything from it is marked supplied —
+    awaiting verification. It seeds research; it is not treated as a current database."""
+    data = await file.read(5 * 1024 * 1024 + 1)
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(413, "File too large (5 MB at most)")
+    if not (file.filename or "").lower().endswith((".xlsx", ".xlsm")):
+        raise HTTPException(415, "Only Excel workbooks (.xlsx) are read as supplied datasets")
+    try:
+        return cmp.import_supplied(db_of(request), request.app.state.settings, data=data, filename=file.filename or "workbook.xlsx", name=name,
+                                   notes=notes, meta=meta_of(request), by=by_label)
+    except cmp.CompanyRejected as exc:
+        raise HTTPException(exc.status, exc.detail) from exc
+
+
+@router.get("/supplied-data", tags=["Companies"])
+@exact
+def supplied_list(request: Request):
+    return {"items": cmp.supplied_imports(db_of(request))}
+
+
+@router.get("/supplied-data/{import_id}", tags=["Companies"])
+@exact
+@_translate
+def supplied_detail(request: Request, import_id: str):
+    return cmp.supplied_import_detail(db_of(request), import_id)
+
+
+@router.get("/control-panel/summaries", tags=["Overview"])
+@exact
+def control_panel_summaries(request: Request):
+    """Clearly separated summaries of the full system, each with the link that opens the filtered records: commercial opportunities,
+    companies researched, relevant people identified, relationship gaps and next actions, important market developments, tender
+    deadlines. Counts only; the analytics stay on the Control panel below them."""
+    db = db_of(request)
+    ranked = _records(request)
+    now = datetime.now(timezone.utc)
+    opps = [r for r in ranked if r["record_type"] in ("tender", "commercial")]
+    commercial = [r for r in opps if r["record_type"] == "commercial"]
+    tenders = [r for r in opps if r["record_type"] == "tender"]
+    live_tenders = [r for r in tenders if (r.get("tender_status") or "") in ov.LIVE]
+    def at(v: Any) -> datetime:
+        return ov._as_dt(v) or datetime.min.replace(tzinfo=timezone.utc)
+    live = [r for r in opps if r.get("progress") != "closed" and (r.get("tender_status") or "") not in ov.TERMINAL]
+    soon = [r for r in tenders if r.get("deadline_at") and now <= at(r["deadline_at"]) <= now + timedelta(days=30)]
+    gaps = [r for r in live if r.get("coverage") in ("none", "candidates_only")]
+    def due(v: Any) -> date | None:
+        if v is None:
+            return None
+        return v if isinstance(v, date) and not isinstance(v, datetime) else (at(v).date() if at(v) else None)
+    actions_due = [r for r in live if r.get("next_action") and due(r.get("next_action_due")) and due(r["next_action_due"]) <= (now + timedelta(days=14)).date()]
+    cs = db.one("cp_company_summary") or {}
+    mc = db.one("cp_market_counts") or {}
+    signals = db.all("cp_market_signals", limit=5)
+    for sg in signals:
+        sg["category"] = ov.CATEGORY_LABELS.get(sg["module"], sg["module"])
+        sg["country_name"] = COUNTRIES.get(sg.get("country") or "", (None,))[0]
+    return {
+        "generated_at": now,
+        "summaries": [
+            {"key": "opportunities", "title": "Commercial opportunities", "count": len([r for r in commercial if r in live]),
+             "detail": f"{len(live)} live opportunity records: {len(commercial)} commercial, {len(tenders)} tenders", "link": "/opportunities?types=commercial",
+             "items": [{"id": r["id"], "title": r["title"], "detail": ", ".join(r["countries_named"]) or None} for r in commercial[:5]]},
+            {"key": "companies", "title": "Companies researched", "count": int(cs.get("researched") or 0),
+             "detail": f"{int(cs.get('verified') or 0)} verified; {int(cs.get('awaiting_verification') or 0)} supplied awaiting verification; "
+                       f"{int(cs.get('representation_sourced') or 0)} representation relationships sourced, {int(cs.get('representation_supplied') or 0)} supplied",
+             "link": "/companies?state=researched", "secondary": [{"label": "Awaiting verification", "link": "/companies?state=awaiting_verification",
+                                                                   "count": int(cs.get("awaiting_verification") or 0)}],
+             "items": [{"id": r["country"], "title": COUNTRIES.get(r["country"], (r["country"],))[0], "detail": f"{r['companies']} companies, {r['verified']} verified",
+                        "link": f"/companies?country={r['country']}"} for r in db.all("cp_companies_by_country")[:5]]},
+            {"key": "people", "title": "Relevant people identified", "count": int(cs.get("people_identified") or 0),
+             "detail": f"{int(cs.get('people_confirmed') or 0)} confirmed by a person; {int(cs.get('people_candidates') or 0)} research candidates; "
+                       f"{int(cs.get('discoveries_30d') or 0)} discoveries in 30 days", "link": "/relationships?state=research_candidate",
+             "items": []},
+            {"key": "gaps", "title": "Relationship gaps and next actions", "count": len(gaps),
+             "detail": f"{len(gaps)} live opportunities without a usable relationship; {len(actions_due)} next actions due within 14 days",
+             "link": "/opportunities?coverage=none,candidates_only",
+             "items": [{"id": r["id"], "title": r["title"], "detail": r.get("next_action") or "no relationship recorded"} for r in (actions_due + gaps)[:5]]},
+            {"key": "market", "title": "Important market developments", "count": int(mc.get("market_signals") or 0),
+             "detail": f"{int(mc.get('market_signals_30d') or 0)} in the last 30 days; {int(mc.get('freight_candidates') or 0)} freight candidates to review",
+             "link": "/opportunities?types=market_signal",
+             "items": [{"id": sg["id"], "title": sg["title"], "detail": ", ".join(x for x in (sg.get("country_name"), sg.get("category")) if x), "link": f"/signals/{sg['id']}"}
+                       for sg in signals]},
+            {"key": "deadlines", "title": "Tender deadlines", "count": len(soon),
+             "detail": f"{len(live_tenders)} open or revised tenders; {len(soon)} deadlines within 30 days", "link": "/opportunities?types=tender&deadline_days=30",
+             "items": [{"id": r["id"], "title": r["title"], "detail": at(r["deadline_at"]).strftime("%d %b %Y")} for r in sorted(soon, key=lambda r: at(r["deadline_at"]))[:5]]},
+        ],
+    }
 
 
 @router.get("/contacts/discoveries/{disc_id}", tags=["Relationships"])
