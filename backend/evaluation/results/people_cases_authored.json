@@ -1,0 +1,315 @@
+{
+  "run_at": "2026-10-28T15:02:49.170708+00:00",
+  "provenance": "AUTHORED for this build (28 Oct 2026) in the style of airline and logistics press releases, procurement notices and company pages. Every organisation and person is invented. These cases measure the attribution rules on constructions known to be hard; they are NOT genuine documents and do not measure real-world accuracy.",
+  "totals": {
+    "people_expected": 21,
+    "people_found": 21,
+    "people_matched": 21,
+    "roles_expected": 20,
+    "roles_found": 20,
+    "roles_correct": 20,
+    "orgs_expected": 19,
+    "orgs_found": 19,
+    "orgs_correct": 19,
+    "unresolved_expected": 5,
+    "unresolved_kept": 5,
+    "wrong_bindings": 0,
+    "status_checked": 20,
+    "status_correct": 20,
+    "cases": 20,
+    "cases_unread": 0
+  },
+  "cases": [
+    {
+      "id": "a01-appointment-successor",
+      "read": true,
+      "found": [
+        {
+          "name": "Grace Achieng",
+          "role": "Head of Cargo",
+          "status": "incoming",
+          "organisation": "Savanna Example Air",
+          "affiliation": "employee"
+        },
+        {
+          "name": "Peter Mwangi",
+          "role": "Head of Cargo",
+          "status": "former",
+          "organisation": "Savanna Example Air",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a02-role-elsewhere",
+      "read": true,
+      "found": [],
+      "issues": []
+    },
+    {
+      "id": "a03-first-org-not-theirs",
+      "read": true,
+      "found": [
+        {
+          "name": "Lucy Njeri",
+          "role": "Managing Director",
+          "status": "current",
+          "organisation": "Blue Ridge Handling",
+          "affiliation": "other_organisation"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a04-quoted-partner",
+      "read": true,
+      "found": [
+        {
+          "name": "John Lee",
+          "role": "Chief Executive Officer",
+          "status": "current",
+          "organisation": "Blue Ridge Handling",
+          "affiliation": "partner"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a05-possessive",
+      "read": true,
+      "found": [
+        {
+          "name": "Amina Yusuf",
+          "role": "Chief Commercial Officer",
+          "status": "current",
+          "organisation": "Savanna Example Air",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a06-former-and-new",
+      "read": true,
+      "found": [
+        {
+          "name": "Jane Wairimu",
+          "role": "Cargo Sales Manager",
+          "status": "former",
+          "organisation": "Example Air",
+          "affiliation": "employee"
+        },
+        {
+          "name": "Jane Wairimu",
+          "role": "Commercial Director",
+          "status": "current",
+          "organisation": "Blue Ridge Handling",
+          "affiliation": "other_organisation"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a07-contact-no-org",
+      "read": true,
+      "found": [
+        {
+          "name": "Grace Achieng",
+          "role": "Cargo Procurement Manager",
+          "status": "current",
+          "organisation": null,
+          "affiliation": "unknown"
+        },
+        {
+          "name": "Paul Kariuki",
+          "role": null,
+          "status": "current",
+          "organisation": null,
+          "affiliation": "unknown"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a08-two-orgs-two-people",
+      "read": true,
+      "found": [
+        {
+          "name": "Ruth Wanjiku",
+          "role": "Director General",
+          "status": "current",
+          "organisation": "Kenya Civil Aviation Authority",
+          "affiliation": "other_organisation"
+        },
+        {
+          "name": "Samuel Otieno",
+          "role": "Procurement Manager",
+          "status": "current",
+          "organisation": null,
+          "affiliation": "unknown"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a09-will-join",
+      "read": true,
+      "found": [
+        {
+          "name": "Michael Odhiambo",
+          "role": "Country Manager Uganda",
+          "status": "incoming",
+          "organisation": "Savanna Example Air",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a10-place-before-name",
+      "read": true,
+      "found": [
+        {
+          "name": "Paul Ssenyonga",
+          "role": "Country Manager Uganda",
+          "status": "former",
+          "organisation": "Savanna Example Air",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a11-has-been-appointed",
+      "read": true,
+      "found": [
+        {
+          "name": "Hassan Ali",
+          "role": "General Manager",
+          "status": "current",
+          "organisation": "Coastal Handling",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a12-parenthesis",
+      "read": true,
+      "found": [
+        {
+          "name": "Leila Haddad",
+          "role": "Vice President Cargo",
+          "status": "current",
+          "organisation": "Sample Airways",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a13-role-at-org-before-name",
+      "read": true,
+      "found": [
+        {
+          "name": "Omar Saleh",
+          "role": "Head of Cargo",
+          "status": "current",
+          "organisation": "Sample Airways",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a14-name-of-org-only",
+      "read": true,
+      "found": [
+        {
+          "name": "Nadia Karim",
+          "role": null,
+          "status": "current",
+          "organisation": "Sample Airways",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a15-mentioned-not-bound",
+      "read": true,
+      "found": [],
+      "issues": []
+    },
+    {
+      "id": "a16-who-previously",
+      "read": true,
+      "found": [
+        {
+          "name": "Sara Mansour",
+          "role": "Cargo Director",
+          "status": "former",
+          "organisation": "Example Air",
+          "affiliation": "other_organisation"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a17-leadership-listing",
+      "read": true,
+      "found": [
+        {
+          "name": "Amina Yusuf",
+          "role": "Chief Commercial Officer",
+          "status": "current",
+          "organisation": "Savanna Example Air",
+          "affiliation": "employee"
+        },
+        {
+          "name": "Joseph Kato",
+          "role": "Country Manager Uganda",
+          "status": "current",
+          "organisation": "Savanna Example Air",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a18-listing-not-on-leadership-page",
+      "read": true,
+      "found": [],
+      "issues": []
+    },
+    {
+      "id": "a19-customer",
+      "read": true,
+      "found": [
+        {
+          "name": "Mary Atieno",
+          "role": "Logistics Manager",
+          "status": "current",
+          "organisation": "Fresh Fields Exports",
+          "affiliation": "customer"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "a20-names-appoint",
+      "read": true,
+      "found": [
+        {
+          "name": "Peter Njoroge",
+          "role": "Station Manager Mombasa",
+          "status": "current",
+          "organisation": "Coastal Handling",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    }
+  ]
+}

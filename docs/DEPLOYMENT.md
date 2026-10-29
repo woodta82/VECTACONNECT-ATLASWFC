@@ -1,6 +1,6 @@
 # Deployment — VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE
 
-Configured customer: **World Freight Company**. One shared username and password; there are no user accounts.
+Configured customer: **World Freight Company**. One shared username and password for the whole workspace.
 
 > **Status:** not production-ready. Do not describe this build as production-ready until every check listed as
 > *outstanding* in `BUILD_REPORT.md` §3 has passed (committed lockfiles and a clean install from them, real `next build`,
@@ -42,8 +42,8 @@ docker compose -f docker-compose.yml -f deploy/docker-compose.production.yml \
 ## 4. Check it
 
 ```bash
-curl -fsS https://<host>/api/health/live     # {"status":"live","release":"3.7.0-wfc.9","build":"<BUILD_ID>"}
-curl -fsS https://<host>/api/health/ready    # "schema_revision":"wfc_0010"; 503 until migrations match
+curl -fsS https://<host>/api/health/live     # {"status":"live","release":"4.1.0-wfc.11","build":"<BUILD_ID>"}
+curl -fsS https://<host>/api/health/ready    # "schema_revision":"wfc_0012"; 503 until migrations match
 curl -s -o /dev/null -w "%{http_code}\n" https://<host>/api/briefing   # 401 without the session
 ```
 
@@ -78,8 +78,9 @@ material, cost and remaining work in `report.md`, and copies the figures into `B
 ## 6. Upgrading an existing installation
 
 Back up first (`docs/RESTORE_RUNBOOK.md`); migrations have no downgrade. Then run `alembic upgrade head` (the `migrate`
-service does this). `docs/MIGRATIONS.md` lists what each revision changes and re-checks; 3.7.0-wfc.9 adds no migration
-(head stays `wfc_0010`), so an installation already on 3.6.0-wfc.8 needs only the new images.
+service does this). `docs/MIGRATIONS.md` lists what each revision changes and re-checks; 4.1.0-wfc.11 adds `wfc_0012`
+(evidence-backed relationship research, additive, no worker re-check) after 4.0.0-wfc.10's `wfc_0011`, and summarises how
+existing records are carried over.
 
 ## 7. Operate
 
@@ -116,7 +117,7 @@ Steps:
    unsigned or wrongly signed requests with 403, except `/health/live`).
 4. Link the repository to the Netlify site. The base directory, build command, publish directory and Node version
    come from `netlify.toml`.
-5. Check: `https://<site>/api/health/ready` returns the release and `wfc_0010`; `https://<api-host>/health/ready`
+5. Check: `https://<site>/api/health/ready` returns the release and `wfc_0012`; `https://<api-host>/health/ready`
    called directly returns 403 (`proxy_signature`); signing in through the site works and the session cookie is
    `__Host-atlas_session`; after a sign-in, the audit log shows the browser's address, not Netlify's (adjust
    `TRUSTED_PROXY_HOPS` if not).

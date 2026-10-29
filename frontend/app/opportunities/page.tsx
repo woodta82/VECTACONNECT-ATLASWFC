@@ -1,105 +1,63 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { CountryPicker, RegionSelect } from "@/components/Geo";
-import { Badge, Empty, ErrorState, type Insight, InsightMeta, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
+import { EMPTY_FILTERS, filterQuery, RecordCards, RecordFilters, RecordTable, type Filters, type RecordRow, ViewToggle } from "@/components/Records";
+import { Empty, ErrorState, Loading, PageHeader, StaleBanner } from "@/components/States";
+import { Tabs } from "@/components/Ui";
 import { qs } from "@/lib/api";
-import { MODULES } from "@/lib/constants";
-import { deadline, label, moduleLabel, type DeadlineInfo } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
 
-type Row = {
-  id: string; module: string; title: string; commercial_stage: string; qualification_status: string; deadline_utc: string | null;
-  deadline_source_tz: string | null; deadline_info: DeadlineInfo | null; classification: string | null; operating_company: string | null; organisation: string | null;
-  territory: string | null; owner: string | null; countries: string[]; tender_status: string | null; tender_status_basis: string | null; freight_scope: string | null;
-  priority: Record<string, { status: string; score: string | null }> | null;
-};
-type Page = { items: Row[]; total: number; limit: number; offset: number; insight: Insight };
+type Page = { items: RecordRow[]; total: number; limit: number; offset: number; scope: string; rule: string | null };
+type TypeTab = "" | "tender" | "commercial" | "market_signal" | "historical" | "excluded";
+const PAGE = 50;
 
 export default function OpportunitiesPage() {
-  const [module, setModule] = useState("");
-  const [qual, setQual] = useState("");
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [tab, setTab] = useState<TypeTab>("");
   const [q, setQ] = useState("");
-  const [stage, setStage] = useState("");
-  const [countries, setCountries] = useState<string[]>([]);
-  const [region, setRegion] = useState("");
+  const [sort, setSort] = useState<"priority" | "deadline" | "source_date">("priority");
+  const [saved, setSaved] = useState(false);
+  const [view, setView] = useState<"list" | "cards">("list");
   const [offset, setOffset] = useState(0);
-  const filters = { module, qualification: qual, stage, q, countries: countries.join(","), region };
-  const path = `/opportunities${qs({ ...filters, limit: 50, offset })}`;
-  const r = useApi<Page>(path);
-  const exportHref = `/api/reports/opportunities.csv${qs(filters)}`;
-
+  const params = { ...filterQuery({ ...filters, types: tab }), q: q || undefined, sort, saved: saved ? "true" : undefined };
+  const r = useApi<Page>(`/records${qs({ ...params, limit: PAGE, offset })}`);
+  const reset = (fn: () => void) => { fn(); setOffset(0); };
   return (
     <>
-      <PageHeader eyebrow="Opportunities" title="Qualified pipeline and leads"
-                  description="Classification, commercial stage and qualification are separate. Geography filters follow the opportunity's scope (delivery, contract territory, lane). Priority dimensions compare only within a capability area. The export carries exactly these filters."
-                  actions={<a className="btn" href={exportHref}>Export CSV</a>} />
-      <div className="filters" role="search">
-        <label className="field">Module
-          <select className="select" value={module} onChange={(e) => { setModule(e.target.value); setOffset(0); }}>
-            <option value="">All modules</option>
-            {MODULES.map((m) => <option key={m} value={m}>{moduleLabel(m)}</option>)}
-          </select>
-        </label>
-        <label className="field">Qualification
-          <select className="select" value={qual} onChange={(e) => { setQual(e.target.value); setOffset(0); }}>
-            <option value="">Any</option>
-            {["incomplete", "blocked", "ready_for_review", "approved_for_pursuit"].map((v) => <option key={v} value={v}>{label(v)}</option>)}
-          </select>
-        </label>
-        <label className="field">Stage
-          <select className="select" value={stage} onChange={(e) => { setStage(e.target.value); setOffset(0); }}>
-            <option value="">Any</option>
-            {["new", "reviewing", "qualified", "pursuing", "proposal", "negotiation", "won", "lost", "deferred", "expired"].map((v) => <option key={v} value={v}>{label(v)}</option>)}
-          </select>
-        </label>
-        <RegionSelect value={region} onChange={(v) => { setRegion(v); setOffset(0); }} />
-        <div style={{ flex: "1 1 240px" }}><CountryPicker value={countries} onChange={(v) => { setCountries(v); setOffset(0); }} /></div>
-        <label className="field">Search title
-          <input className="input" value={q} onChange={(e) => { setQ(e.target.value); setOffset(0); }} placeholder="e.g. GSSA" />
-        </label>
+      <PageHeader eyebrow="Opportunities" title="Every opportunity, signal and historical record"
+                  description="Tenders and procurements, commercial opportunities the team is tracking, market signals (potential, not open bids) and historical intelligence, each with its source date, stated deadline, status, priority explanation and relationship coverage."
+                  actions={<>
+                    <a className="btn" href={`/api/records/export.csv${qs(params)}`}>Export CSV</a>
+                    <a className="btn btn-ghost" href={`/api/reports/opportunities.csv${qs({ ...filterQuery(filters), module: filters.modules || undefined })}`}>Technical export (CSV)</a>
+                  </>} />
+      <RecordFilters value={filters} onChange={(f) => reset(() => setFilters(f))} showTypes={false} />
+      <Tabs<TypeTab> label="Record type" value={tab} onChange={(t) => reset(() => setTab(t))} tabs={[
+        { id: "", label: "All" }, { id: "tender", label: "Tenders and procurements" }, { id: "commercial", label: "Commercial" },
+        { id: "market_signal", label: "Market signals" }, { id: "historical", label: "Historical" }, { id: "excluded", label: "Out of scope" }]} />
+      <div className="filters">
+        <label className="field">Search<input className="input" value={q} onChange={(e) => reset(() => setQ(e.target.value))}
+                                               placeholder="Title, organisation or reference" /></label>
+        <label className="field">Sort
+          <select className="select" value={sort} onChange={(e) => reset(() => setSort(e.target.value as typeof sort))}>
+            <option value="priority">Priority (explained)</option><option value="deadline">Stated deadline</option>
+            <option value="source_date">Source date (newest)</option>
+          </select></label>
+        <label className="field inline"><input type="checkbox" checked={saved} onChange={(e) => reset(() => setSaved(e.target.checked))} /> Saved only</label>
+        <div className="field">View<ViewToggle value={view} onChange={setView} /></div>
       </div>
       {r.stale && <StaleBanner onRetry={r.reload} />}
       {r.status === "loading" && <Loading what="opportunities" />}
       {r.status === "error" && !r.data && <ErrorState error={r.error} onRetry={r.reload} />}
-      {r.data && (r.data.items.length === 0 ? (
-        <Empty title="No opportunities match">Opportunities are created only from supported, authoritative evidence. Market signals stay on the briefing until then.</Empty>
-      ) : (
-        <>
-          <TableWrap label="Opportunities">
-            <table>
-              <thead><tr><th>Title</th><th>Area</th><th>Countries</th><th>Classification</th><th>Qualification</th><th>Stage</th><th>Deadline</th><th>Priority</th><th>Company / owner</th></tr></thead>
-              <tbody>
-                {r.data.items.map((o) => (
-                  <tr key={o.id}>
-                    <td><Link href={`/opportunities/${o.id}`}>{o.title}</Link><div className="muted small">{[o.organisation, o.territory].filter(Boolean).join(" · ")}</div></td>
-                    <td>{moduleLabel(o.module)}</td>
-                    <td>{o.countries.join(", ") || "—"}</td>
-                    <td><Badge value={o.classification ?? "internal_record"} />{o.tender_status && <span className="small" title={o.tender_status_basis ?? undefined}>tender: {label(o.tender_status)}</span>}
-                      {o.freight_scope && o.freight_scope !== "cargo" && <span className="small">scope: {label(o.freight_scope)}{o.freight_scope === "passenger" ? " (excluded)" : " (review)"}</span>}</td>
-                    <td><Badge value={o.qualification_status} /></td>
-                    <td><Badge value={o.commercial_stage} /></td>
-                    <td>{deadline(o.deadline_utc, o.deadline_source_tz, o.deadline_info)}</td>
-                    <td className="small">{o.priority ? ["attractiveness", "evidence_confidence", "readiness", "risk"].map((d) => {
-                      const x = o.priority?.[d];
-                      return `${label(d).slice(0, 5)} ${x?.status === "scored" ? Number(x.score).toFixed(0) : "—"}`;
-                    }).join(" · ") : "rules"}</td>
-                    <td>{o.operating_company ?? "Unassigned"}<span className="muted small">{o.owner ?? "No owner"}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableWrap>
-          <div className="actions" style={{ marginTop: 12, justifyContent: "space-between" }}>
-            <span className="muted small">{r.data.offset + 1}–{r.data.offset + r.data.items.length} of {r.data.total}</span>
-            <span className="actions">
-              <button className="btn" type="button" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 50))}>Previous</button>
-              <button className="btn" type="button" disabled={offset + 50 >= r.data.total} onClick={() => setOffset(offset + 50)}>Next</button>
-            </span>
+      {r.data && (r.data.items.length === 0 ? <Empty title="No records match">Change the filters, or run a search under Discover.</Empty> : (
+        <div className="stack">
+          {view === "list" ? <RecordTable rows={r.data.items} label="Opportunities" /> : <RecordCards rows={r.data.items} />}
+          <div className="filters">
+            <span className="muted small">{r.data.offset + 1}–{r.data.offset + r.data.items.length} of {r.data.total} · {r.data.scope}</span>
+            <button type="button" className="btn" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>Previous</button>
+            <button type="button" className="btn" disabled={offset + PAGE >= r.data.total} onClick={() => setOffset(offset + PAGE)}>Next</button>
           </div>
-          <InsightMeta insight={r.data.insight} />
-        </>
+          {r.data.rule && <p className="muted small">Priority order: {r.data.rule}. Not a probability of winning.</p>}
+        </div>
       ))}
     </>
   );

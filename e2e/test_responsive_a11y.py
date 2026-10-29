@@ -81,9 +81,9 @@ AUDIT_JS = r"""
 }
 """
 
-PAGES = ["/", "/discovery", "/review", "/opportunities", "/opportunities/{opp}", "/areas", "/areas/forwarder-sales", "/sources",
+PAGES = ["/", "/control-panel", "/discovery", "/review", "/opportunities", "/opportunities/{opp}", "/areas", "/areas/forwarder-sales", "/sources",
          "/data-sources", "/settings", "/reports", "/service", "/network", "/capabilities", "/lanes", "/relationships",
-         "/airlines-forwarders", "/discovery/runs/{run}"]
+         "/airlines-forwarders", "/discovery/runs/{run}", "/relationships/{person}", "/signals/{signal}"]
 
 
 @pytest.fixture(scope="module")
@@ -98,7 +98,9 @@ def signed_in():
         page.get_by_role("button", name=re.compile("Sign in")).click()
         page.get_by_role("navigation", name="Sections").wait_for()
         ids = {"opp": page.request.get(f"{BASE}/api/opportunities?limit=1").json()["items"][0]["id"],
-               "run": page.request.get(f"{BASE}/api/discovery/runs").json()["items"][0]["id"]}
+               "run": page.request.get(f"{BASE}/api/discovery/runs").json()["items"][0]["id"],
+               "person": page.request.get(f"{BASE}/api/people?limit=1").json()["items"][0]["id"],
+               "signal": page.request.get(f"{BASE}/api/records?types=market_signal&limit=1").json()["items"][0]["id"]}
         yield page, ids
         b.close()
 
@@ -152,7 +154,7 @@ def test_pages_all_widths(signed_in, theme):
             key = f"{url} @{w}"
             report[key] = res
             if w in (1440, 768, 390) or res["problems"] or res["contrast"]:
-                slug = (url.strip("/").replace("/", "-") or "briefing")[:40]
+                slug = (url.strip("/").replace("/", "-") or "overview")[:40]
                 page.screenshot(path=str(out / f"{theme}-{slug}-{w}.png"), full_page=w != 1440)
     (out / f"pages-{theme}-report.json").write_text(json.dumps(report, indent=2))
     bad = {k: v for k, v in report.items() if v["problems"] or v["contrast"] or v["missing_brand"]}

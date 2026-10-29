@@ -46,6 +46,9 @@ class Extracted:
     kind: str = "html"
     page_starts: list[int] = field(default_factory=list)   # PDFs: character offset where each page begins in `text`
     published_source: str | None = None   # 'page' (HTML metadata) or 'pdf_metadata'; see domain.publication
+    # Links in navigation, header and footer (excluded from `links`, which lists article candidates). Relationship research
+    # uses them: leadership, team and newsroom pages are usually reached from the site navigation.
+    nav_links: list[tuple[str, str]] = field(default_factory=list)
 
     def page_of(self, offset: int) -> int | None:
         """1-based page number for a character offset (PDFs only)."""
@@ -93,6 +96,9 @@ class _HTMLText(HTMLParser):
         self.links: list[tuple[str, str]] = []
         self._a_href: str | None = None
         self._a_text: list[str] = []
+        self.nav_links: list[tuple[str, str]] = []
+        self._nav_href: str | None = None
+        self._nav_text: list[str] = []
         self._in_row = False
         self._cell_in_row = 0
 
@@ -109,6 +115,9 @@ class _HTMLText(HTMLParser):
         if tag in _SKIP:
             self.skip_depth += 1
             return
+        if tag == "a" and a.get("href") and self.skip_depth > 0:
+            self._nav_href = urljoin(self.base, a["href"])
+            self._nav_text = []
         if tag == "title":
             self.in_title = True
         if tag == "a" and a.get("href") and self.skip_depth == 0:   # navigation, header and footer links are not articles
@@ -137,6 +146,9 @@ class _HTMLText(HTMLParser):
         if tag == "a" and self._a_href:
             self.links.append((self._a_href, " ".join("".join(self._a_text).split())))
             self._a_href = None
+        if tag == "a" and self._nav_href:
+            self.nav_links.append((self._nav_href, " ".join("".join(self._nav_text).split())))
+            self._nav_href = None
         if tag in ("td", "th"):
             return
         if tag == "tr":
@@ -151,6 +163,8 @@ class _HTMLText(HTMLParser):
             self.title.append(data)
             return
         if self.skip_depth:
+            if self._nav_href is not None:
+                self._nav_text.append(data)
             return
         self.parts.append(data)
         if self._a_href is not None:
@@ -173,7 +187,8 @@ def extract_html(body: bytes, base_url: str, charset: str | None = None) -> Extr
     p.close()
     published = next((d for d in (parse_datetime(x) for x in p.meta_dates + p.time_dates) if d), None)
     title = " ".join("".join(p.title).split()) or None
-    return Extracted(_clean("".join(p.parts)), title, p.lang, published, p.links, "html", published_source="page" if published else None)
+    return Extracted(_clean("".join(p.parts)), title, p.lang, published, p.links, "html", published_source="page" if published else None,
+                     nav_links=p.nav_links)
 
 
 def extract_pdf(body: bytes) -> Extracted:

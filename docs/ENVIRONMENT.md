@@ -16,10 +16,14 @@ Secrets are read on the server only. Nothing here reaches the browser bundle: th
 | `PROXY_SIGNATURE_SECRET` | api | only with a Netlify front end | empty (off) | When set (32+ characters), every request except `/health/live` must carry a valid signed-proxy header `x-nf-sign` (HS256, issuer `netlify`, unexpired). Set the same value on the Netlify site. See `DEPLOYMENT.md` §8. |
 | `API_DOCS_ENABLED` | api | no | on in dev/test | Must be off in production. Docs are behind the session in every environment. |
 | `SNAPSHOT_DIR` | api, worker | no | `/var/lib/atlas/snapshots` | Source snapshots, only where the source permits retention. Include in backups. |
-| `ANTHROPIC_API_KEY` | worker | no | empty | Leaves AI extraction **Not connected** when empty. |
-| `AI_MODEL` | worker | with key | empty | Model id. Check against provider documentation when configuring. |
+| `ANTHROPIC_API_KEY` | worker, api | no | empty | Leaves AI extraction **Not connected** when empty. The api uses it for relationship research (AI people reading), under the same budget caps. |
+| `AI_MODEL` | worker, api | with key | empty | Model id. Check against provider documentation when configuring. |
+| `SEARCH_PROVIDER` | api | no | empty | `brave` (the only search connector implemented) enables authorised web search in relationship research. Empty: searches are listed as not run, with links. |
+| `SEARCH_API_KEY` | api | with provider | empty | Brave Search API key. Secret: redacted from logs and errors; never sent to the browser. |
+| `SEARCH_MAX_QUERIES` / `SEARCH_RESULTS_PER_QUERY` | api | no | 6 / 5 | Searches per research run (0–20) and results read per search (1–10). |
+| `SEARCH_API_BASE_URL` | api | no | `https://api.search.brave.com` | Development and test only may point elsewhere (a local stand-in); must be https otherwise. |
 | `NOTICE_AGE_REVIEW_DAYS` | api, worker | no | 90 | A notice older than this whose open status has no closing date is shown as *unverified*; one with no supported status wording as *historical*. Triggers review only; never invents a closing date. |
-| `AI_PRICE_INPUT_PER_MTOK`, `AI_PRICE_OUTPUT_PER_MTOK` | worker | with key | empty | USD per million tokens, from the provider's published pricing at configuration time. Used for conservative budget reservations. |
+| `AI_PRICE_INPUT_PER_MTOK`, `AI_PRICE_OUTPUT_PER_MTOK` | worker, api | with key | empty | USD per million tokens, from the provider's published pricing at configuration time. Used for conservative budget reservations. |
 | `AI_API_BASE_URL` | worker, api | no | `https://api.anthropic.com` | Messages API base URL. Must be `https://` outside development/test. Local verification points it at the SIMULATED provider (`tools/fake_ai_provider.py`); never do that in a deployment. |
 | `RETRIEVAL_ALLOW_PRIVATE_HOSTS` | worker, api | no | empty | Comma-separated `host:port` entries the SSRF guard may fetch although they are private (the local fixture site). **Refused outside development/test**; leave empty in every deployment. |
 | `WORKER_LEASE_SECONDS` | worker | no | `300` | How long a running job's lease lasts without a heartbeat before another worker reclaims it. Lowered only in restart tests. |

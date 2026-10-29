@@ -1,7 +1,7 @@
 # Single-login security specification and threat controls
 
 ## Account model
-- Exactly one credential row (`auth_credential`, enforced by a singleton primary key). There are no user, role, membership, invitation, SSO or per-company access tables.
+- Exactly one credential row (`auth_credential`, enforced by a singleton primary key). All access is through this one shared credential.
 - Any number of concurrent sessions: one login is not one device.
 - Owners and contacts (`people`) are descriptive records and never log in.
 - Company, region and service parameters are **filters**. They never restrict what the shared account can read.

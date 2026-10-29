@@ -40,6 +40,21 @@ def psql(sql: str) -> str:
     return out.stdout.strip()
 
 
+def restore_head_history_check() -> None:
+    """Re-running an earlier migration file on a head database also re-creates that file's older CHECK on
+    opportunity_status_history.field (wfc_0006 lacks progress, saved, next_action, ...). `alembic upgrade head` never
+    does this, so put back the head definition, taken from the latest file that defines it, before later journeys run."""
+    text = ""
+    for f in sorted(SQL_DIR.glob("wfc_*.sql")):
+        body = f.read_text()
+        if "ADD CONSTRAINT opportunity_status_history_field_check" in body:
+            text = body
+    m = re.search(r"ALTER TABLE opportunity_status_history DROP CONSTRAINT IF EXISTS opportunity_status_history_field_check;\s*"
+                  r"ALTER TABLE opportunity_status_history ADD CONSTRAINT opportunity_status_history_field_check\s+CHECK \(.*?\)\);", text, re.S)
+    assert m, "head definition of opportunity_status_history_field_check not found"
+    psql(m.group(0))
+
+
 @pytest.fixture(scope="module")
 def browser():
     with sync_playwright() as p:
@@ -74,6 +89,9 @@ def page(ctx: BrowserContext):
 
 
 def go(page: Page, path: str) -> None:
+    # Opportunity records keep their validation detail in a collapsed section; these journeys check it, so open it.
+    if re.match(r"^/opportunities/[0-9a-f-]{36}$", path):
+        path += "?detail=technical"
     page.goto(f"{BASE}{path}")
     page.wait_for_load_state("networkidle")
 
@@ -305,6 +323,8 @@ def test_e_evidence_is_inspectable_and_eligibility_is_corrected_after_recheck(pa
     psql(f"UPDATE claims SET review_status = 'confirmed' WHERE id = '{claim}'")
     subprocess.run(["psql", "-X", "-q", "-h", PG["host"], "-p", PG["port"], "-U", PG["user"], "-d", STACK_DB, "-v", "ON_ERROR_STOP=1",
                     "-f", str(SQL_DIR / "wfc_0006_revalidation_v3.sql")], check=True)
+    restore_head_history_check()
+    assert "'progress'" in psql("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'opportunity_status_history_field_check'")
     assert psql("SELECT count(*) FROM jobs WHERE job_type = 'eligibility_revalidation'") == "1"
     deadline = time.time() + 60
     while time.time() < deadline and psql("SELECT status FROM jobs WHERE job_type = 'eligibility_revalidation'") != "succeeded":
@@ -423,11 +443,12 @@ def test_h_passenger_notices_stay_out_unsupported_status_never_becomes_open_and_
     shot(page, "H5-review-unresolved-scope-and-conflict")
     # briefing: the historical record is not a live tender; export states status, basis and scope
     go(page, "/")
-    expect(page.get_by_text(re.compile(r"announced, unknown, unverified or historical \(not counted as open\)"))).to_be_visible()
-    shot(page, "H6-briefing-live-vs-unverified")
+    expect(page.get_by_role("region", name="Priority opportunities")).not_to_contain_text("GEA-GSSA-2022-3")   # historical: never live
+    expect(page.get_by_role("region", name="Priority opportunities")).not_to_contain_text("GEA-PAX")          # excluded: never listed
+    shot(page, "H6-overview-live-vs-historical")
     go(page, "/opportunities")
     with page.expect_download() as dl:
-        page.get_by_role("link", name="Export CSV").click()
+        page.get_by_role("link", name="Technical export (CSV)").click()
     csv = Path(dl.value.path()).read_text()
     assert "tender_status,tender_status_basis,freight_scope" in csv.splitlines()[4]
     rows = [x for x in csv.splitlines() if "Gulf Example Airways" in x]
@@ -463,13 +484,14 @@ def test_i_excluded_cargo_incidental_keywords_and_title_only_notices(page: Page)
     expect(page.get_by_text(re.compile("cargo is excluded from the mandate")).first).to_be_visible()
     expect(page.get_by_text(re.compile("announced — current status unverified")).first).to_be_visible()
     shot(page, "I4-review-exclusion-and-announced")
-    go(page, "/")
-    expect(page.get_by_text("Live freight tenders")).to_be_visible()
-    expect(page.get_by_text(re.compile(r"freight candidate\(s\) awaiting scope review"))).to_be_visible()
-    shot(page, "I5-briefing-live-vs-candidates")
+    go(page, "/opportunities")
+    page.get_by_role("textbox", name="Search").fill("Rift Example Air")
+    page.wait_for_load_state("networkidle")
+    expect(page.get_by_text(re.compile(r"Announced; the current status is not confirmed|Freight scope not yet established")).first).to_be_visible()
+    shot(page, "I5-records-review-states")
     go(page, "/opportunities")
     with page.expect_download() as dl:
-        page.get_by_role("link", name="Export CSV").click()
+        page.get_by_role("link", name="Technical export (CSV)").click()
     csv = Path(dl.value.path()).read_text()
     rows = [x for x in csv.splitlines() if "Rift Example Air" in x]
     assert rows and not any("REA-GSA-2027-40" in x or "REA-ENG-2027-3" in x for x in rows), rows
@@ -509,7 +531,7 @@ def test_j_status_freshness_publication_dates_and_route_area(page: Page):
     shot(page, "J3-future-publication-date-flagged")
     go(page, "/opportunities")
     with page.expect_download() as dl:
-        page.get_by_role("link", name="Export CSV").click()
+        page.get_by_role("link", name="Technical export (CSV)").click()
     csv = Path(dl.value.path()).read_text()
     lines = csv.splitlines()
     header = next(x for x in lines if x.startswith("id,"))
@@ -538,7 +560,7 @@ def test_k_undated_open_never_reopens_a_dated_cancellation(page: Page):
     shot(page, "K2-tracked-tender-stays-cancelled")
     go(page, "/opportunities")
     with page.expect_download() as dl:
-        page.get_by_role("link", name="Export CSV").click()
+        page.get_by_role("link", name="Technical export (CSV)").click()
     csv = Path(dl.value.path()).read_text()
     assert "ZEA-CGO-2026-61" not in csv
     row = next(x for x in csv.splitlines() if "ZEA-CGO-2026-65" in x)

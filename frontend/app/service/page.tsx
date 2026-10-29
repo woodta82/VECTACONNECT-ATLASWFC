@@ -26,7 +26,7 @@ export default function ServicePage() {
   return (
     <>
       <PageHeader eyebrow="Service Intelligence" title="Reservations, supervision and post-flight exceptions"
-                  description="One active exception per underlying problem, with one alert and one task. Owners are descriptive contact records, not user accounts. Acknowledging and resolving require a note; the full history is kept." />
+                  description="One active exception per underlying problem, with one alert and one task. Owners are descriptive records in the shared workspace. Acknowledging and resolving require a note; the full history is kept." />
       <div className="filters">
         <label className="field">Status
           <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>

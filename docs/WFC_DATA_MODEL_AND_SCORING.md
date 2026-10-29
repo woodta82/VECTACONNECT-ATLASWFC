@@ -16,7 +16,7 @@ Conventions for every table: a UUID primary key `id`; `created_at` and `updated_
 | `login_throttle` | `key` (ip or `account`), `window_start`, `failures` | Durable and shared between replicas, replacing the in-memory dicts. |
 | `audit_events` | `event_type`, `session_ref` (hash prefix), `request_id`, `ip`, `user_agent`, `entity_type`, `entity_id`, `detail` (jsonb, metadata only) | Logs exports, overrides, credential events and job runs. It never claims to identify an individual. |
 
-No user, role, membership, invitation, SSO or per-company grant tables exist.
+Access is through the one shared credential; there is no per-record access control.
 
 ## 2. Network
 
@@ -65,7 +65,7 @@ No user, role, membership, invitation, SSO or per-company grant tables exist.
 
 ## 6. Commercial work
 
-`people` holds descriptive owners and contacts, not logins. Further tables: `contacts` (person ↔ organisation, role), `account_ownership`, `engagements`, `tasks` (`source_type`/`source_id`, `due_at_utc`, `status`, `owner_person_id`, unique on `dedup_key`), `referrals` (from operating company → to operating company, `opportunity_id`), `decisions`, `proposals`, `outcomes`, `realised_values`.
+`people` holds descriptive owners, contacts and researched people (with research facts, evidence, relationships and introduction routes since `wfc_0011`). Further tables: `contacts` (person ↔ organisation, role), `account_ownership`, `engagements`, `tasks` (`source_type`/`source_id`, `due_at_utc`, `status`, `owner_person_id`, unique on `dedup_key`), `referrals` (from operating company → to operating company, `opportunity_id`), `decisions`, `proposals`, `outcomes`, `realised_values`.
 
 ## 7. Performance (only what the defined use cases need)
 

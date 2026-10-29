@@ -21,7 +21,8 @@ SCHEMA = _SQL_DIR / "wfc_0001_schema.sql"
 SCHEMA_FILES = [SCHEMA, _SQL_DIR / "wfc_0002_directive.sql", _SQL_DIR / "wfc_0002_geography_seed.sql", _SQL_DIR / "wfc_0003_review.sql", _SQL_DIR / "wfc_0004_amendments.sql",
                 _SQL_DIR / "wfc_0004_legacy_deadlines.sql", _SQL_DIR / "wfc_0005_validation_version.sql", _SQL_DIR / "wfc_0006_revalidation_v3.sql", _SQL_DIR / "wfc_0007_relevance_v4.sql", _SQL_DIR / "wfc_0008_meaning_relevance_v5.sql",
                 _SQL_DIR / "wfc_0009_status_freshness_v6.sql",
-                _SQL_DIR / "wfc_0010_status_chronology_v7.sql"]
+                _SQL_DIR / "wfc_0010_status_chronology_v7.sql", _SQL_DIR / "wfc_0011_relationship_intelligence.sql",
+                _SQL_DIR / "wfc_0012_relationship_research.sql"]
 CONN = os.environ.get("WFC_TEST_PG")
 
 
@@ -74,13 +75,21 @@ class PG:
         return out
 
 
-def fresh_db() -> PG:
+def apply_file(db: PG, f: Path) -> None:
+    res = subprocess.run(_base_args(db.dbname) + ["-1", "-f", str(f)], capture_output=True, text=True)
+    if res.returncode != 0:
+        raise AssertionError(f"{f.name} failed to apply: {res.stderr}")
+
+
+def fresh_db(upto: str | None = None) -> PG:
+    """A new database with every revision applied, or only those up to and including the file named `upto`."""
     require_pg()
     name = f"wfc_test_{uuid.uuid4().hex[:10]}"
     admin = PG("postgres")
     admin.run(f"CREATE DATABASE {name}")
     db = PG(name)
-    for f in SCHEMA_FILES:
+    files = SCHEMA_FILES if upto is None else SCHEMA_FILES[: [f.name for f in SCHEMA_FILES].index(upto) + 1]
+    for f in files:
         res = subprocess.run(_base_args(name) + ["-1", "-f", str(f)], capture_output=True, text=True)
         if res.returncode != 0:
             raise AssertionError(f"{f.name} failed to apply: {res.stderr}")

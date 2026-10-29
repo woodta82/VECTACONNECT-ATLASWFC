@@ -27,8 +27,18 @@ export default function SettingsPage() {
   };
   return (
     <>
-      <PageHeader eyebrow="Settings" title="Account, automation and spend controls"
-                  description="One shared account for this instance. There are no individual users, roles or invitations; every loaded record is visible after sign-in." />
+      <PageHeader eyebrow="Settings" title="Sources, evidence review, scanning and the shared login"
+                  description="The technical controls behind discovery. One shared username and password gives access to the whole workspace." />
+      <section className="panel" aria-label="Settings sections">
+        <div className="grid grid-3">
+          <Link className="chip-link settings-link" href="/sources"><b>Sources</b><span className="small muted">Register, enable and check the public sources discovery reads</span></Link>
+          <Link className="chip-link settings-link" href="/review"><b>Evidence review</b><span className="small muted">Confirm or reject extracted claims, merges and unresolved fields</span></Link>
+          <a className="chip-link settings-link" href="#scanning"><b>Scanning and AI spend</b><span className="small muted">Schedules, the job queue, budget caps and the kill switch</span></a>
+          <Link className="chip-link settings-link" href="/data-sources"><b>WFC data imports (optional)</b><span className="small muted">Bookings, capacity, agreements and other WFC files. Not needed to discover opportunities</span></Link>
+          <Link className="chip-link settings-link" href="/areas"><b>Capability analyses (optional)</b><span className="small muted">Account, lane, trucking, technology and network analyses that use imported WFC data</span></Link>
+          <Link className="chip-link settings-link" href="/service"><b>Operational exceptions (optional)</b><span className="small muted">Reservation and supervision exceptions from WFC data</span></Link>
+        </div>
+      </section>
       {msg && <div className="notice notice-info" role="status">{msg}</div>}
       {r.stale && <StaleBanner onRetry={r.reload} />}
       {r.status === "loading" && <Loading what="settings" />}
@@ -48,7 +58,7 @@ export default function SettingsPage() {
               </dl>
             </section>
           </div>
-          <section className="panel">
+          <section className="panel" id="scanning">
             <h2>AI spend</h2>
             <dl className="kv">
               <dt>Kill switch</dt><dd><Badge value={r.data.ai_kill_switch ? "blocked" : "ready"} /> {r.data.ai_kill_switch ? "All AI spend is blocked" : "AI calls allowed within budget"}</dd>

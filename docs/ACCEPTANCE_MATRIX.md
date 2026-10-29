@@ -1,6 +1,7 @@
 # Acceptance matrix: VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE for World Freight Company
 
-Release **3.7.0-wfc.9** · 28 October 2026 · instruction of 28 Oct 2026 (eight items) on top of 3.6.0-wfc.8.
+Release **4.1.0-wfc.11** · 28 October 2026 · complete, evidence-backed relationship research (third instruction of
+28 Oct 2026, section S below), on top of 4.0.0-wfc.10 (section R) and 3.7.0-wfc.9 (sections 1–6), whose rows still hold.
 
 Each original requirement is linked to the screen where it is used, the data it needs, the calculation or decision,
 the output, and the evidence that verifies it. Every row has one classification:
@@ -18,6 +19,36 @@ data loaded through the same import and discovery paths WFC data will use; **no 
 real AI provider has been used**. Simulated or scripted results are never presented as live results.
 
 Test files are under `backend/tests/`; browser journeys under `e2e/`. Executed totals are in `BUILD_REPORT.md` §1.
+
+## S. Complete, evidence-backed relationship research (third instruction of 28 Oct 2026)
+
+| Requirement | Screen | Inputs | Decision or calculation | Output | Evidence | Classification |
+|---|---|---|---|---|---|---|
+| Research beyond the opportunity's documents: organisation pages and their links, reviewer URLs and documents | Opportunity (Research coverage) | Recorded research pages; added URLs and files | Same-site links to leadership, team, board and newsroom pages and relevant news items; guessed addresses only when no links, labelled; robots.txt respected | Research documents with status and reason | `test_relationship_research.py`; journey N | **Implemented and verified** (synthetic pages) |
+| Authorised web search; honest when not configured | Opportunity | `SEARCH_PROVIDER`, `SEARCH_API_KEY` | Queries from organisation, target roles, country, reference | Searches run, failed or not run, each with a link | `test_with_a_search_connector…`, `test_without_a_search_connector…`; journey N (simulated search) | **Implemented and verified** (simulated search); real search **awaiting a key** |
+| A person is bound to a role and organisation only by evidence | Opportunity, person | Any document | Binding patterns; unresolved otherwise; current/former/incoming; affiliation | Evidenced titles with passages | `test_attribution.py`; evaluation sets | **Implemented and verified** (authored text) |
+| No merge on name alone; reviewable, reversible merges | Relationships, person | Same-name records | Identity: same passage, or same name at the same known organisation | Possible duplicates; merge with undo | `test_relationship_research.py`; `test_migration_0012.py`; journey N | **Implemented and verified** |
+| Resumable sectioned reading under budget; incomplete vs no people found | Opportunity | Long documents | Sections; per-run limits; budget reservation | Outcome and remaining work | `test_relationship_research.py`; journey N | **Implemented and verified** (simulated AI) |
+| Configured extractor evaluated on original documents | — | Key and authorised originals | — | — | — | **Awaiting external data or access** |
+| Real production stack (PostgreSQL, API, worker, Next.js) from committed locks | — | Push access to the repository (CI) | — | — | CI of 28 Oct on 3.7.0-wfc.9: real `next build` passed; docker and pip-audit failed (cause not readable here) | **Awaiting external data or access** |
+
+## R. Refocus: discovery and relationship intelligence (second instruction of 28 Oct 2026)
+
+| Requirement | Screen | Inputs | Decision or calculation | Output | Evidence | Classification |
+|---|---|---|---|---|---|---|
+| Five primary sections; technical controls under Settings; operational tools preserved off the main path | Navigation, Settings | — | — | Overview, Opportunities, Discover, Relationships, Settings | browser `test_01`, `test_10`, M | **Implemented and verified** |
+| Overview as the opportunity desktop with its sections and filters | Overview | Records, people, saved searches, history | Provisional, explained priority order; live = not historical, excluded, closed or terminal | Priority list (or cards), deadlines, recent, needs research, with relationships, people, saved searches, changes | `test_relationship_journey.py` step 8; M4, M8 | **Implemented and verified** |
+| Discovery without WFC operational data, with stated coverage | Discover | Registered public sources | Existing engine | Runs with coverage, incomplete work and results | journey steps 1–3, 10 (no imports at all) | **Implemented and verified** (synthetic sources) |
+| Record types; facts separate from interpretation; uncertainty visible | Opportunities, opportunity, market signal | Signals, opportunities | Record type; review state; interpretation labelled | Typed records; "what remains unconfirmed" | journey; M9a | **Implemented and verified** |
+| Relationship research from every opportunity | Opportunity | Its source documents; organisation websites; the configured AI reader | Named-person rules; verbatim-quote check for AI; never a decision maker by mention | Research candidates with evidence; LinkedIn searches by role; gaps; actions | `test_relationship_journey.py`; M5–M6 | **Implemented and verified** (synthetic sources; simulated AI reply) |
+| Person record, four research states, relationships and introduction routes | Person, opportunity | Reviewer entries | State derived from recorded facts; introduction available only with confirmed willingness | Person page; coverage on every record | journey step 7; M7, M7b | **Implemented and verified** |
+| Light workspace and concise export; nothing sent | Opportunity | — | Progress separate from tender status | Progress, owner, saved, next action, notes, activity; Markdown brief; CSV | journey; M7c, M10 | **Implemented and verified** |
+| Cancellation keeps relationship history | Opportunity, Overview | Cancellation notice | Chronology rules unchanged | Tender status Cancelled; people, relationships, engagements and notes kept; leaves live lists | journey step 9; M10 | **Implemented and verified** |
+| Existing records migrated without loss | — | Database at `wfc_0010` | `wfc_0011` carries values over | Progress, record type, owner label, confirmed imports, relationships from engagement history | `tests/sql/test_migration_0011.py` | **Implemented and verified** |
+| One shared login; no login-expansion wording | All | — | — | — | `test_http_security.py`; text search | **Implemented and verified** |
+| Relationship research with real public sources and the configured extractor | Opportunity | Authorised sources; `ANTHROPIC_API_KEY` | — | — | — | **Awaiting external data or access** (no key, no authorised source) |
+| LinkedIn profile research through an authorised integration | Person | LinkedIn API or Sales Navigator licence and credentials | — | — | — | **Awaiting external data or access**; search links work today |
+| Reproducible installation from committed lock files | — | Repository for the `commit-locks` workflow | — | — | lock gate (fails until the locks exist) | **Awaiting external data or access** |
 
 ## 1. The nine business workflows (instruction item 2; brief ¶7–24)
 

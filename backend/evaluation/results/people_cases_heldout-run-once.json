@@ -1,0 +1,185 @@
+{
+  "run_at": "2026-10-28T15:00:49.311392+00:00",
+  "provenance": "AUTHORED held-out set, written on 28 Oct 2026 after the attribution rules were finished and run ONCE without changing any rule afterwards. Every organisation and person is invented. Authored text, not genuine documents: it does not measure real-world accuracy.",
+  "totals": {
+    "people_expected": 16,
+    "people_found": 9,
+    "people_matched": 8,
+    "roles_expected": 14,
+    "roles_found": 9,
+    "roles_correct": 8,
+    "orgs_expected": 13,
+    "orgs_found": 7,
+    "orgs_correct": 7,
+    "unresolved_expected": 5,
+    "unresolved_kept": 5,
+    "wrong_bindings": 0,
+    "status_checked": 8,
+    "status_correct": 8,
+    "cases": 12,
+    "cases_unread": 0
+  },
+  "cases": [
+    {
+      "id": "h01-ceo-quote-and-gsa",
+      "read": true,
+      "found": [
+        {
+          "name": "Fatima Al Zaabi",
+          "role": "Vice President Cargo",
+          "status": "current",
+          "organisation": null,
+          "affiliation": "unknown"
+        },
+        {
+          "name": "Kevin Otieno",
+          "role": "Managing Director",
+          "status": "current",
+          "organisation": "Horizon Cargo Partners",
+          "affiliation": "other_organisation"
+        }
+      ],
+      "issues": [
+        "Fatima Al Zaabi: organisation 'Desert Example Airlines' not bound"
+      ]
+    },
+    {
+      "id": "h02-retire-and-successor",
+      "read": true,
+      "found": [],
+      "issues": [
+        "Lars Holm: title 'President' not bound",
+        "Lars Holm: organisation 'Northwind Example Cargo' not bound",
+        "Anna Berg: title 'Vice President Sales' not bound"
+      ]
+    },
+    {
+      "id": "h03-panel-mixed",
+      "read": true,
+      "found": [
+        {
+          "name": "Grace Mutua",
+          "role": "Chief Executive Officer",
+          "status": "current",
+          "organisation": "Coastal Example Ports",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "h04-promoted",
+      "read": true,
+      "found": [
+        {
+          "name": "Revenue Management",
+          "role": "Head of Cargo",
+          "status": "current",
+          "organisation": null,
+          "affiliation": "unknown"
+        }
+      ],
+      "issues": [
+        "Joyce Wambui: title 'Head of Cargo Revenue Management' not bound",
+        "Joyce Wambui: organisation 'Lakeside Example Air' not bound",
+        "unexpected person: Revenue Management"
+      ]
+    },
+    {
+      "id": "h05-former-at-other",
+      "read": true,
+      "found": [],
+      "issues": [
+        "Joyce Wambui: title 'Cargo Sales Manager' not bound",
+        "Joyce Wambui: organisation 'Savanna Example Air' not bound"
+      ]
+    },
+    {
+      "id": "h06-signatures",
+      "read": true,
+      "found": [
+        {
+          "name": "Daniel Kipkemboi",
+          "role": "Director General",
+          "status": "current",
+          "organisation": "Example Freight Authority",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "h07-team-listing-board",
+      "read": true,
+      "found": [
+        {
+          "name": "Patrick Mwangi",
+          "role": "Chairman",
+          "status": "current",
+          "organisation": "Lakeside Example Air",
+          "affiliation": "board_member"
+        },
+        {
+          "name": "Lucy Achieng",
+          "role": "Non-Executive Director",
+          "status": "current",
+          "organisation": "Lakeside Example Air",
+          "affiliation": "board_member"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "h08-thanked-not-bound",
+      "read": true,
+      "found": [],
+      "issues": []
+    },
+    {
+      "id": "h09-acting",
+      "read": true,
+      "found": [],
+      "issues": [
+        "Mary Njeri: title 'acting Director General' not bound",
+        "Mary Njeri: organisation 'Example Freight Authority' not bound"
+      ]
+    },
+    {
+      "id": "h10-named-as",
+      "read": true,
+      "found": [
+        {
+          "name": "Brian Ochieng",
+          "role": "General Manager for Uganda",
+          "status": "incoming",
+          "organisation": "Horizon Cargo Partners",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "h11-two-orgs-one-sentence",
+      "read": true,
+      "found": [],
+      "issues": [
+        "Salim Abdalla: title 'Commercial Director' not bound",
+        "Salim Abdalla: organisation 'Coastal Example Ports' not bound"
+      ]
+    },
+    {
+      "id": "h12-procurement-contact-email-style",
+      "read": true,
+      "found": [
+        {
+          "name": "Esther Wanjiku",
+          "role": "Senior Procurement Officer",
+          "status": "current",
+          "organisation": "Lakeside Example Air",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    }
+  ]
+}

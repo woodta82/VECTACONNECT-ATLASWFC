@@ -56,7 +56,9 @@ def stack_env(db: str, no_ai: bool) -> dict[str, str]:
                RETRIEVAL_ALLOW_PRIVATE_HOSTS="127.0.0.1:8089", PYTHONPATH=str(BACKEND))
     if not no_ai:
         env.update(ANTHROPIC_API_KEY="local-stub-key-not-real", AI_MODEL="stub-model (simulated provider)", AI_PRICE_INPUT_PER_MTOK="3",
-                   AI_PRICE_OUTPUT_PER_MTOK="15", AI_API_BASE_URL="http://127.0.0.1:8090")
+                   AI_PRICE_OUTPUT_PER_MTOK="15", AI_API_BASE_URL="http://127.0.0.1:8090",
+                   # SIMULATED search connector: the fixture site's stand-in for the Brave Search API (a fixed index of fixture pages)
+                   SEARCH_PROVIDER="brave", SEARCH_API_KEY="local-stub-search-key-not-real", SEARCH_API_BASE_URL="http://127.0.0.1:8089/search-api")
     return env
 
 

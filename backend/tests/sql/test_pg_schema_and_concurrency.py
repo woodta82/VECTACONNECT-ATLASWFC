@@ -24,7 +24,7 @@ def seed_basic(db):
 
 
 def test_clean_install_creates_everything(db):
-    assert db.val("SELECT value FROM schema_meta WHERE key='revision'") == "wfc_0010"
+    assert db.val("SELECT value FROM schema_meta WHERE key='revision'") == "wfc_0012"
     n = int(db.val("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"))
     assert n >= 60
     assert db.val("SELECT value::text FROM system_flags WHERE key='ai_kill_switch'") == "true"

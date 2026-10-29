@@ -58,6 +58,13 @@ class Settings:
     # Optional: when set, every request except liveness must carry a valid signed-proxy header (Netlify `x-nf-sign`),
     # so an internet-reachable API only answers traffic that came through the web front end. See docs/DEPLOYMENT.md §7.
     proxy_signature_secret: str = field(repr=False, default="")
+    # Optional, authorised web search for relationship research (28 Oct 2026, item 1). Off unless configured. Only the
+    # Brave Search API is implemented ("brave"); SEARCH_API_BASE_URL exists for a local stand-in in development and test.
+    search_provider: str = ""
+    search_api_key: str = field(repr=False, default="")
+    search_api_base_url: str = "https://api.search.brave.com"
+    search_max_queries: int = 6
+    search_results_per_query: int = 5
 
     @property
     def production(self) -> bool:
@@ -65,7 +72,8 @@ class Settings:
 
     @property
     def secret_values(self) -> list[str]:
-        return [s for s in (self.bootstrap_password, self.anthropic_api_key, self.database_url, self.proxy_signature_secret) if s]
+        return [s for s in (self.bootstrap_password, self.anthropic_api_key, self.database_url, self.proxy_signature_secret,
+                            self.search_api_key) if s]
 
 
 def load(env: dict[str, str] | None = None) -> Settings:
@@ -97,7 +105,16 @@ def load(env: dict[str, str] | None = None) -> Settings:
         ai_api_base_url=e.get("AI_API_BASE_URL", "https://api.anthropic.com").strip() or "https://api.anthropic.com",
         retrieval_allow_private_hosts=tuple(h.strip().lower() for h in e.get("RETRIEVAL_ALLOW_PRIVATE_HOSTS", "").split(",") if h.strip()),
         proxy_signature_secret=e.get("PROXY_SIGNATURE_SECRET", ""),
+        search_provider=e.get("SEARCH_PROVIDER", "").strip().lower(),
+        search_api_key=e.get("SEARCH_API_KEY", ""),
+        search_api_base_url=e.get("SEARCH_API_BASE_URL", "https://api.search.brave.com").strip() or "https://api.search.brave.com",
+        search_max_queries=max(0, min(20, int(e.get("SEARCH_MAX_QUERIES", "6") or 6))),
+        search_results_per_query=max(1, min(10, int(e.get("SEARCH_RESULTS_PER_QUERY", "5") or 5))),
     )
+    if s.search_provider and s.search_provider != "brave":
+        raise ConfigError("SEARCH_PROVIDER must be 'brave' (the only search connector implemented) or empty")
+    if not s.search_api_base_url.startswith("https://") and environment not in {"development", "test"}:
+        raise ConfigError("SEARCH_API_BASE_URL must be https outside development/test")
     if s.proxy_signature_secret and len(s.proxy_signature_secret) < 32:
         raise ConfigError("PROXY_SIGNATURE_SECRET must be at least 32 characters")
     if s.retrieval_allow_private_hosts and environment not in {"development", "test"}:

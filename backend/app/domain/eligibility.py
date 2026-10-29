@@ -347,7 +347,7 @@ def country_roles(text: str) -> dict[str, set[str]]:
     """{country code: roles} for every country named in the text (by name or unambiguous alias)."""
     t = ascii_text(text)
     out: dict[str, set[str]] = {}
-    for code in countries_mentioned(t):
+    for code in sorted(countries_mentioned(t)):  # stable order: the first conflicting country decides the verdict
         spans: list[tuple[int, int]] = []
         for n in country_names(code):
             pat = r"(?<![A-Za-z0-9])" + r"\s+".join(re.escape(w) for w in n.split()) + r"(?![A-Za-z0-9])"

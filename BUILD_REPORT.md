@@ -1,45 +1,117 @@
 # VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE
-## Release report — release `3.7.0-wfc.9`, schema `wfc_0010` (unchanged), validation rules v7, 28 October 2026
+## Release `4.2.0-wfc.13`, 29 October 2026: Control panel (opportunities per market, score out of 100)
 
-This is the only build report. It replaces the report for `3.6.0-wfc.8`; where an older document disagrees, this report
-is current. The requirement-by-requirement classification is `docs/ACCEPTANCE_MATRIX.md`.
+Asked for on 29 Oct 2026 from a screenshot of a pipeline dashboard. ATLAS holds no contract values, so the panel counts
+opportunities rather than money.
 
-**Configured customer:** World Freight Company. This release preserves and exercises:
-- the identity VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE, Poppins and the existing VECTA design;
-- **one shared username and password**;
-- all **nine freight capability areas**;
-- single-country, multiple-country, regional and worldwide discovery;
-- the corrected chronology rules: cancellation, reopening, publication-date and status-freshness protections.
+**New screen: Control panel** (`/control-panel`, in the primary navigation after the Overview; same filters as the Overview):
+- totals: live opportunities, markets, average score, records with a relationship or introduction, deadlines within 30 days;
+- live opportunities by region (ring chart) and by score (10-point ranges and four bands);
+- by market (UN M49 sub-regions), by capability area, by country;
+- score per opportunity, ranked, each with a breakdown of its points and the reason for each.
 
-Human approval is still required for external communications, bookings, pricing, and contractual or operational
-commitments. No VECTA contacts, deals or credentials were imported. The live VECTA deployment was not touched.
+**Opportunity score out of 100** (`backend/app/domain/opportunity_score.py`): a transparent points score from facts ATLAS already
+holds. Provisional weights: stage 30, relationship position 25, evidence reviewed by a person 16, time to respond 15, source
+freshness 10, scope and status clear 4. Closed, cancelled, awarded, expired and historical records are not scored. It is
+labelled everywhere as not a probability of winning. It is separate from the versioned four-dimension assessment
+(`app.domain.scoring`), which stays uncombined; that assessment is unchanged.
+
+**API:** `GET /control-panel` with the Overview's filter parameters. Market rule: a record naming several countries counts once
+in each market it names; a record naming no country is counted under "Country not stated".
+
+**Checks on this release** (local stack, sample data):
+- backend: **1225 passed** (`tests/domain/test_control_panel.py` new: score arithmetic, each weakness costs its stated points,
+  unscored records, markets counted per region; the relationship integration journey now also checks the panel before and
+  after a cancellation);
+- browser journeys: **31 passed**, including the new journey O (panel totals, market and country lists, the ranked table, the
+  breakdown, a country filter) and the responsive and accessibility pages at seven widths in both themes, now with
+  `/control-panel`;
+- type check, lint and ESLint clean; the region colours were validated for colour-vision deficiency on both surfaces.
+
+Not done: real data (the screenshots use the journeys' example organisations); WFC has not yet confirmed the weights.
+
+## Release `4.1.1-wfc.12`, 29 October 2026: brand colour change only
+
+The accent blue is replaced by electric cyan, as instructed on 29 Oct 2026:
+
+| Colour | Hex | Where |
+|---|---|---|
+| Electric cyan | `#00E5F2` | logo symbol (`public/vecta-mark.png`, recoloured with its transparency unchanged), primary buttons, DYNAMIC MARKET INTELLIGENCE, selected tabs and toggles, active navigation, links, focus rings, information badges |
+| Light cyan | `#66F2FF` | primary button hover |
+
+Changes:
+- text on a cyan fill is now near-black `#0b0b0d`, because white on cyan is unreadable (contrast 12.6:1 on `#00E5F2`, 14.7:1 on `#66F2FF`);
+- **light theme only:** cyan on white measures 1.56:1, so links, focus rings and badge text use a deeper cyan, and the logo symbol is darkened. Links and badge text use `#00727A` (5.7:1), focus rings `#00838F` (4.5:1), and the symbol is darkened by a filter. Buttons and fills stay `#00E5F2`.
+
+Unchanged: layout, components, Poppins, the five-section navigation, the backend, the schema (`wfc_0012`) and the data. No blue remains in the application stylesheet (`legacy/` is the untouched VECTA 2.9.0 reference).
+
+"Advantage.", the shipping lanes, the glowing ports and the globe rim do not exist in this repository. They belong to the public marketing website, which is not in this repository and was not touched.
+
+**Checks on this release:**
+- type check, lint and ESLint: clean;
+- full browser journeys (`tools/run_journeys.sh`): **30 passed**, including responsive and accessibility pages at all widths in both themes and visible keyboard focus;
+- screenshots were reviewed in the dark theme, the light theme and the login screen;
+- backend code is unchanged from 4.1.0-wfc.11, so its 1220 passing tests were not re-run.
+
+Everything below describes 4.1.0-wfc.11 and still applies.
+
+## Release report: release `4.1.0-wfc.11`, schema `wfc_0012`, validation rules v7, 28 October 2026
+
+This is the only build report. It replaces the report for `4.0.0-wfc.10`. Where an older document disagrees, this report
+is current. Requirement-by-requirement classification: `docs/ACCEPTANCE_MATRIX.md` (section S for this release).
+Screens and workflows: `docs/SCREENS_AND_WORKFLOWS.md`.
+
+**What this release does.** It completes opportunity-led relationship research. Users can find opportunities and build an
+evidence-backed picture of who matters, whom WFC already knows and how to reach the relevant people, without WFC
+operational data:
+- research reads more than the opportunity's own documents;
+- every title and organisation is bound to a person by a source passage, or stays "not established";
+- people are never merged on a name alone;
+- research says when it is incomplete.
+
+**What it keeps unchanged:**
+- the identity VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE;
+- Poppins, the colours, the components and the five-section navigation;
+- the nine capability areas as categories;
+- worldwide, regional and country search;
+- the Overview;
+- WFC data as optional enrichment;
+- one shared login;
+- the evidence, freshness, deduplication and uncertainty controls.
+
+This repository contains no public marketing website, so nothing of it was touched. Human approval is still required for
+external communications, bookings, pricing and commitments, and **nothing is sent automatically**. No VECTA contacts, deals
+or credentials were imported.
 
 ### Commit identification
 
 | What | Commit |
 |---|---|
-| **Verified commit.** Every check in section 1 ran on a clean `git archive` export of it. | `ed837c05788c303bd2b53170b2826b5147a5e962` on branch `wfc/spec-completion-2026-10-28`, based on `e6d56c5` (release 3.6.0-wfc.8) |
-| **Release commit.** Adds this report, `PULL_REQUEST.md`, the change manifest and two README notes. | Recorded in `RELEASE-COMMIT.txt` in the delivered ZIP. `git diff --stat ed837c0 <release>` shows documentation only. |
+| **Verified commit.** Every check in section 1 ran on a clean `git archive` export of it. | `028d52d53e84257979e6f15a51d8a7cb00ce575e` on branch `wfc/relationship-research-2026-10-28`, based on `bd79751` (release 4.0.0-wfc.10) |
+| **Release commit.** Adds this report, `PULL_REQUEST.md` and the change manifest. | Recorded in `RELEASE-COMMIT.txt` in the delivered ZIP. `git diff --stat <verified> <release>` shows documentation only. |
 
 ### Status: not production-ready
 
 **Met in the software as tested here (sections 0 and 1):**
-- All nine original business workflows produce reconciled, evidence-backed outputs from inputs loaded through the same
-  import and discovery paths WFC data will use. Every number is checked against a value computed independently.
-- Missing data produces an explicit gap, never a zero or a confident recommendation.
-- All 19 datasets complete upload → mapping → validation → preview → commit → reconciliation → duplicate → correction →
-  reversal (or a refusal naming the re-import route).
-- No historical, excluded, contradictory, unsupported, cancelled or stale record reaches a qualified-live status in any
-  area.
+- Research reads more than the opportunity's documents: the organisations' own pages and the links they offer, pages
+  and documents the team adds, and an authorised search connector when one is configured.
+- A title or organisation is attached to a person only by a passage that binds them. Unsupported associations stay
+  unresolved.
+- No merge on a name alone. Possible duplicates are reviewed by a person, and every merge can be undone.
+- Long documents are read in resumable sections under the budget controls. "No people found" is distinct from
+  "research incomplete".
+- The journey runs end to end without WFC imports, in the backend and in the browser.
 
 **Not met:**
-- "Real discovery and extraction have measured results": no provider key and no authorised source.
-- "The production application installs and runs reproducibly": the lock files cannot be generated, and the official
-  images and the real Next.js server cannot be run from this session.
-- Live WFC adapters: no API documentation or credentials.
-
-**All workflow evidence uses synthetic data** (invented organisations, example domains). It proves the application's
-rules, not WFC's figures. No simulated result is presented as live functionality.
+- **Real inputs and the configured AI extractor have not been used.** There is no `ANTHROPIC_API_KEY` and no search key.
+  The build environment cannot reach public sites, and the web-reading tool available here returns summaries, not
+  original documents. Every journey uses synthetic pages, a simulated search provider and a simulated AI provider,
+  labelled as such.
+- **The real production stack has not been verified on this release.** The lock files are now part of the source. They
+  were generated by the repository's own CI on 28 Oct, and that run built the real Next.js app from them. This session
+  can read the repository but cannot push to it (the Claude GitHub App is not installed for it), so CI could not run on
+  4.1.0-wfc.11.
+- **No authorised LinkedIn integration is connected.**
 
 ### Result labels
 
@@ -52,120 +124,140 @@ rules, not WFC's figures. No simulated result is presented as live functionality
 
 ---
 
-## 0. Instruction checklist (28 Oct 2026)
+## 0. Instruction checklist (third instruction of 28 Oct 2026, eight items)
 
 | # | Item | What was done | Evidence | Result |
 |---|---|---|---|---|
-| 1 | **Release foundation.** Locks, clean install, gate; official PostgreSQL, API, worker and real Next.js stack; authenticated journeys including production configuration, migrations, backup/restore, worker recovery and budget enforcement; logs kept on failure. | Nothing substituted. Journeys extended (journey L). Migrations, upgrade path and dump/restore run on PostgreSQL 16. Journeys run on the process stack and on the substitute container stack (worker restart in `test_f`, budget in `test_02` and `test_f`). | `lock-gate.log`, `access-check.log`, `real-image-attempt.log`, `migrations.log`, `browser/`, `container-journeys/` | **Failed / unexecuted** for locks, official images and `next start` (sections 2 and 4); **passed** on the stacks available here |
-| 2 | **Nine business workflows** with independently calculated expected results; explicit gaps. | `domain/recommendations.py` (capacity, trucking, technology, network); opportunity creation from each; network coverage gaps; outsourcing live-only demand. **Defect found and fixed:** a feeder that does not run on the ship date was "insufficient data" when the cutoff was unknown; now infeasible, giving a coverage gap. | `tests/integration/test_business_workflows.py` (10 tests); journey L | **Passed** (synthetic data) |
-| 3 | **Data onboarding** for every dataset; docs reconciled; templates; required-field explanations; source, period, currency, units, freshness; refresh labels. | Docs, `FIELDS.md` and templates generated from the contracts with a drift test; the stale "dry run only / 9 datasets" text removed; rules shown on the import screen and "Data used" in every area. **Defect found and fixed:** a corrected airline name was previewed as an update but only added as an alias. | `tests/integration/test_data_onboarding.py` (20), `tests/unit/test_import_docs.py` (3); journeys `test_03`, `test_04`, `test_l` | **Passed** |
-| 4 | **Real external intelligence**: authorised source, provider under a capped budget, measured against manual review. | Nothing run against a real provider. Scripted-extractor evaluation re-run as a regression and kept separate (section 5). | `access-check.log` (`ANTHROPIC_API_KEY` not set) | **Unexecuted** (section 4) |
-| 5 | **Live WFC adapters** only against supplied interfaces. | All four stay **Not connected**. The exact information each needs is in `docs/CONNECTORS_AND_DATASETS.md`. No endpoint invented. | registry and docs | **Unexecuted**: nothing supplied |
-| 6 | **Qualification and prioritisation across all nine areas.** | Rank, rank reason (with the provisional ordering rule) and missing inputs on every ordered list; the four dimensions kept separate. | `tests/integration/test_qualified_live_guard.py` (20: control qualifies; eight non-live cases never do; no override passes any of the 13 factual checks); earlier chronology suites unchanged and passing | **Passed** |
-| 7 | **Access and deployment.** Identity, Poppins, single login, nine areas, geography modes, WFC; ¶33 superseded; Netlify. | `BRIEF_TRACEABILITY.md` ¶33 and section K. `netlify.toml`, build preflight, signed proxy; the API verifies `x-nf-sign` when `PROXY_SIGNATURE_SECRET` is set; `docs/DEPLOYMENT.md` §8 names where each part runs and says a static ZIP is not the system. | `test_signed_proxy_requirement`; journeys `test_01`, `test_10`, `test_12`, `test_d` | **Passed**, except the Netlify deployment itself (**unexecuted**: no site or API host) |
-| 8 | **One evidence-backed release.** | This report, the ZIP, `VERSION` 3.7.0-wfc.9, the SHA above, `docs/MIGRATIONS.md` (no new migration), `docs/ACCEPTANCE_MATRIX.md`. | — | Delivered. **Not delivered:** the lock files (item 1) |
+| 1 | **Complete opportunity-led research** | Research reads, in order: (1) the opportunity's documents; (2) pages and documents added by the team (URL, upload, or pasted text); (3) the organisations' research pages (website, newsroom, leadership page) and the same-site links they offer to leadership, management, team, board and newsroom pages and relevant news items; (4) authorised web search (Brave Search API, off unless configured), with queries built from the organisation, target roles, country and reference. Fixed addresses are tried only when a site offers no links, and are labelled "guessed address". robots.txt is respected. Without a connector, each search is listed as not run, with a link. | `test_relationship_research.py` (11 tests); journey N | **Passed** with synthetic pages and a simulated search provider; real search **unexecuted** |
+| 2 | **Validate who holds each role** | `domain/attribution.py` binds by: the same clause; a possessive; an appointment ("appointed … as", "named … as", "promoted … to"); "whose"; "is/was … at"; "joins … as"; a contact line; a listing on the organisation's own leadership page. Titles are recorded as current, former or incoming. The organisation passage is kept separately where it differs. A title elsewhere in the document is never attached. AI proposals keep a title or organisation only when the quoted passage contains it and the rules confirm the binding. | `tests/domain/test_attribution.py` (20); evaluation sets (section 5) | **Passed** on authored text |
+| 3 | **Organisation attribution and identity** | Never the first organisation in a quote. A person's relation to the organisation being researched is recorded as one of: works there, board member, partner, customer, other organisation (quoted or mentioned), not established. Being named on a company's site does not make someone an employee; only a leadership, team or board listing does. Records merge automatically only on the same passage, or the same name at the same known organisation. Otherwise a new record and a possible duplicate for review. A merge lists every moved row and can be undone; evidence is never deleted. | attribution tests; `test_same_name_…_reversible`; `test_same_name_at_the_same_known_organisation…`; `test_migration_0012.py`; journey N (N4, N5) | **Passed** |
+| 4 | **Long documents and research coverage** | Documents are read in sections. The rules read every section. The AI extractor reads sections up to a per-run limit, under the budget reservation, and resumes on Continue research. Each document records sections read by the rules and by the extractor, its status (read / skipped with reason / could not fetch / not read yet) and the people found. A section cut to fit the extractor is reported. The outcome is people found, no people found, or incomplete, with what remains. | `test_long_documents_…_resume`, `test_budget_refusal_…`, `test_no_people_found_is_distinct_from_incomplete`; journey N (N1, N2) | **Passed**; AI **simulated** |
+| 5 | **Relationships central and evidence-backed** | Each opportunity shows: organisations and their involvement (including partner or customer organisations of linked people); confirmed identities and research candidates in separate lists, each with evidenced titles; recorded relationships (holder, nature, basis); confirmed introductions and possible routes, kept apart; research coverage; gaps and next actions. LinkedIn search links stay separate from confirmed profiles. The brief export includes all of this. | journeys M and N; backend journey | **Passed** |
+| 6 | **Simplified workspace preserved** | No change to the nine categories, the geography modes, the Overview, the optional WFC data, the single login or the controls | full backend and browser suites | **Passed** |
+| 7 | **Journey with real inputs; failure tests; extractor evaluation** | The journey is proven end to end without imports, on synthetic inputs (section 1). Failure tests cover: wrong role attribution, multiple organisations, same-name people, incomplete research, cancelled opportunities, retained history. For real inputs: `tools/live_research_trial.py` runs research on a deployment and writes a review sheet for a person to check against the originals; `tools/research_eval.py --fetch` measures attribution on authorised original pages. | section 1; sections 4 and 5 | Synthetic: **passed**. Real inputs and the configured extractor: **unexecuted** |
+| 8 | **Release foundation** | The locks generated by the repository's `commit-locks` run were carried in; the dependency inputs have not changed since, and the gate passes. CI defects fixed: backend jobs downloaded a lock artifact that only the skipped job produced; schema revisions were hard-coded; failure causes could not be read. Failing steps now publish their log tail as annotations. | `lock-gate.log`; CI run 40655396285 (28 Oct, on 3.7.0-wfc.9 + locks) | Locks **passed**. Clean install and the real stack on this release: **unexecuted** (no push access) |
+
+### The journey (instruction item 7), as run
+
+Country or regional search → relevant opportunity → organisation research → sourced person and role → targeted LinkedIn
+search → confirmed profile → recorded relationship or introduction route → updated Overview. It runs without imports.
+
+| Step | Backend (HTTP API, PostgreSQL) | Browser |
+|---|---|---|
+| Country / regional search finds the opportunity | `test_the_intended_journey_without_wfc_operational_data` (country, region, worldwide) | M1–M3 |
+| Organisation research | `test_research_follows_the_organisations_own_links…` | N1–N2 (company site, links followed, robots.txt, search result) |
+| Sourced person and role | bindings with passages, current/former/incoming, affiliation | N3, N6 |
+| Targeted LinkedIn search → confirmed profile | profile rules (member URL only) | M6–M7 |
+| Relationship or introduction route | willingness required for "available" | M7, M7b |
+| Updated Overview | step 8 of the backend journey | M8, N (Overview) |
+| Without operational imports | asserted: no import job, booking or financial record | — |
+| Cancelled opportunity keeps relationships | step 9; the interpretation says it cannot be bid for | M10 |
 
 ## 1. Passed checks (verified commit, clean export; PostgreSQL 16, Python 3.13, Node 22, Chromium)
 
 | # | Check | Command | Result | Evidence |
 |---|---|---|---|---|
-| 1.1 | Python lint, types, secret scan | `ruff check app tests ../e2e ../tools`, `mypy app`, `tools/secret_scan.py` | ruff 0 findings; mypy 0 errors (69 files); secret scan 0 findings | `static-checks.log` |
-| 1.2 | Backend tests on PostgreSQL | `pytest -q -rs tests` | **1084 passed, 0 failed, 0 skipped** (6 min 32 s), up from 1027 | `backend-pytest.log`, `backend-junit.xml` |
-| 1.3 | TypeScript type check and bundle; offline lint rules; real ESLint 10 | `node verify/build.mjs`, `verify/lint.mjs`, `verify/eslint-core.mjs` | type check passed (41 files, 26 pages); bundle built; 0 lint findings; 0 ESLint problems. `npm run lint` (eslint-config-next) not run: npm unreachable | `frontend-checks.log` |
-| 1.4 | Nine business workflows | `tests/integration/test_business_workflows.py` | 10 passed (one per area plus missing-data) | `backend-junit.xml` |
-| 1.5 | Data onboarding, every dataset | `tests/integration/test_data_onboarding.py`, `tests/unit/test_import_docs.py` | 20 + 3 passed | `backend-junit.xml` |
-| 1.6 | Qualified-live guard | `tests/integration/test_qualified_live_guard.py` | 20 passed | `backend-junit.xml` |
-| 1.7 | Signed-proxy requirement (Netlify) | `tests/sql/test_http_security.py::test_signed_proxy_requirement` | passed: good token accepted; wrong key, expired, wrong issuer, `alg=none`, malformed and missing rejected with 403; liveness exempt; short secret refused; secret redacted | `backend-junit.xml` |
-| 1.8 | Earlier protections (status chronology and freshness, publication dates, relevance, announced vs open, geography, eligibility) | earlier suites | unchanged and passing | `backend-junit.xml` |
-| 1.9 | Migrations, upgrade path, backup/restore | `alembic upgrade head` on an empty database; re-run; non-empty refused; `pg_dump`/`pg_restore`; `wfc_0002` → … → `wfc_0010` → head | Head `wfc_0010` (89 tables, 249 countries, 31 regions, 0 re-check jobs on a fresh install). Re-run a no-op. Non-empty database refused. Dump and restore at `wfc_0010`. Every step exits 0; head from `wfc_0010` changes nothing (no migration in this release). | `migrations.log`, `migration-upgrade-path.log` |
-| 1.10 | Container stack smoke test (PostgreSQL, migrate, API, worker, web containers) | `tools/docker_substitute/run.sh` | Build and `up --wait` exit 0. `/health/ready` reports release `3.7.0-wfc.9` and `wfc_0010`. 401 unauthenticated; login and briefing 200; security headers present; jobs succeed after a worker restart. | `docker-substitute/report.txt` |
-| 1.11 | Authenticated browser journeys, container stack | `tools/docker_substitute/run_e2e.sh` | **28 passed** (6 min 32 s), including new journey L | `container-journeys/` |
-| 1.12 | Authenticated browser journeys, process stack | `tools/run_journeys.sh` | **28 passed** (6 min 20 s). No page errors; the console shows only the four expected 401 responses of signed-out session checks, as in 3.6.0-wfc.8 | `browser/` (screenshots 40–43 for journey L) |
-| 1.13 | Evaluation regression, all eight sets | `python -m evaluation.run --split …` | Every report identical to 3.6.0-wfc.8 (extraction rules unchanged) | `evaluation/` |
-| 1.14 | Access checks (recorded, not retried around) | registry `curl`, `docker pull`, `gh auth status`, repository listing | npm and PyPI hosts do not resolve; Docker Hub returns 403; the GitHub token is invalid; the session's repository list is empty; `ANTHROPIC_API_KEY` is not set (28 Oct, 07:26 UTC) | `access-check.log`, `real-image-attempt.log` |
+| 1.1 | Lock gate | `tools/check_locks.sh` | **Passed**: the three locks are present and hashed (`locks OK`) | `lock-gate.log` |
+| 1.2 | Python lint, types, secret scan | `ruff check app tests ../e2e ../tools`, `mypy app`, `tools/secret_scan.py` | ruff 0 findings; mypy 0 errors (78 files); secret scan 0 findings | `static-checks.log` |
+| 1.3 | Backend tests on PostgreSQL | `pytest -q -rs tests` | **1220 passed, 0 failed, 0 skipped (9 min 4 s)**, up from 1147 | `backend-pytest.log`, `backend-junit.xml` |
+| 1.4 | Research, attribution, identity, coverage | `tests/integration/test_relationship_research.py`, `tests/domain/test_attribution.py` | 11 + 20 passed | `backend-junit.xml` |
+| 1.5 | Migration `wfc_0012` on existing data; idempotent | `tests/sql/test_migration_0012.py` | passed | `backend-junit.xml` |
+| 1.6 | TypeScript type check and bundle; lint rules; ESLint 10 | `node verify/build.mjs`, `verify/lint.mjs`, `verify/eslint-core.mjs` | type check passed (46 files, 28 pages); bundle built; 0 lint findings; 0 ESLint problems. The real `next lint` / `next build` with the locked versions ran only in the repository's CI (28 Oct, on 3.7.0-wfc.9): passed | `frontend-checks.log` |
+| 1.7 | Migrations, upgrade path, backup/restore | empty database; re-run; non-empty refused; dump/restore; `wfc_0002` → … → `wfc_0011` → head | Head `wfc_0012` (99 tables, 249 countries, 31 regions, 0 re-check jobs). Re-run a no-op. Non-empty database refused (the expected `exit 1`). Dump and restore at `wfc_0012`. Every upgrade step exits 0, including `wfc_0011` → `wfc_0012` | `migrations.log`, `migration-upgrade-path.log` |
+| 1.8 | Browser journeys, process stack | `tools/run_journeys.sh` | **30 passed (7 min 50 s), including new journey N; no page errors; the console shows only the four expected 401 responses of signed-out session checks** | `browser/` (screenshots `N1`–`N6`, `M1`–`M10`) |
+| 1.9 | Container stack smoke test | `tools/docker_substitute/run.sh` | Build and `up --wait` exit 0. `/health/ready` reports release `4.1.0-wfc.11` and `wfc_0012`. 401 unauthenticated; login and briefing 200; security headers present; jobs succeed after a worker restart | `docker-substitute/report.txt` |
+| 1.10 | Browser journeys, container stack | `tools/docker_substitute/run_e2e.sh` | **30 passed (8 min 12 s), including journey N** | `container-journeys/` |
+| 1.11 | Extraction evaluation regression, all eight sets | `python -m evaluation.run --split …` | Every summary table and every per-case result identical to 4.0.0-wfc.10 (the extraction rules did not change) | `evaluation/` |
+| 1.12 | Attribution evaluation (authored and held-out) | `tools/research_eval.py` | section 5 | `evaluation-people/` |
+| 1.13 | Access checks | registries, `docker pull`, keys, push dry run | npm and PyPI do not resolve; Docker Hub 403; GitHub token invalid; `ANTHROPIC_API_KEY` and `SEARCH_API_KEY` not set; push to the repository refused (403: the Claude GitHub App is not installed for it); 28 Oct, 16:43 UTC | `access-check.log`, `real-image-attempt.log` |
 
-During development the first journey run failed `test_03`, `test_04`, `test_08` and `test_l`: the new dataset rules on
-the import screen also contain the word "committed", which made the journeys' text selector ambiguous, and the later
-failures followed from the setup import stopping. The journeys now wait for the confirmation by its status role. Both
-complete runs above are on the verified commit.
+**Defects found while building this release, all fixed and tested:**
+- **A name could absorb a place or title.** "Country Manager Uganda Paul Ssenyonga" produced a person called "Uganda
+  Paul Ssenyonga", and "President Lars Holm" a person whose name began with a title. Names now never start or end with
+  a country name, never start with a title word, and never start inside a known organisation name. Seen in the
+  screenshot review; regression test added.
+- **A title's function was read as an organisation.** "Head of Procurement, Example Port Authority" bound the title
+  "Head" and the organisation "Procurement". After "of" or "for", a capitalised phrase now stays part of the title
+  unless it is a known organisation or reads as one. Found in the second held-out run (section 5); regression test
+  added.
+- **One mention could become two records.** The rules quote a whole sentence, while the AI extractor may quote part of
+  it, so a single mention produced two person records. The same passage quoted more or less fully is now one mention.
+- **Organisation label mismatch.** An organisation recorded as a label equal to an organisation record's name did not
+  count as the same organisation. It now does.
+- **Navigation links were invisible to research.** The page reader excluded links in navigation, header and footer,
+  which is where leadership and newsroom links usually sit. They are now collected separately for research only.
+- **Confirmations disappeared.** The research-pages confirmation vanished when its form closed. On the Relationships
+  page, the duplicate review's confirmation vanished when the last pair was resolved, because the page swapped in an
+  empty panel; the first clean verification run's journey N failed on this race. Both now stay visible.
+- **Run summaries read badly.** "0 findings" after a continued run was misleading, and a person whose only evidence is
+  an incoming title showed as "role not established". Both are now worded accurately.
 
 ## 2. Failed checks
 
 | Check | Result | Why | What makes it pass |
 |---|---|---|---|
-| Lock gate `tools/check_locks.sh` on the clean export | **Failed** (exit 1): the three lock files are MISSING | They cannot be generated here (section 4). The gate is working and correctly reports failure. | Commit the lock files generated by the `commit-locks` workflow in your repository. |
-| `docker pull python:3.13-slim`, `node:22-alpine`, `postgres:16-alpine` | **Failed** (×3): Docker Hub 403 | The official base images cannot be fetched from this session. | The CI `docker` job on a host with registry access. |
+| `docker pull python:3.13-slim`, `node:22-alpine`, `postgres:16-alpine` | **Failed** (×3): Docker Hub 403 | Official images cannot be fetched from this session | The repository's CI `docker` job |
+| CI run 40655396285 (28 Oct, 3.7.0-wfc.9 + locks), jobs `backend-static`, `backend-postgres` | **Failed** at "download artifact python-locks" | Workflow defect: the artifact came only from `commit-locks`, which is skipped once locks are committed | Fixed in this release's `ci.yml` (steps removed) |
+| Same run, job `docker` | **Failed** at "Build and start … from the committed locks" | Cause not readable from this session: log downloads are blocked here | This release's CI publishes the failure as an annotation; re-run on push |
+| Same run, job `security` | **Failed** at the pip-audit step (findings in the locked Python dependencies) | Which advisories is not readable from this session | This release's CI annotates the findings; review them, then upgrade the pins or record dated exceptions in `tools/audit_exceptions.py` |
 
 ## 3. Simulated checks (not production evidence)
 
 | What was simulated | Stand-in | Used by | What the result does **not** show |
 |---|---|---|---|
-| AI provider | `tools/fake_ai_provider.py`; the evaluation harness's scripted extractor; scripted model replies in integration tests | 1.2, 1.10–1.13 | the configured AI extractor's quality or cost |
-| Public sources | the synthetic fixture site; authored evaluation notices; genuine notices reconstructed from captured text | 1.2, 1.11–1.13 | retrieval from live portals |
-| WFC data | synthetic CSV imports (invented forwarders, lanes, agreements, stations, events) | 1.4–1.6, journeys | WFC's actual figures |
-| Next.js server | the verification bundle (real page components, esbuild and Next shims), not `next start` | 1.10–1.12 | the real `next build` output and server |
-| Official container base images | substitutes from this host's Python, Node and PostgreSQL, same Dockerfile layout, user, ports and health checks | 1.10, 1.11 | official image builds and installation from hash locks |
-| Production configuration | container runs use `ENVIRONMENT=development` | 1.10, 1.11 | the production start-up refusals (unit-tested only) |
+| Company websites, press pages, notices | synthetic fixture site (`backend/tests/fixtures/site/sea-company`, `sea-press`, `people`); synthetic pages in tests | 1.3, 1.4, 1.8, 1.10 | retrieval from real sites, their layouts and wording |
+| Web search | fixture stand-in for the Brave Search API (`/search-api/…`); a scripted transport in tests | 1.4, 1.8, 1.10 | real search results |
+| AI provider (extraction and people reading) | `tools/fake_ai_provider.py`; scripted transports | 1.3, 1.8, 1.10, 1.11 | the configured extractor's quality and cost |
+| Next.js server and official images | verification bundle; substitute images | 1.8–1.10 | `next start` and official builds from the locks |
 
-## 4. Unexecuted checks, with the exact dependency for each
+## 4. Unexecuted checks and outstanding external dependencies (precise)
 
-| Check (item) | Missing dependency | How it gets done |
+| Check | Missing dependency | How it gets done |
 |---|---|---|
-| **Generate, verify and commit `frontend/package-lock.json`, `backend/requirements.lock`, `backend/requirements-dev.lock`; clean install; release gate** (1) | **Your GitHub repository (`owner/repo`), attached to this session with push access.** Re-checked 28 Oct: registries unreachable, GitHub token invalid, repository list empty. Requested before and not supplied. No lock was written by hand. | Attach the repository and push `wfc/spec-completion-2026-10-28`. Run `commit-locks` (generates the locks constrained to `backend/requirements.verified.txt`, installs from them with `--require-hashes`, `pip check`, `npm ci`, `tsc --noEmit`, runs `tools/check_locks.sh`, opens a PR). Merge it. |
-| **Official PostgreSQL, API, worker and real Next.js stack; journeys A–L; production configuration** (1) | Docker Hub and npm, through the same repository's CI | CI `docker` and `e2e` jobs after the locks are merged; artefacts kept with `if: always()`. |
-| `npm run lint` (eslint-config-next), `next build`, `npm audit`, `pip-audit` | npm, PyPI | CI `frontend` and `security` jobs |
-| **Configured AI extractor on originals; capped country discovery measured against manual review** (4) | `ANTHROPIC_API_KEY`, `AI_MODEL` and prices as a server-side secret; a named authorised source; a budget cap. The answer given was "Not available now". | `tools/live_trial.py` (`docs/DEPLOYMENT.md` §5), then `python -m evaluation.run --split heldout7 --extractor configured`. A reviewer fills `comparison.csv`. |
-| **Live WFC adapters** (5) | Per adapter: system and API documentation, a change feed, the field dictionary, a read-only test credential, written authorisation (`docs/CONNECTORS_AND_DATASETS.md`) | Implement each adapter against the supplied interface with checkpoints, retries, idempotent upserts, reconciliation, health and freshness. |
-| **Netlify deployment** (7) | A Netlify site, an HTTPS API host, and the shared `PROXY_SIGNATURE_SECRET` | `docs/DEPLOYMENT.md` §8, including the post-deploy checks. |
-| Push the branch and open the pull request | the repository | `PULL_REQUEST.md` (base `wfc/amendments-2026-10-27c`) |
+| **CI on 4.1.0-wfc.11: clean install from the locks, backend on PostgreSQL, real Next.js build and journeys against `next start`, container stack, audits** | **Push access for this session to `woodta82/VECTACONNECT-ATLASWFC`** (install the Claude GitHub App for the repository), or a person pushing the branch | Push branch `wfc/relationship-research-2026-10-28` (prepared on top of the repository's `main`). CI runs on push; failures are annotated on the run. |
+| **pip-audit findings** (the 28 Oct run failed the Python audit) | The findings themselves (readable on that run's page) | Upgrade the affected pins in `backend/requirements.verified.txt` and regenerate the locks, or record reviewed, dated exceptions |
+| **Docker job failure** of the 28 Oct run | The job's log (readable on that run's page) | Re-run on the new release; the cause is now published as an annotation |
+| **Relationship research on real public sources** | Authorised sources, the deployment, optionally `SEARCH_PROVIDER=brave` with `SEARCH_API_KEY` on the api | `tools/live_trial.py` (find an opportunity), then `tools/live_research_trial.py` (research it, write `review.csv`); a reviewer marks each binding against the original |
+| **Configured AI extractor evaluated on original documents** | `ANTHROPIC_API_KEY`, `AI_MODEL`, prices on api and worker; a budget | as above (the trial uses the extractor when connected); `tools/research_eval.py --fetch` for attribution on original pages |
+| **Authorised LinkedIn integration** | A LinkedIn API agreement or Sales Navigator licence, and WFC's decision to use it | Until then, search links plus profiles a person confirms |
+| **Deployment** | Railway and Supabase projects | `docs/DEPLOY_RAILWAY_SUPABASE.md` |
 
-## 5. Evaluation: scripted extractor, kept separate from real extraction
+## 5. Evaluations (authored text and scripted extractor; not real-world accuracy)
 
-The harness (`backend/evaluation/`) runs each case through the production pipeline on a fresh database with a **scripted
-extractor** that returns each case's prepared proposals, correct and incorrect alike. The figures measure the
-application's rules; they are **not** real extraction results, and there are **no real-provider results** in this
-release.
+**Who holds which role** (`tools/research_eval.py`, rules only):
 
-This release did not change the extraction or evidence rules, so no new held-out set was created. All eight sets were
-re-run on the verified commit as a regression, and every report is identical to 3.6.0-wfc.8:
+| Set | Provenance | People precision | People recall | Titles correct | Status correct | Organisations correct | Unsupported kept unresolved | Wrong bindings |
+|---|---|---|---|---|---|---|---|---|
+| Authored (tuning) | written during development; rules adjusted on it | 21/21 | 21/21 | 20/20 | 20/20 | 19/19 | 5/5 | 0 |
+| First held-out, now tuning | run once, then used for changes | 14/14 | 14/16 | 14/14 | 14/14 | 13/13 | 5/5 | 0 |
+| Second held-out, now tuning | run once, then one fix (below) | 11/11 | 11/13 | 11/11 | 11/11 | 10/10 | 5/5 | 0 |
 
-| Set | Cases | Opp. precision | Opp. recall | Actionable precision | Actionable recall | Field acc. | False 'supported' |
-|---|---|---|---|---|---|---|---|
-| heldout7 | 14 | 8/8 | 8/8 | 4/4 | 4/4 | 38/38 | 0/1 |
-| heldout6 | 17 | 16/16 | 16/16 | 6/6 | 6/6 | 77/77 | 0/5 |
-| heldout5 | 18 | 7/7 | 7/7 | 6/6 | 6/6 | 35/35 | 0/10 |
-| heldout4 | 10 | 7/7 | 7/7 | 7/7 | 7/7 | 35/35 | 0/7 |
-| heldout3 | 20 | 16/16 | 16/16 | 13/13 | 13/13 | 78/80 | 0/15 |
-| heldout2 | 12 | 8/8 | 8/8 | 8/8 | 8/8 | 32/32 | 0/15 |
-| genuine (reconstructed) | 19 | 7/7 | 7/7 | 1/1 | 1/1 | 34/35 | 0/41 |
-| tuning | 32 | 23/23 | 23/23 | 23/23 | 23/23 | 92/92 | 0/36 |
+Notes:
+- "People recall" counts people a case names without any title or organisation. Research deliberately records no one
+  without a binding, so those count as missed by design.
+- **First held-out run, once:** precision 8/9 (one false person, "Revenue Management"). Recall: people 8/16, titles
+  8/14, organisations 7/13. Zero wrong bindings. The rules were then extended, and that set became tuning.
+- **Second held-out run, once:** people precision 11/11. One case bound a wrong title ("Head") and organisation
+  ("Procurement"). The first evaluator did not count this; strictly, it was 1 wrong binding. It was fixed afterwards,
+  and the run-once report carries the correction.
+- The run-once reports are kept as `backend/evaluation/results/*-run-once.*`.
 
-These are small, authored or reconstructed samples. They do not show coverage of any country or of the world.
+**Extraction regression** (scripted extractor, all eight sets): every summary table and every per-case result is identical to 4.0.0-wfc.10.
 
-## 6. Known limitations and open questions for WFC
+## 6. Known limitations
 
-- **Provisional thresholds and ordering rules.** Capacity (85% / 50% utilisation, ±10% demand), technology (5 sessions,
-  20% booking rate, 3 failures), the 90-day dormancy window and every ranking rule are labelled provisional until WFC
-  confirms them or outcomes are available to calibrate them.
-- **Company-wide capability** (no station) counts as coverage in every territory for network gaps. A capability WFC
-  holds only in some countries should be recorded with its station.
-- **Netlify proxy limit.** Netlify ends proxied requests after 26 seconds; very large import previews (up to 20 MB)
-  may need splitting.
-- **Carried over:**
-  - reopening needs explicit, dated wording;
-  - `NOTICE_AGE_REVIEW_DAYS` (90) is a build default, not an agreed policy;
-  - `backend/Dockerfile` copies `tests/` into the image;
-  - migrations have no downgrade: restore from backup.
+- **Research is bounded per run.** 15 pages and 6 AI sections per run; Continue research reads the rest. A followed
+  news item is read but not followed further. Search reads 5 results for each of up to 6 queries.
+- **Constructions not yet bound.** Titles stated far from the name, in tables, or across sentences stay unresolved and
+  the person is not recorded. This is the cautious side: a reviewer can add the person. See the held-out cases above.
+- **Search is only as good as its index.** Only the Brave Search API is implemented.
+- **Carried over:** the priority order is provisional; migrations have no downgrade; `backend/Dockerfile` copies
+  `tests/` into the image.
 
 ## 7. Delivery contents
 
-- `atlas-wfc/`: the repository with `.git` (all branches), plus `atlas-wfc.bundle` and `RELEASE-COMMIT.txt`.
-- `evidence/`:
-  - static, backend, frontend, migration and lock-gate logs;
-  - `docker-substitute/`, `container-journeys/`, `browser/`;
-  - `evaluation/`: current reports for every set, the earlier run-once sets, and `previous/` (release 3.6.0-wfc.8 and
-    earlier runs);
-  - `live-trial-dry-run/`, `access-check.log`, `real-image-attempt.log`, `verified-commit.txt`,
-    `clean-verification-script.sh`.
-- The data is synthetic, authored, or captured from public notices as recorded. The only credentials are the documented
-  local-verification defaults, and the evidence was checked to make sure they do not appear in it.
+- **Source ZIP** `atlas-wfc-4.1.0-wfc.11-source.zip`: the repository at the release commit (no `.git`), including the
+  lock files, ready to push.
+- **Evidence ZIP**: logs, browser screenshots, evaluations, `RELEASE-COMMIT.txt`, the verification script.
+- **Prepared branch**: `wfc/relationship-research-2026-10-28` in a clone of `woodta82/VECTACONNECT-ATLASWFC`, one commit
+  on top of its `main`. It is not pushed (no access).

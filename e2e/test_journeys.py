@@ -93,6 +93,9 @@ def field(page: Page, prefix: str, tag: str = "select"):
 
 
 def go(page: Page, path: str) -> None:
+    # Opportunity records keep their validation detail in a collapsed section; these journeys check it, so open it.
+    if re.match(r"^/opportunities/[0-9a-f-]{36}$", path):
+        path += "?detail=technical"
     page.goto(f"{BASE}{path}")
     page.wait_for_load_state("networkidle")
 
@@ -115,20 +118,15 @@ def test_01_login_identity_and_shared_session(page: Page):
     page.get_by_role("button", name=re.compile("Sign in")).click()
     expect(page.get_by_role("navigation", name="Sections")).to_be_visible()
     nav_el = page.get_by_role("navigation", name="Sections")
-    nav = nav_el.inner_text().lower()     # group headings are styled upper-case
-    # Progressive disclosure: the primary path is visible; every other capability is one click away in a named group.
-    for item in ("Briefing", "Discover", "Opportunities", "Accounts", "Specialist areas", "Evidence and data", "Administration"):
-        assert item.lower() in nav, item
-    assert "capability areas" not in nav                                   # collapsed until asked for
-    for group in ("Specialist areas", "Evidence and data", "Administration"):
-        nav_el.get_by_role("button", name=group).click()
+    # Primary sections (28 Oct 2026 refocus, plus the Control panel of 29 Oct 2026); technical and WFC-data tools are reached from Settings.
+    links = [x.strip() for x in nav_el.get_by_role("link").all_inner_texts()]
+    assert links == ["Overview", "Control panel", "Opportunities", "Discover", "Relationships", "Settings"], links
     nav = nav_el.inner_text()
-    for item in ("Evidence Review", "Capability Areas", "Trade Lanes and Capacity", "Service Intelligence", "Group Capabilities",
-                 "Relationships", "Network Development", "Reports", "Public Sources", "Data Sources and Imports", "Settings"):
-        assert item in nav, item
+    for retired in ("Capability Areas", "Trade Lanes", "Service Intelligence", "Data Sources and Imports", "Evidence Review"):
+        assert retired not in nav, retired
     for line in BRAND:
         assert line in page.inner_text("aside"), line
-    shot(page, "02-briefing-empty")
+    shot(page, "02-overview-empty")
 
 
 # ------------------------------------------------------------------ 2. budget and kill switch
@@ -357,6 +355,7 @@ def test_08_scope_owner_qualify_and_progress(page: Page):
 # ------------------------------------------------------------------ 8. pipeline, export, reports
 def test_09_pipeline_filters_and_export(page: Page):
     go(page, "/opportunities")
+    page.get_by_role("group", name="Geography").get_by_role("button", name="Countries").click()
     box = page.get_by_role("combobox", name="Countries")
     box.fill("Kenya")
     box.press("Enter")
@@ -364,7 +363,7 @@ def test_09_pipeline_filters_and_export(page: Page):
     expect(page.get_by_role("link", name=re.compile("EXA-CGO-2026-014"))).to_be_visible()
     shot(page, "15-opportunities-kenya")
     with page.expect_download() as dl:
-        page.get_by_role("link", name="Export CSV").click()
+        page.get_by_role("link", name="Technical export (CSV)").click()
     path = dl.value.path()
     csv = Path(path).read_text()
     assert "EXA-CGO-2026-014" in csv and "KE" in csv

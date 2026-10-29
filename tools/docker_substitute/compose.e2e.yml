@@ -1,6 +1,6 @@
 # Overlay for running the authenticated browser journeys (e2e/) against the container stack.
 #   docker compose -f compose.yml -f compose.e2e.yml up -d --wait
-# Adds the SYNTHETIC fixture site and the SIMULATED AI provider as containers, points the API and worker at them,
+# Adds the SYNTHETIC fixture site (with its SIMULATED search stand-in) and the SIMULATED AI provider as containers, points the API and worker at them,
 # uses the journeys' shared login, and publishes the web (3000) and database (127.0.0.1:5434) ports for the tests.
 # Verification only: development environment, private fixture host allowed, simulated provider. Never for production.
 services:
@@ -28,6 +28,10 @@ services:
       AI_PRICE_INPUT_PER_MTOK: "3"
       AI_PRICE_OUTPUT_PER_MTOK: "15"
       AI_API_BASE_URL: http://ai_stub:8090
+      # SIMULATED search connector: the fixture site's stand-in for the Brave Search API
+      SEARCH_PROVIDER: brave
+      SEARCH_API_KEY: local-stub-search-key-not-real
+      SEARCH_API_BASE_URL: http://fixture:8089/search-api
   api: *e2e_env
   worker: *e2e_env
   web:

@@ -31,14 +31,55 @@ Supported upgrade rehearsal for later revisions: restore last production backup 
 
 ## Later revisions
 
-**Release 3.7.0-wfc.9 adds no migration.** The head stays `wfc_0010`; nothing in the schema changed. To upgrade from
-3.6.0-wfc.8: back up, deploy the new images, and run `alembic upgrade head` as usual (a no-op; `/health/ready` reports
-`wfc_0010`). An installation on an earlier release follows the steps of each revision below, in order.
+**Release 4.1.0-wfc.11 adds `wfc_0012`** (complete, evidence-backed relationship research; additive and idempotent).
+Upgrade from 4.0.0-wfc.10: back up, deploy the new images, run `alembic upgrade head` (the `migrate` service does this),
+then check `/health/ready` reports `wfc_0012`. No worker job is queued. From an earlier release, apply each revision below
+in order (`alembic upgrade head` does this).
+
+### What wfc_0012 does to existing data (migration summary)
+
+| Existing data | After the upgrade |
+|---|---|
+| People with a recorded title | Kept unchanged. Each title also becomes an evidence-backed role row marked "recorded before the 28 Oct 2026 evidence rules", with no passage attached, so it is never mistaken for a sourced binding. Its affiliation is "works at the organisation" only when an organisation was recorded with it |
+| People who share a name | Kept. Every pair whose organisation is unknown on at least one side, or differs, becomes a **possible duplicate** for review. **Nothing is merged** |
+| Earlier research runs | Kept; their outcome is recorded as **incomplete** (they read only the opportunity's documents and fixed company-page addresses), never as "no people found" |
+| Evidence, relationships, routes, engagements, opportunities, history | Unchanged |
+
+New: organisation research pages (`newsroom_url`, `leadership_url`); `research_documents` (every document or page research
+read, skipped or could not fetch, with sections read by the rules and by the AI extractor); research outcome, coverage and
+searches on each run; evidence of an organisation binding and evidence from research documents; `person_roles`;
+`people.merged_into_id`; `person_duplicate_candidates`; `person_merges` (every moved row listed, so a merge can be undone).
+The views `person_state` and `opportunity_relationship_coverage` no longer count merged records. Re-running the file
+changes nothing (`tests/sql/test_migration_0012.py`).
+
+**Release 4.0.0-wfc.10 adds `wfc_0011`** (relationship intelligence; additive and idempotent). Upgrade from
+3.6.0-wfc.8 or 3.7.0-wfc.9: back up, deploy the new images, run `alembic upgrade head` (the `migrate` service does this),
+then check `/health/ready` reports `wfc_0011`. No worker job is queued; nothing needs re-checking. An installation on an
+earlier release follows the steps of each revision below, in order.
+
+### What wfc_0011 does to existing data (migration summary)
+
+| Existing data | After the upgrade |
+|---|---|
+| Opportunities | All kept, with their evidence, checks and history. New `record_type`: `commercial` when the opportunity came from WFC's own records (`origin_ref`), otherwise `tender`. New `progress` from the earlier stage: new → New; reviewing, qualified → Reviewing; pursuing, proposal, negotiation → Pursuing; deferred → On hold; won, lost, expired → Closed (with that word kept as the closed reason). The earlier `commercial_stage` value and its history stay unchanged |
+| Opportunity owners | The owner's name is copied to the new descriptive `owner_label`; the link to the person record is kept |
+| Contacts imported from WFC relationship records | Kept; marked `origin = import` and treated as identity confirmed, with that basis recorded ("Imported from WFC relationship records before the 28 Oct 2026 upgrade") |
+| Contacts with recorded engagements | Kept; one existing-relationship record is created whose basis is that history ("N engagement(s), latest YYYY-MM-DD"), so they show as existing relationships |
+| Contacts added by hand | Kept; they are research candidates until a person confirms them (nothing is assumed) |
+| Internal people (WFC staff) | Kept; never shown as research targets |
+| Engagements | All kept; new optional fields: recorded by, outcome, next step |
+| Signals, documents, claims, imports, audit | Unchanged |
+
+New tables: `opportunity_notes`, `person_evidence`, `opportunity_people`, `person_relationships`, `introduction_routes`,
+`relationship_research_runs`; views `person_state` and `opportunity_relationship_coverage`. Re-running the file changes
+nothing (`tests/sql/test_migration_0011.py`).
 
 | Revision | File | Contents |
 |---|---|---|
 | `wfc_0002` | `sql/wfc_0002_directive.sql` | Directive of 26 Oct 2026: discovery, sources, schedules, tender identity, per-field claims, review workflow, capability areas, import datasets. |
 | `wfc_0004` | `sql/wfc_0004_amendments.sql` then `sql/wfc_0004_legacy_deadlines.sql` | Amendments of 26 Oct 2026, additive: `read_progress` and status `incomplete` (complete reading in sections; long documents an earlier version marked read become `incomplete`); claim-field support `review_required`; `status_contradiction`; `discovery_link_queue`; job type `deadline_revalidation`. The second file (idempotent) takes every legacy deadline out of "exact" status — 00:00 UTC or local midnight becomes date-only, any other time a local time with the recorded zone as an assumption — and queues one revalidation job when there is anything to revalidate. |
+| `wfc_0012` | `sql/wfc_0012_relationship_research.sql` | 28 Oct 2026 (second continuation: complete, evidence-backed relationship research), additive and idempotent. Research documents and their sectioned, resumable reading; research outcome, coverage and searches; organisation research pages; evidence binding a person to an organisation; evidence-backed roles (current, former, incoming; affiliation); possible duplicates and reversible merges. Carries existing values over as summarised above. |
+| `wfc_0011` | `sql/wfc_0011_relationship_intelligence.sql` | 28 Oct 2026 (refocus on discovery and relationship intelligence), additive and idempotent. Record types, the New/Reviewing/Pursuing/On hold/Closed progress flow, descriptive owner, saved flag, next action, notes; people research facts, evidence, opportunity links, existing relationships, introduction routes, research runs; derived views. Carries existing values over as summarised above. |
 | `wfc_0010` | `sql/wfc_0010_status_chronology_v7.sql` | 27 Oct 2026 (fifth instruction), additive and idempotent. Claim type `tender_context` (supporting information about an established tender, e.g. a contact update; never a status statement). Signal classification `historical_record` (a cancellation, award or closure of a tender that is not tracked: kept as intelligence, outside the actionable pipeline and the live counts). Validation rules v7. Queues one re-check job (`field-revalidation:wfc_0010`, payload `{"to_version": 7}`) when any live material-field assessment is below v7 or any live tender signal exists. The worker:
 - re-evaluates every live tender signal with the status chronology. Status follows the publication dates of status statements; retrieval never places one after another; a terminal status yields only to a dated, explicit reopening.
 - returns an opportunity that was open or actionable only because an undated notice was retrieved after a terminal statement to the terminal (or contradictory) status, and flags it `status_chronology_revalidated` (and `status_conflict`).
@@ -88,4 +129,4 @@ Rejected proposals stored by earlier releases (for example a passenger lot rejec
 | `wfc_0005` | `sql/wfc_0005_validation_version.sql` | Evening amendments of 26 Oct 2026, additive and idempotent: `claim_fields.validation_version` (rules that produced each field assessment; rows from before are version 1), `recheck_of` and `superseded_reason` (a re-check keeps the original row and links to it), `opportunities.review_flags`, history field `eligibility_evidence`, job type `eligibility_revalidation`. Queues one `eligibility_revalidation` job when any live eligibility assessment is below the current version (fresh installs queue nothing). The worker re-checks those assessments under validation rules v2 (relationship-level), supersedes changed ones, reopens claims whose 'supported' verdict was withdrawn (previous decision kept in `audit_events` and the claim note) and flags affected opportunities. **Upgrade steps:** back up; `alembic upgrade head`; start the worker; wait for the job to succeed (`SELECT status FROM jobs WHERE job_type = 'eligibility_revalidation'`); review the flagged opportunities in Evidence Review. |
 | `wfc_0003` | `sql/wfc_0003_review.sql` | Review of 26 Oct 2026, additive only: (1) deadline precision (`deadline_info`, earliest/latest bounds, backfill); (2) `partial` run-source/ingestion status and per-target `issues`; (3) cumulative per-run AI ceiling (`budget_root_id`, `budget_cap_usd`, `budget_reservations.run_id`, function `reserve_run_budget`); (4) publication-date provenance, `date_filter`, `coverage_cursor`; (5) partner-fit basis columns for invalidation and reassessment. |
 
-Each revision executes its SQL file; the PostgreSQL test suite applies the same files in order. `/health/ready` reports the expected revision (`wfc_0010`) and refuses readiness on a mismatch. No revision has a downgrade: restore from backup (`RESTORE_RUNBOOK.md`).
+Each revision executes its SQL file; the PostgreSQL test suite applies the same files in order. `/health/ready` reports the expected revision (`wfc_0012`) and refuses readiness on a mismatch. No revision has a downgrade: restore from backup (`RESTORE_RUNBOOK.md`).

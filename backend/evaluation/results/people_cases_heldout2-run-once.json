@@ -1,0 +1,186 @@
+{
+  "run_at": "2026-10-28T15:02:24.856181+00:00",
+  "provenance": "AUTHORED second held-out set, written on 28 Oct 2026 after the rule changes that followed the first held-out run, and run ONCE without changing any rule afterwards. Every organisation and person is invented. Authored text, not genuine documents: it does not measure real-world accuracy.",
+  "totals": {
+    "people_expected": 13,
+    "people_found": 11,
+    "people_matched": 11,
+    "roles_expected": 11,
+    "roles_found": 11,
+    "roles_correct": 10,
+    "orgs_expected": 10,
+    "orgs_found": 10,
+    "orgs_correct": 9,
+    "unresolved_expected": 5,
+    "unresolved_kept": 5,
+    "wrong_bindings": 0,
+    "status_checked": 10,
+    "status_correct": 10,
+    "cases": 12,
+    "cases_unread": 0
+  },
+  "cases": [
+    {
+      "id": "g01-two-appointments",
+      "read": true,
+      "found": [
+        {
+          "name": "Moses Kiprono",
+          "role": "Cargo Sales Manager Kenya",
+          "status": "current",
+          "organisation": "Highland Example Airways",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "g02-gssa-quote",
+      "read": true,
+      "found": [
+        {
+          "name": "Wanjiru Kamau",
+          "role": "Chief Executive Officer",
+          "status": "current",
+          "organisation": "Rift Example Logistics",
+          "affiliation": "other_organisation"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "g03-former-employer-mention",
+      "read": true,
+      "found": [],
+      "issues": []
+    },
+    {
+      "id": "g04-tender-contact-block",
+      "read": true,
+      "found": [
+        {
+          "name": "Samuel Kiptoo",
+          "role": "Head",
+          "status": "current",
+          "organisation": "Procurement",
+          "affiliation": "other_organisation"
+        }
+      ],
+      "issues": [
+        "Samuel Kiptoo: title 'Head of Procurement' not bound",
+        "Samuel Kiptoo: organisation 'Example Port Authority' not bound"
+      ]
+    },
+    {
+      "id": "g05-ceo-said-org-later",
+      "read": true,
+      "found": [
+        {
+          "name": "Daniel Rotich",
+          "role": "Chief Executive Officer",
+          "status": "current",
+          "organisation": null,
+          "affiliation": "unknown"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "g06-chair-of-board",
+      "read": true,
+      "found": [
+        {
+          "name": "Ibrahim Abdi",
+          "role": "Board Chairman",
+          "status": "current",
+          "organisation": "Example Port Authority",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "g07-retired-former",
+      "read": true,
+      "found": [
+        {
+          "name": "Margaret Wairimu",
+          "role": "Head of Cargo",
+          "status": "former",
+          "organisation": "Highland Example Airways",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "g08-partner-org-apposition",
+      "read": true,
+      "found": [
+        {
+          "name": "Peter Odhiambo",
+          "role": "General Manager",
+          "status": "current",
+          "organisation": "Lakeview Example Handling",
+          "affiliation": "partner"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "g09-listing-dash",
+      "read": true,
+      "found": [
+        {
+          "name": "Wanjiru Kamau",
+          "role": "Chief Executive Officer",
+          "status": "current",
+          "organisation": "Rift Example Logistics",
+          "affiliation": "employee"
+        },
+        {
+          "name": "Otieno Ouma",
+          "role": "Finance Director",
+          "status": "current",
+          "organisation": "Rift Example Logistics",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "g10-no-binding-attendees",
+      "read": true,
+      "found": [],
+      "issues": []
+    },
+    {
+      "id": "g11-interim",
+      "read": true,
+      "found": [
+        {
+          "name": "Ruth Chebet",
+          "role": "interim Managing Director",
+          "status": "current",
+          "organisation": "Example Port Authority",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    },
+    {
+      "id": "g12-is-role-at",
+      "read": true,
+      "found": [
+        {
+          "name": "Otieno Ouma",
+          "role": "Finance Director",
+          "status": "current",
+          "organisation": "Rift Example Logistics",
+          "affiliation": "employee"
+        }
+      ],
+      "issues": []
+    }
+  ]
+}

@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from decimal import Decimal
 from pathlib import Path
 
@@ -20,6 +21,7 @@ import pytest
 from playwright.sync_api import Browser, BrowserContext, Page, expect, sync_playwright
 
 BASE = os.environ.get("E2E_BASE", "http://127.0.0.1:3000")
+SITE = os.environ.get("E2E_FIXTURE_SITE", "http://127.0.0.1:8089")
 USER = os.environ.get("E2E_USER", "ops@wfc.example")
 PASSWORD = os.environ.get("E2E_PASSWORD", "Local-Verify-Pass-2026!")
 ART = Path(os.environ.get("E2E_ARTIFACTS", "e2e-artifacts")).resolve()
@@ -143,4 +145,325 @@ def test_l_onboarding_rules_capacity_recommendation_and_network_gap(page: Page, 
     row.get_by_role("button", name="Record for review").click()
     expect(row).to_contain_text("Recorded below")
     shot(page, "43-network-coverage-gap")
+    assert not [e for e in page.errors if "pageerror" in e], page.errors  # type: ignore[attr-defined]
+
+
+# ------------------------------------------------------------------ M. the intended journey (28 Oct 2026 refocus)
+def api(page: Page, path: str) -> dict:
+    r = page.request.get(f"{BASE}/api{path}")
+    assert r.ok, (path, r.status, r.text()[:300])
+    return r.json()
+
+
+def add_source(page: Page, name: str, url: str, countries: list[str], items: int) -> None:
+    go(page, "/sources")
+    page.get_by_role("button", name="Add source").click()
+    page.get_by_label("Name").fill(name)
+    page.get_by_label("Type").select_option("listing")
+    page.get_by_label("Authority").select_option("official_portal")
+    page.get_by_label("URL", exact=True).fill(url)
+    page.get_by_label("Language (BCP 47)").fill("en")
+    for c in countries:
+        box = page.get_by_role("combobox", name="Country coverage")
+        box.fill(c)
+        box.press("Enter")
+    page.locator("label.field", has_text=re.compile("^Items per run")).locator("input").fill(str(items))
+    page.get_by_label("Full-text retention permitted").check()
+    page.get_by_label("Enabled").check()
+    page.get_by_role("button", name="Add source", exact=True).last.click()
+    expect(page.get_by_role("link", name=name)).to_be_visible()
+
+
+def run_search(page: Page, mode: str, name: str, *, country: str | None = None, region: str | None = None) -> dict:
+    go(page, "/discovery")
+    page.get_by_role("button", name=mode, exact=True).click()
+    if country:
+        box = page.get_by_role("combobox", name="Country")
+        box.fill(country)
+        box.press("Enter")
+    if region:
+        page.get_by_label("Region").select_option(value=region)
+    page.get_by_label("Name (to save this search)").fill(name)
+    page.get_by_role("button", name="Search now").click()
+    page.wait_for_url(re.compile(r"/discovery/runs/"), timeout=15000)
+    run_id = page.url.rstrip("/").split("/")[-1]
+    deadline = time.time() + 240
+    while time.time() < deadline and api(page, f"/discovery/runs/{run_id}")["run"]["status"] in ("queued", "running"):
+        time.sleep(1.5)
+    page.reload()
+    page.wait_for_load_state("networkidle")
+    return api(page, f"/discovery/runs/{run_id}")["run"]
+
+
+def find_record(page: Page, q: str) -> dict:
+    items = api(page, f"/records?q={q}")["items"]
+    assert items, q
+    return items[0]
+
+
+def test_m_discover_understand_research_relate_track(page: Page):
+    """SIMULATED sources and AI provider (fixture site /people/, tools/fake_ai_provider.py). Shows the journey in the UI."""
+    go(page, "/settings")
+    page.get_by_label("Monthly cap (USD)").fill("20.00")
+    page.get_by_label("Warn at (USD)").fill("15.00")
+    page.get_by_label("Per-run cap (USD)").fill("5.00")
+    page.get_by_role("button", name="Save budget").click()
+    expect(page.get_by_text("Budget saved")).to_be_visible()
+    allow = page.get_by_role("button", name="Allow AI spend")
+    if allow.count():
+        allow.click()
+    expect(page.get_by_role("button", name="Block all AI spend")).to_be_visible()
+    add_source(page, "Savanna Example Air notices", f"{SITE}/people/", ["Kenya", "Uganda"], 10)
+
+    # 1. a country search finds a relevant opportunity; 4. its syndicated copy does not create a second one
+    run = run_search(page, "One country", "Kenya GSSA monitoring", country="Kenya")
+    assert run["status"] in ("completed", "partial"), run
+    ke = find_record(page, "SEA-CGO-2026-81")
+    assert ke["record_type"] == "tender" and ke["countries"] == ["KE"] and ke["tender_status"] == "open"
+    assert len(api(page, "/records?q=SEA-CGO-2026-81")["items"]) == 1
+    shot(page, "M1-country-run")
+
+    # 2. a regional search returns results with clear geography
+    region = run_search(page, "Region", "East Africa monitoring", region="EASTERN_AFRICA")
+    assert {"KE", "UG"} <= set(region["counts"]["coverage"]["planned"])
+    go(page, "/opportunities")
+    page.get_by_role("group", name="Geography").get_by_role("button", name="Region").click()
+    page.get_by_label("Region").select_option(value="EASTERN_AFRICA")
+    page.wait_for_load_state("networkidle")
+    table = page.get_by_role("region", name="Opportunities")
+    expect(table).to_contain_text("SEA-CGO-2026-82")
+    expect(table).to_contain_text("Uganda")
+    shot(page, "M2-opportunities-region")
+
+    # 3. worldwide discovery states its actual coverage
+    world = run_search(page, "Worldwide", "Worldwide monitoring")
+    text = page.inner_text("main").lower()
+    assert "worldwide" in text and "not a complete worldwide view" in (world["plan"].get("coverage_note") or "").lower()
+    shot(page, "M3-worldwide-coverage")
+
+    # Overview: the opportunity desktop, list and card views
+    go(page, "/")
+    expect(page.get_by_role("region", name="Priority opportunities")).to_contain_text("SEA-CGO-2026-81")
+    shot(page, "M4-overview")
+    page.get_by_role("group", name="View").get_by_role("button", name="Cards").first.click()
+    expect(page.get_by_label("Opportunity cards").first).to_be_visible()
+    shot(page, "M4b-overview-cards")
+
+    # 5. open the opportunity and research relationships
+    go(page, f"/opportunities/{ke['id']}")
+    for q in ("What is happening?", "Why could it matter to WFC?", "Which organisations are involved?", "Who appears relevant?",
+              "What existing relationship is recorded?", "Who could introduce us?", "What relationship information is missing?"):
+        expect(page.get_by_text(q, exact=True)).to_be_visible()
+    shot(page, "M5-opportunity-before-research")
+    page.get_by_role("button", name="Research relationships").click()
+    result = page.get_by_role("status", name="Research result")
+    expect(result).to_contain_text("Grace Achieng")
+    # 6. candidates carry their source and a targeted LinkedIn search, labelled as a search
+    people = page.get_by_role("region", name="Relevant people")
+    expect(people).to_contain_text("Grace Achieng")
+    expect(people).to_contain_text("Research candidate")
+    expect(people).to_contain_text("named as the contact for this notice")
+    expect(people.get_by_role("row").filter(has_text="Grace Achieng").get_by_role("link", name="Search LinkedIn")).to_have_attribute(
+        "href", re.compile(r"^https://www\.linkedin\.com/search/results/people/"))
+    expect(page.get_by_text(re.compile(r"These are searches, not contacts"))).to_be_visible()
+    shot(page, "M6-research-candidates")
+
+    # 7. confirm the person, save the checked profile, record an existing relationship
+    people.get_by_role("link", name="Grace Achieng").click()
+    page.wait_for_load_state("networkidle")
+    expect(page.get_by_role("region", name="Evidence").get_by_text(re.compile(r"Contact: Grace Achieng, Cargo Procurement Manager")).first).to_be_visible()
+    page.get_by_label("How was identity and role confirmed?").fill("Named as procurement contact in the RFP; the airline's procurement page lists her role")
+    page.get_by_role("button", name="Confirm identity and role").click()
+    expect(page.get_by_text("Identity and role confirmed").first).to_be_visible()
+    page.get_by_role("textbox", name=re.compile("Confirmed LinkedIn profile")).fill("https://www.linkedin.com/in/grace-achieng-example/")
+    page.get_by_role("button", name="Save profile").click()
+    expect(page.get_by_role("link", name="Confirmed profile")).to_be_visible()
+    form = page.get_by_label("Record an existing relationship")
+    form.get_by_label("Who at WFC holds it").fill("WFC Kenya commercial lead")
+    form.get_by_label("How it is known (basis)").fill("Worked together on the 2025 cargo sales agency review; meet quarterly")
+    form.get_by_role("button", name="Record relationship").click()
+    expect(page.get_by_text("Existing relationship").first).to_be_visible()
+    # the contact line does not name her employer, so research left the organisation open; the reviewer records it
+    details = page.get_by_label("Person details")
+    expect(details.get_by_label("Organisation")).to_have_value("")
+    details.get_by_label("Organisation").fill("Savanna Example Air")
+    details.get_by_role("button", name="Save details").click()
+    expect(page.get_by_text("Cargo Procurement Manager · Savanna Example Air")).to_be_visible()
+    # recording the relationship filled the owner; saving the details form must not clear it
+    expect(details.get_by_label("Relationship owner (descriptive)")).to_have_value("WFC Kenya commercial lead")
+    expect(page.get_by_text("No relationship owner recorded")).to_have_count(0)
+    shot(page, "M7-person-confirmed-relationship")
+
+    # an introduction: a possible route becomes available only with confirmed willingness
+    go(page, f"/opportunities/{ke['id']}")
+    page.get_by_role("button", name="Add a person").click()
+    add = page.get_by_label("Add a person")
+    add.get_by_label("Full name").fill("Peter Kamau")
+    add.get_by_label("Role or title").fill("Country Manager Kenya")
+    add.get_by_label("Organisation").fill("Savanna Example Air")
+    add.get_by_label("Why relevant").fill("Runs the airline's Kenya office (company website)")
+    add.get_by_role("button", name="Add", exact=True).click()
+    page.get_by_role("region", name="Relevant people").get_by_role("link", name="Peter Kamau").click()
+    page.wait_for_load_state("networkidle")
+    route = page.get_by_label("Add an introduction route")
+    route.get_by_label("Introducer", exact=True).fill("Former colleague now at a partner handler")
+    route.get_by_label("How the introducer knows them").fill("They worked together at the airline's Nairobi station until 2024")
+    route.get_by_role("button", name="Record possible route").click()
+    expect(page.get_by_text("Willingness to introduce not confirmed: a possible route only")).to_be_visible()
+    page.get_by_label("How was willingness confirmed?").fill("Introducer agreed by phone on 28 Oct to introduce us")
+    page.get_by_role("button", name="Mark Available").click()
+    expect(page.get_by_text("Introduction available").first).to_be_visible()
+    shot(page, "M7b-introduction-available")
+
+    # track progress
+    go(page, f"/opportunities/{ke['id']}")
+    page.get_by_role("group", name="Progress").get_by_role("button", name="Pursuing").click()
+    page.get_by_role("textbox", name="Next action", exact=True).fill("Ask Grace for the clarification deadline")
+    page.get_by_role("button", name="Save next action").click()
+    expect(page.get_by_text("Next action saved")).to_be_visible()
+    expect(page.get_by_text("Existing relationship").first).to_be_visible()
+    shot(page, "M7c-opportunity-after-research")
+
+    # 8. the Overview reflects the opportunity and relationship updates
+    go(page, "/")
+    expect(page.get_by_role("region", name="With a relationship or introduction")).to_contain_text("SEA-CGO-2026-81")
+    expect(page.get_by_role("region", name="Relevant people identified recently")).to_contain_text("Grace Achieng")
+    expect(page.get_by_role("region", name="Recent changes")).to_contain_text("Progress")
+    shot(page, "M8-overview-updated")
+
+    # a market signal tracked as a commercial opportunity, and researched
+    sig = next(r for r in api(page, "/records?types=market_signal")["items"] if "Savanna" in (r.get("organisation") or r["title"]))
+    go(page, f"/signals/{sig['id']}")
+    expect(page.get_by_text("ATLAS interpretation (not a source fact)")).to_be_visible()
+    expect(page.get_by_text(re.compile("No open tender or procurement is confirmed"))).to_be_visible()
+    shot(page, "M9a-market-signal")
+    page.get_by_role("button", name="Track as a commercial opportunity").click()
+    page.wait_for_url(re.compile(r"/opportunities/"), timeout=15000)
+    page.get_by_role("button", name="Research relationships").click()
+    expect(page.get_by_role("region", name="Relevant people")).to_contain_text("Daniel Mwangi")
+    shot(page, "M9b-commercial-opportunity-researched")
+
+    # 9. a cancellation updates the opportunity and keeps the relationship history
+    add_source(page, "Savanna Example Air updates", f"{SITE}/people-later/", ["Kenya"], 10)
+    run_search(page, "One country", "Kenya GSSA re-check", country="Kenya")
+    after = find_record(page, "SEA-CGO-2026-81")
+    assert after["tender_status"] == "cancelled" and after["coverage"] == "existing_relationship", after
+    go(page, f"/opportunities/{ke['id']}")
+    expect(page.get_by_text("Cancelled").first).to_be_visible()
+    expect(page.get_by_text(re.compile(r"this tender is cancelled: it cannot be bid for as announced"))).to_be_visible()
+    expect(page.get_by_role("region", name="Relevant people")).to_contain_text("Grace Achieng")
+    expect(page.get_by_role("region", name="Existing relationships")).to_contain_text("Grace Achieng")
+    shot(page, "M10-cancelled-relationships-kept")
+    go(page, "/")
+    expect(page.get_by_role("region", name="Upcoming deadlines")).not_to_contain_text("SEA-CGO-2026-81")
+    brief = page.request.get(f"{BASE}/api/opportunities/{ke['id']}/export.md").text()
+    assert "Grace Achieng" in brief and "Cancelled" in brief and "has been sent" in brief
+    (ART / "opportunity-brief-SEA-CGO-2026-81.md").write_text(brief)
+    assert not [e for e in page.errors if "pageerror" in e], page.errors  # type: ignore[attr-defined]
+
+
+# ------------------------------------------------------------------ N. complete, evidence-backed relationship research (28 Oct 2026, continuation)
+def test_n_research_follows_sources_binds_roles_reports_coverage_and_reviews_duplicates(page: Page):
+    """SIMULATED: the company site, the press page and the search provider are fixture stand-ins; the AI provider is simulated."""
+    ug = find_record(page, "SEA-CGO-2026-82")
+    go(page, f"/opportunities/{ug['id']}")
+    # 1. research pages recorded for the organisation; research follows its own links from there
+    page.get_by_role("button", name="Research pages for Savanna Example Air").click()
+    form = page.get_by_label("Research pages for Savanna Example Air")
+    form.get_by_label("Website").fill(f"{SITE}/sea-company/")
+    form.get_by_role("button", name="Save research pages").click()
+    expect(page.get_by_text("Research pages saved")).to_be_visible()
+    # 2. a document the team adds (pasted text)
+    add = page.get_by_label("Add a page or document for research")
+    add.get_by_label("Title (optional)").fill("Uganda air cargo outlook 2026")
+    add.get_by_label("Or paste the document text").fill(
+        "Uganda air cargo outlook 2026 (market report). Savanna Example Air's Head of Cargo Daniel Mwangi said Uganda volumes doubled. "
+        "Analysts expect further growth.")
+    add.get_by_role("button", name="Add for research").click()
+    expect(page.get_by_text("Document added: it is read at the next research run")).to_be_visible()
+    # 3. research: the AI reader stops at its per-run limit, so research says it is incomplete and offers to continue
+    page.get_by_role("button", name="Research relationships").click()
+    result = page.get_by_role("status", name="Research result")
+    expect(result).to_contain_text("Research incomplete")
+    expect(result).to_contain_text("Still to do")
+    shot(page, "N1-research-incomplete")
+    page.get_by_role("button", name="Continue research").click()
+    expect(page.get_by_role("status", name="Research result")).to_contain_text("People found in the sources read")
+    cov = page.get_by_role("region", name="Research coverage")
+    expect(cov).to_contain_text("Linked from the organisation's site")
+    expect(cov.get_by_role("row").filter(has_text="Our team")).to_contain_text("robots.txt")
+    expect(cov.get_by_label("Web searches")).to_contain_text("searched, 1 result(s)")
+    expect(cov).to_contain_text("not a complete search of public information")
+    shot(page, "N2-research-coverage")
+    # 4. evidenced roles: employee listing, partner, appointment; a former holder is not shown as a current contact
+    people = page.get_by_role("region", name="Relevant people")
+    expect(people).to_contain_text("Amina Yusuf")
+    expect(people.get_by_role("row").filter(has_text="Amina Yusuf")).to_contain_text("Chief Commercial Officer")
+    expect(people.get_by_role("row").filter(has_text="John Lee")).to_contain_text("partner organisation")
+    expect(people.get_by_role("row").filter(has_text="Ruth Namubiru")).to_contain_text("(incoming)")
+    expect(people).not_to_contain_text("Paul Ssenyonga")
+    expect(people.get_by_label("Confirmed identities")).to_contain_text("Grace Achieng")     # same name, same organisation: the confirmed record
+    shot(page, "N3-evidenced-roles")
+    # 5. same name, organisation unknown on one record: a possible duplicate, reviewed by a person and reversible
+    go(page, "/relationships")
+    dups = page.get_by_role("region", name="Possible duplicates")
+    pair = dups.get_by_role("listitem").filter(has_text="Daniel Mwangi").first
+    expect(pair).to_contain_text("same name")
+    shot(page, "N4-possible-duplicate")
+    keep = pair.get_by_role("button", name="Same person: keep this record").first
+    keep.click()
+    expect(page.get_by_text("Merged: it can be undone")).to_be_visible()
+    daniel = next(p for p in api(page, "/people?q=Daniel%20Mwangi")["items"])
+    go(page, f"/relationships/{daniel['id']}")
+    history = page.get_by_role("region", name="Merge history")
+    expect(history).to_contain_text("merged into")
+    history.get_by_role("button", name="Undo merge").click()
+    expect(page.get_by_text("Merge undone")).to_be_visible()
+    assert len(api(page, "/people?q=Daniel%20Mwangi")["items"]) == 2                 # both records are back
+    shot(page, "N5-merge-undone")
+    # 6. the person page shows each title with the passage that binds it, current and former
+    joseph = next(p for p in api(page, "/people?q=Joseph%20Kato")["items"])
+    go(page, f"/relationships/{joseph['id']}")
+    roles = page.get_by_role("region", name="Titles and organisations")
+    expect(roles).to_contain_text("Country Manager Uganda")
+    expect(roles).to_contain_text("(former)")
+    shot(page, "N6-titles-with-evidence")
+    # 7. the Overview reflects the new people
+    go(page, "/")
+    expect(page.get_by_role("region", name="Relevant people identified recently")).to_contain_text("Amina Yusuf")
+    brief = page.request.get(f"{BASE}/api/opportunities/{ug['id']}/export.md").text()
+    assert "## Research coverage" in brief and "Evidence:" in brief and "has been sent" in brief
+    assert not [e for e in page.errors if "pageerror" in e], page.errors  # type: ignore[attr-defined]
+
+
+# ------------------------------------------------------------------ O. Control panel: opportunities per market and the score out of 100
+def test_o_control_panel_markets_and_scores(page: Page):
+    data = api(page, "/control-panel")
+    assert data["totals"]["live"] > 0 and data["scored"], data["totals"]
+    for s in data["scored"]:
+        assert 0 <= s["score"] <= 100 and s["score"] == sum(c["points"] for c in s["components"]), s
+    assert [s["score"] for s in data["scored"]] == sorted((s["score"] for s in data["scored"]), reverse=True)
+    go(page, "/control-panel")
+    expect(page.get_by_role("heading", name="Opportunities by market, scored out of 100")).to_be_visible()
+    nav = page.get_by_role("navigation", name="Sections")
+    expect(nav.get_by_role("link", name="Control panel")).to_have_attribute("aria-current", "page")
+    markets = page.get_by_role("region", name="By market")
+    expect(markets).to_contain_text(data["by_market"][0]["market"])
+    expect(page.get_by_role("region", name="Live opportunities by country")).to_contain_text(data["by_country"][0]["country"])
+    top = data["scored"][0]
+    table = page.get_by_role("region", name="Scored opportunities")
+    first = table.get_by_role("row").nth(1)
+    expect(first).to_contain_text(top["title"])
+    expect(first).to_contain_text(str(top["score"]))
+    shot(page, "O1-control-panel")
+    first.get_by_role("button", name="Breakdown").click()
+    for c in top["components"]:
+        expect(table).to_contain_text(f"{c['points']} / {c['max']}")
+    expect(table).to_contain_text("Relationship position")
+    expect(page.get_by_text("Not a probability of winning.").first).to_be_visible()
+    shot(page, "O2-score-breakdown")
+    # filters narrow the panel: one country only
+    code = next(c["code"] for c in data["by_country"] if c["code"])
+    narrowed = api(page, f"/control-panel?countries={code}")
+    assert all(code in s["countries"] for s in narrowed["scored"]) and narrowed["totals"]["live"] <= data["totals"]["live"]
     assert not [e for e in page.errors if "pageerror" in e], page.errors  # type: ignore[attr-defined]

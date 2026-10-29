@@ -18,6 +18,7 @@ from . import config
 from .api.routes import router
 from .api.routes_discovery import router as discovery_router
 from .api.routes_modules import router as modules_router
+from .api.routes_intel import router as intel_router
 from .connectors import registry
 from .domain.prioritisation import SCORED
 from .http import auth_routes, middleware
@@ -25,7 +26,7 @@ from .repo.db import Database, SQLAlchemyDatabase
 from .services import auth_service
 
 log = logging.getLogger("atlas")
-EXPECTED_SCHEMA_REVISION = "wfc_0010"
+EXPECTED_SCHEMA_REVISION = "wfc_0012"
 
 
 def create_app(settings: config.Settings | None = None, db_factory: Callable[[], Database] | None = None) -> FastAPI:
@@ -68,6 +69,7 @@ def create_app(settings: config.Settings | None = None, db_factory: Callable[[],
     app.include_router(router)
     app.include_router(discovery_router)
     app.include_router(modules_router)
+    app.include_router(intel_router)
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception):  # never an empty success

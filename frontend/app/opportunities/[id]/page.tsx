@@ -2,400 +2,476 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Fragment, useState, type FormEvent } from "react";
-import { Badge, Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
-import { OpportunityPicker, type PickedOpportunity } from "@/components/OpportunityPicker";
-import { ActionNote, type ClaimField, FieldList, PassageViewer, Provenance, ReasonAction, Section } from "@/components/Ui";
+import { useEffect, useState, type FormEvent } from "react";
+import { OpportunityTechnical } from "@/components/OpportunityTechnical";
+import { CoverageTag, StatusTag, Tag, TypeTag } from "@/components/Records";
+import { Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
+import { ActionNote } from "@/components/Ui";
 import { api } from "@/lib/api";
-import { dateOnly, dateTime, deadline, label, money, moduleLabel, humanText, type DeadlineInfo, deadlineNotes } from "@/lib/format";
+import { dateOnly, dateTime, deadline, label, type DeadlineInfo } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
 import { useApi } from "@/lib/useApi";
 
-type Opp = { id: string; title: string; module: string; commercial_stage: string; qualification_status: string; classification: string | null;
-             tender_status: string | null; tender_status_basis: string | null; freight_scope: string | null; tender_ref: string | null; identity_basis: string | null; deadline_utc: string | null; deadline_source_tz: string | null; deadline_info: DeadlineInfo | null;
-             operating_company_id: string | null; operating_company: string | null; service_id: string | null; service: string | null;
-             station_code: string | null; delivery_start: string | null; required_credentials: string[]; owner_person_id: string | null;
-             owner: string | null; organisation: string | null; gaps: string[] | null; origin_ref: string | null; notes: string | null; signal_id: string | null;
-             tender_state: { status: string; history: { at: string | null; field: string; from: string | null; to: string }[]; reasons: string[];
-                             status_verified_at?: string | null; status_asserted_at?: string | null; status_date_known?: boolean; retrieved_at?: string | null;
-                             published_at?: string | null; status_conflict?: string | null } | null;
-             review_flags?: { flag: string; claim_id: string; from: string; to: string; reason: string; version: number; at: string; previous_review_status?: string }[] };
-type Evidence = { claim_id: string; claim_type: string; status: string; review_status: string; tender_ref: string | null; stance: string; quote: string;
-                  assessed_by: string; assessed_at?: string | null; excluded_at: string | null; location?: string | null; document_version?: string | null;
-                  original_url?: string | null; text_retained?: boolean | null; review_note?: string | null;
-                  document_id: string; title: string | null; canonical_url: string; published_at: string | null;
-                  retrieved_at: string; language: string | null; summary_en: string | null; summary_is_translation: boolean; family_key: string | null;
-                  source_name: string | null; authority: string | null; authenticity: string | null; fields: ClaimField[] | null };
-type Factor = { code: string; value: number | null; anchor: string | null; weight: string; rationale: string | null; gate: boolean };
-type Detail = {
-  opportunity: Opp;
-  checks: { check_code: string; result: string; blocking: boolean; rationale: string }[];
-  overrides: { id: string; check_code: string; override_result: string; reason: string; created_at: string; expires_at: string | null; revoked_at: string | null }[];
-  history: { field: string; from_value: string | null; to_value: string; reason: string | null; changed_at: string }[];
-  evidence: Evidence[];
-  geography: { country_code: string; name: string; role: string; support: string }[];
-  assessments: { dimension: string; score: string | null; coverage: string; status: string; factors: Factor[]; version: string; provisional: boolean }[];
-  value: { currency: string | null; airline_revenue: string | null; wfc_remuneration: string | null; incremental_costs: string | null;
-           guarantee_exposure: string | null; duration_months: number | null; basis: string; assumptions: { text: string; source: string; source_date: string }[] } | null;
-  contribution: { status: string; retained_contribution: string | null; currency: string | null; reasons: string[] } | null;
-  referrals: { id: string; status: string; from_company: string; to_company: string }[];
-  competing: { id: string; title: string; module: string }[];
-};
-type Lookups = { companies: { id: string; name: string }[]; services: { id: string; code: string; name: string }[];
-                 airports: { iata_code: string; name: string; country: string }[]; people: { id: string; full_name: string; is_internal: boolean }[] };
+type Evidence = { claim_id: string; claim_type: string; quote: string; review_status: string; source_name: string | null; title: string | null;
+                  canonical_url: string; published_at: string | null; retrieved_at: string; summary_en: string | null; excluded_at: string | null };
+type Base = { opportunity: { id: string; title: string; module: string; organisation: string | null; tender_ref: string | null; tender_status_basis: string | null;
+                             deadline_utc: string | null; deadline_source_tz: string | null; deadline_info: DeadlineInfo | null; signal_id: string | null;
+                             tender_state: { published_at?: string | null } | null };
+              evidence: Evidence[]; geography: { country_code: string; name: string; role: string; support: string }[] };
+type Role = { role_title: string | null; organisation: string | null; role_status: string; affiliation: string; affiliation_label: string; binding: string;
+              source: string; quote: string | null };
+type Person = { id: string; full_name: string; role_title: string | null; organisation: string | null; organisation_id: string | null; state: string;
+                state_label: string; role_on_opportunity?: string; relevance_basis?: string; link_status?: string; linkedin_search_url?: string;
+                linkedin_profile_url: string | null; relationship_owner: string | null; last_verified_at: string | null; possible_routes: number; roles?: Role[] };
+type Org = { id: string; name: string; kind: string; country: string | null; website: string | null; newsroom_url: string | null; leadership_url: string | null;
+             involvement: string };
+type Search = { organisation: string; role: string; country: string; url: string; kind: string };
+type WebSearch = { purpose: string; query: string; status: string; results: number; link: string; reason?: string };
+type Doc = { id: string; origin: string; url: string | null; title: string | null; organisation: string | null; page_kind: string; found_via: string | null;
+             status: string; status_reason: string | null; sections_total: number; sections_read: number; ai_status: string; ai_sections_read: number;
+             people_found: number };
+type Coverage = { documents: number; read: number; queued: number; failed: number; skipped: number; sections_total: number; sections_read: number;
+                  ai_sections_read: number; ai_connected: boolean; remaining: string[]; not_searched: string[]; limits_hit?: string[];
+                  searches_run: number; searches_not_run: number; searches_failed: number; duplicates_flagged?: number };
+type LatestRun = { started_at: string; methods: string[]; unavailable: { method: string; reason: string }[]; candidates_found: number;
+                   outcome: string | null; coverage: Coverage | Record<string, never>; searches: WebSearch[] };
+type RouteRow = { id: string; target_person_id: string; target: string; introducer: string; wfc_holder_label: string | null; connection_basis: string;
+                  evidence_url: string | null; willingness_basis: string | null; status: string };
+type RelRow = { id: string; person_id: string; person: string; holder_label: string; nature: string; basis: string; status: string };
+type Rel = { organisations: Org[]; people: Person[]; people_at_organisation: Person[]; coverage: string; coverage_label: string; searches: Search[];
+             target_roles: { key: string; label: string }[]; latest_research: LatestRun | null; gaps: string[]; actions: string[]; linkedin_integration: string;
+             documents: Doc[]; relationships: RelRow[]; routes_available: RouteRow[]; routes_possible: RouteRow[]; duplicates: { id: string }[];
+             engagements: { id: string; occurred_at: string; kind: string; summary: string; person: string | null; person_id: string | null; owner_label: string | null }[] };
+type Intel = { interpretation: { label: string; text: string; unconfirmed: string[]; category: string; record_type_label: string };
+               priority_reason: string; review_state: string | null; relationships: Rel; notes: { id: string; body: string; author_label: string | null; created_at: string }[];
+               workspace: { progress: string; progress_label: string; closed_reason: string | null; saved: boolean; owner_label: string | null; next_action: string | null;
+                            next_action_due: string | null; record_type: string; record_type_label: string; tender_status: string | null; tender_status_label: string | null } };
+type Found = { person_id: string; name: string; role: string | null; role_status: string; organisation: string | null; affiliation_label: string;
+               new: boolean; source: string | null; method: string };
+type Research = { outcome: string; methods: string[]; unavailable: { method: string; reason: string }[]; found: Found[]; coverage: Coverage;
+                  web_searches: WebSearch[]; searches: Search[]; gaps: string[]; actions: string[] };
 
-const NEXT_STAGES: Record<string, string[]> = {
-  new: ["reviewing", "deferred", "lost"], reviewing: ["qualified", "deferred", "lost"], qualified: ["pursuing", "deferred", "lost"],
-  pursuing: ["proposal", "deferred", "lost"], proposal: ["negotiation", "won", "lost", "deferred"], negotiation: ["won", "lost", "deferred"],
-  deferred: ["reviewing"], won: [], lost: [], expired: [],
+const STATE_TONE: Record<string, string> = { existing_relationship: "b-good", introduction_available: "b-good", identity_confirmed: "b-info", research_candidate: "b-warn" };
+const OUTCOME: Record<string, [string, string]> = {
+  people_found: ["People found in the sources read", "b-good"],
+  no_people_found: ["No people found in the sources read", "b-info"],
+  incomplete: ["Research incomplete", "b-warn"],
 };
-const COMMERCIAL_CHECKS = ["eligibility", "scope", "owner_assigned", "commercial_terms"];
+const ORIGIN_LABEL: Record<string, string> = { opportunity_source: "Source of this opportunity", user_url: "Page added by the team", user_document: "Document added by the team",
+                                               search_result: "Web search result", organisation_page: "Organisation page", followed_link: "Linked from the organisation's site",
+                                               guessed_page: "Guessed address" };
+const DOC_STATUS: Record<string, [string, string]> = { read: ["Read", "b-good"], partial: ["Partly read", "b-warn"], queued: ["Not read yet", "b-warn"],
+                                                      failed: ["Could not fetch", "b-bad"], skipped: ["Skipped", "b-none"] };
+const PROGRESS: [string, string][] = [["new", "New"], ["reviewing", "Reviewing"], ["pursuing", "Pursuing"], ["on_hold", "On hold"], ["closed", "Closed"]];
+const ROLE_LABEL: Record<string, string> = { procurement_contact: "Procurement contact", commercial_leader: "Commercial leader", decision_maker: "Decision maker (recorded by a person)",
+                                             department_lead: "Department lead", regional_representative: "Regional representative", partner: "Partner",
+                                             named_in_source: "Named in the source", unknown: "Role on this opportunity not established" };
 
-export default function OpportunityDetail() {
+export default function OpportunityPage() {
   const { id = "" } = useParams<{ id: string }>();
-  const r = useApi<Detail>(id ? `/opportunities/${id}` : null);
-  const l = useApi<Lookups>("/reference/lookups");
+  const base = useApi<Base>(id ? `/opportunities/${id}` : null);
+  const intel = useApi<Intel>(id ? `/opportunities/${id}/intelligence` : null);
+  const reload = () => { base.reload(); intel.reload(); };
   return (
     <>
-      {r.stale && <StaleBanner onRetry={r.reload} />}
-      {r.status === "loading" && <Loading what="opportunity" />}
-      {r.status === "error" && !r.data && <ErrorState error={r.error} onRetry={r.reload} />}
-      {r.data && <Body d={r.data} lookups={l.data} reload={r.reload} />}
+      {(base.stale || intel.stale) && <StaleBanner onRetry={reload} />}
+      {(base.status === "loading" || intel.status === "loading") && <Loading what="opportunity" />}
+      {base.status === "error" && !base.data && <ErrorState error={base.error} onRetry={reload} />}
+      {intel.status === "error" && !intel.data && <ErrorState error={intel.error} onRetry={reload} />}
+      {base.data && intel.data && <Body id={id} b={base.data} i={intel.data} reload={reload} />}
     </>
   );
 }
 
-function Body({ d, lookups, reload }: { d: Detail; lookups: Lookups | null; reload: () => void }) {
-  const o = d.opportunity;
-  const families = new Set(d.evidence.filter((e) => e.stance === "supports" && !e.excluded_at).map((e) => e.family_key ?? e.document_id));
-  const proposed = [...new Set(d.evidence.filter((e) => e.review_status === "proposed").map((e) => e.claim_id))];
+function Body({ id, b, i, reload }: { id: string; b: Base; i: Intel; reload: () => void }) {
+  const o = b.opportunity;
+  const ws = i.workspace;
+  const rel = i.relationships;
   const a = useAction();
+  const [research, setResearch] = useState<Research | null>(null);
+  const evidence = b.evidence.filter((e) => !e.excluded_at);
+  const sources = [...new Map(evidence.map((e) => [e.canonical_url, e])).values()];
+  const countries = [...new Set(b.geography.filter((g) => g.support !== "unverified").map((g) => g.name))];
+  const incomplete = rel.latest_research?.outcome === "incomplete";
+
+  async function runResearch(mode: "start" | "continue") {
+    const out = await a.run(() => api.post<Research>(`/opportunities/${id}/research`, { mode }), mode === "start" ? "Research run finished" : "Research continued");
+    if (out) { setResearch(out); reload(); }
+  }
   return (
     <div className="stack">
-      <PageHeader eyebrow={`Opportunities · ${moduleLabel(o.module)}`} title={o.title}
-                  description={`${o.organisation ?? "Organisation not established"}${o.tender_ref ? ` · reference ${o.tender_ref}` : ""} · deadline ${deadline(o.deadline_utc, o.deadline_source_tz, o.deadline_info)}`}
-                  actions={<Link className="btn" href="/opportunities">All opportunities</Link>} />
-      {deadlineNotes(o.deadline_info).length > 0 && (
-        <div className="notice" role="note"><strong>Deadline precision.</strong>{" "}{deadlineNotes(o.deadline_info).join(" ")}</div>
-      )}
-      {(o.freight_scope === "passenger" || o.freight_scope === "not_freight") && (
-        <div className="notice" role="status" data-testid="excluded-notice"><strong>Excluded from the freight pipeline.</strong> {o.freight_scope === "passenger" ? "This is a passenger-only mandate" : "The notice excludes cargo or asks for work outside the freight scope"}; it is kept as evidence and never qualifies. A reviewer can correct the freight scope on the evidence if the reading is wrong.</div>
-      )}
-      {(o.freight_scope === "mixed" || o.freight_scope === "unclear" || o.freight_scope === "conflicting") && (
-        <div className="notice" role="status" data-testid="candidate-notice"><strong>Freight candidate — not a qualified freight opportunity.</strong> The notice does not establish that the work concerns freight ({o.freight_scope}). Review the freight scope on the evidence before any work.</div>
-      )}
-      {o.tender_state?.status_conflict && (
-        <div className="notice" role="status" data-testid="status-conflict-notice"><strong>Status conflict — review.</strong> {o.tender_state.status_conflict.replace(/\.?$/, ".")} Retrieval order never decides which statement is current; the record is not actionable until a person confirms it.</div>
-      )}
-      {o.tender_status === "announced" && (
-        <div className="notice" role="status" data-testid="announced-notice"><strong>Announced — current status unverified.</strong> The notice establishes that the procurement exists; nothing states that applications are still being accepted. It is not counted as live.</div>
-      )}
-      {(o.tender_status === "unverified" || o.tender_status === "historical") && (
-        <div className="notice" role="status" data-testid="status-notice"><strong>Status not verified.</strong> {(o.tender_status_basis ?? "The open status is not confirmed by a current source").replace(/\.?$/, ".")} No closing date has been assumed; confirm with the issuer before any work.</div>
-      )}
-      <div className="grid grid-4">
-        <div className="stat"><div className="stat-label">Classification</div><div style={{ marginTop: 8 }}><Badge value={o.classification ?? "internal_record"} /></div></div>
-        <div className="stat"><div className="stat-label">Tender status</div><div style={{ marginTop: 8 }} data-testid="tender-status"><Badge value={o.tender_status ?? "unknown"} /></div>{o.tender_status_basis && <div className="stat-note">{o.tender_status_basis}</div>}
-          {o.tender_state && (
-            <div className="stat-note" data-testid="status-dates">Status last stated: {o.tender_state.status_verified_at ? dateTime(o.tender_state.status_verified_at) : (["open", "revised", "unverified"].includes(o.tender_state.status) ? "date unknown" : "—")}
-              {o.tender_state.status_asserted_at && o.tender_state.status_asserted_at !== o.tender_state.status_verified_at ? ` · first stated ${dateTime(o.tender_state.status_asserted_at)}` : ""}
-              {o.tender_state.retrieved_at ? ` · last retrieved ${dateTime(o.tender_state.retrieved_at)} (retrieval does not verify status)` : ""}</div>
-          )}</div>
-        <div className="stat"><div className="stat-label">Freight scope</div><div style={{ marginTop: 8 }} data-testid="freight-scope"><Badge value={o.freight_scope ?? "unclear"} /></div></div>
-        <div className="stat"><div className="stat-label">Qualification</div><div style={{ marginTop: 8 }}><Badge value={o.qualification_status} /></div><div className="stat-note">Stage: {label(o.commercial_stage)}</div></div>
+      <PageHeader eyebrow={`Opportunities · ${i.interpretation.category}`} title={o.title}
+                  description={`${o.organisation ?? "Organisation not established"}${o.tender_ref ? ` · reference ${o.tender_ref}` : ""}`}
+                  actions={<>
+                    <button type="button" className="btn btn-primary" disabled={a.busy} onClick={() => runResearch("start")}>Research relationships</button>
+                    {incomplete && <button type="button" className="btn" disabled={a.busy} onClick={() => runResearch("continue")}>Continue research</button>}
+                    <button type="button" className="btn" disabled={a.busy}
+                            onClick={() => a.run(() => api.post(`/opportunities/${id}/saved`, { saved: !ws.saved }), ws.saved ? "Removed from saved" : "Saved").then(reload)}>
+                      {ws.saved ? "Saved ✓" : "Save"}</button>
+                    <a className="btn" href={`/api/opportunities/${id}/export.md`}>Export brief</a>
+                  </>} />
+      <div className="small"><TypeTag r={{ record_type: ws.record_type, record_type_label: ws.record_type_label }} />{" "}
+        <StatusTag r={{ tender_status: ws.tender_status, tender_status_label: ws.tender_status_label }} />{" "}
+        <Tag text={`Progress: ${ws.progress_label}`} tone="b-info" />{" "}<CoverageTag coverage={rel.coverage} label={rel.coverage_label} />
+        {i.review_state && <span className="muted"> · {i.review_state}</span>}</div>
+      <ActionNote state={a} />
+      {research && <ResearchResult r={research} />}
+
+      <div className="grid grid-2">
+        <section className="panel" aria-label="What is happening">
+          <p className="question">What is happening?</p>
+          <dl className="kv">
+            <dt>Source facts</dt><dd>{sources[0]?.summary_en ?? (sources.length ? `${sources.length} source document(s) below` : "No source document: record from WFC data or added by the team")}</dd>
+            <dt>Organisation</dt><dd>{o.organisation ?? "Not established"}</dd>
+            <dt>Geography</dt><dd>{countries.join(", ") || "Not established by the source"}</dd>
+            <dt>Source date</dt><dd>{o.tender_state?.published_at ? dateOnly(o.tender_state.published_at) : sources[0]?.published_at ? dateOnly(sources[0].published_at) : "Not stated"}</dd>
+            <dt>Stated deadline</dt><dd>{o.deadline_utc || o.deadline_info ? deadline(o.deadline_utc, o.deadline_source_tz, o.deadline_info) : "Not stated"}</dd>
+            <dt>Tender status</dt><dd>{ws.tender_status_label ?? "n/a"}{o.tender_status_basis && <div className="small muted">{o.tender_status_basis}</div>}</dd>
+          </dl>
+          {sources.length > 0 && (
+            <ul className="list-plain small" aria-label="Sources">{sources.slice(0, 4).map((e) => (
+              <li key={e.canonical_url}>“{e.quote.slice(0, 220)}{e.quote.length > 220 ? "…" : ""}” <span className="muted">— {e.source_name ?? "source"},{" "}
+                <a href={e.canonical_url} target="_blank" rel="noreferrer noopener">{e.title ?? e.canonical_url}</a>
+                {e.published_at ? `, published ${dateOnly(e.published_at)}` : ", publication date not stated"}{e.review_status === "proposed" ? " · not yet reviewed" : ""}</span></li>
+            ))}</ul>
+          )}
+        </section>
+        <section className="panel interpretation" aria-label="Why it could matter">
+          <p className="question">Why could it matter to WFC?</p>
+          <p className="fact-label">{i.interpretation.label}</p>
+          <p>{i.interpretation.text}</p>
+          {i.interpretation.unconfirmed.length > 0 && (
+            <><p className="fact-label">What remains unconfirmed</p><ul>{i.interpretation.unconfirmed.map((u) => <li key={u} className="small">{u}</li>)}</ul></>
+          )}
+          <p className="small"><b>Priority:</b> {i.priority_reason}</p>
+        </section>
       </div>
-      {o.review_flags && o.review_flags.length > 0 && (
-        <div className="notice" role="note" data-testid="review-flags"><strong>Flagged for review after a re-check:</strong>{" "}
-          {o.review_flags.map((f, i) => <span key={i}>{label(f.flag)}{f.from || f.to ? ` (${f.from ?? "—"} → ${f.to ?? "—"})` : ""}{f.reason ? `: ${f.reason}` : ""}{i < o.review_flags!.length - 1 ? " · " : ""}</span>)}
-        </div>
-      )}
-      <Section title="Geography">
-        {d.geography.length === 0 ? <p className="muted">No country established by the evidence.</p> : (
-          <ul className="chips">{d.geography.map((g) => (
-            <li key={`${g.country_code}-${g.role}`} className="chip">{g.name} · {g.role.replace("_", " ")}{g.support !== "supported" && g.support !== "internal_record" ? " (unverified)" : ""}</li>
+
+      <section className="panel" aria-label="Organisations involved">
+        <p className="question">Which organisations are involved?</p>
+        {rel.organisations.length === 0 ? <Empty title="No organisation established yet" /> : (
+          <ul className="list-plain">{rel.organisations.map((g) => (
+            <li key={g.id}><Link href={`/airlines-forwarders/${g.id}`}>{g.name}</Link> <span className="muted small">· {g.involvement}{g.country ? ` · ${g.country}` : ""}</span>
+              <div className="small">Research pages: {[["website", g.website], ["newsroom", g.newsroom_url], ["leadership page", g.leadership_url]]
+                .filter(([, u]) => u).map(([l, u]) => <span key={l as string}><a href={u as string} target="_blank" rel="noreferrer noopener">{l}</a> </span>)}
+                {!g.website && !g.newsroom_url && !g.leadership_url && <span className="muted">none recorded, so its own pages are not read</span>}</div>
+              <ResearchPagesForm org={g} onSaved={reload} /></li>
           ))}</ul>
         )}
-        {o.gaps && o.gaps.length > 0 && <div className="notice" style={{ marginTop: 12 }}><strong>Gaps:</strong> {o.gaps.join(" · ")}</div>}
-        {o.notes && <p className="muted small">{o.notes}</p>}
-      </Section>
+      </section>
 
-      <Section title={`Evidence (${families.size} independent announcement famil${families.size === 1 ? "y" : "ies"})`}
-               actions={proposed.length > 0 ? (
-                 <button className="btn btn-primary" type="button" disabled={a.busy}
-                         onClick={async () => { for (const c of proposed) await a.run(() => api.post(`/claims/${c}/confirm`, { note: "reviewed on the opportunity page" })); reload(); }}>
-                   Confirm {proposed.length} AI-proposed claim{proposed.length === 1 ? "" : "s"}
-                 </button>) : undefined}>
-        <p className="muted small">Each field is a fact only if its own quote, found verbatim in the document, states it. Syndicated copies count once; contradicting evidence stays visible. A verdict is a rule result, never a confidence score, and does not by itself verify the fact.</p>
-        {(o.review_flags ?? []).filter((f) => f.flag === "eligibility_revalidated").length > 0 && (
-          <div className="notice" role="status">
-            <strong>Re-checked eligibility evidence.</strong> {(o.review_flags ?? []).filter((f) => f.flag === "eligibility_revalidated").map((f, i) => (
-              <span key={i}>An earlier &quot;{label(f.from)}&quot; verdict (validation rules v{f.version - 1}) was withdrawn on {dateTime(f.at)}: now &quot;{label(f.to)}&quot; — {f.reason}.{f.previous_review_status ? ` Previous reviewer decision: ${label(f.previous_review_status)} (kept in the audit history).` : ""} </span>
-            ))}Confirm or correct the claim in Evidence Review.
+      <section className="panel" aria-label="Who appears relevant">
+        <div className="panel-head"><p className="question">Who appears relevant?</p><AddPerson id={id} onAdded={reload} /></div>
+        {rel.people.length === 0 ? <Empty title="No people identified yet">Use Research relationships, or add a person you know is relevant.</Empty> : (
+          <div role="region" aria-label="Relevant people">
+            <PeopleTable title="Confirmed identities" rows={rel.people.filter((p) => p.state !== "research_candidate")} id={id} busy={a.busy}
+                         empty="No identity confirmed yet: confirm a candidate on their page (with how it was confirmed)."
+                         onLink={(pid, status, msg) => a.run(() => api.post(`/opportunities/${id}/people`, { person_id: pid, status }), msg).then(reload)} />
+            <PeopleTable title="Research candidates" rows={rel.people.filter((p) => p.state === "research_candidate")} id={id} busy={a.busy}
+                         empty="No unconfirmed candidates."
+                         onLink={(pid, status, msg) => a.run(() => api.post(`/opportunities/${id}/people`, { person_id: pid, status }), msg).then(reload)} />
+            <p className="small muted">A title or organisation is shown only where a source passage binds it to the person; otherwise it reads &ldquo;not established&rdquo;.
+              Being named does not make anyone a decision maker.</p>
           </div>
         )}
-        <ActionNote state={a} />
-        {d.evidence.length === 0 ? <Empty title={o.origin_ref ? "Derived from internal records" : "No evidence linked"}>{o.origin_ref ?? ""}</Empty> : d.evidence.map((e, i) => (
-          <article key={`${e.claim_id}-${e.document_id}-${i}`} className="claim-card">
-            <div className="inline">
-              <strong>{label(e.claim_type)}</strong> <Badge value={e.status} /> <Badge value={e.review_status} /> <Badge value={e.stance} />
-              <span className="muted small">{e.source_name} ({e.authority?.replace("_", " ")}) · authenticity {e.authenticity ?? "unknown"} · {e.published_at ? `published ${dateTime(e.published_at)}` : `publication date unknown · retrieved ${dateTime(e.retrieved_at)}`}{e.excluded_at ? " · excluded" : ""}</span>
-            </div>
-            <p className="small"><span className="muted">Source wording: </span><q>{e.quote}</q> <Link href={`/review/documents/${e.document_id}`}>Open document</Link></p>
-            <Provenance e={e} dateTime={dateTime} />
-            <PassageViewer documentId={e.document_id} quote={e.quote} location={e.location} get={(path) => api.get(path)} />
-            {e.summary_en && <p className="small muted">{e.summary_is_translation ? "English summary (translation): " : ""}{e.summary_en}</p>}
-            <FieldList fields={e.fields} />
-          </article>
-        ))}
-        {o.tender_state && o.tender_state.history.length > 0 && (
-          <>
-            <h3 className="small" style={{ marginTop: 14 }}>Tender history (authoritative sources)</h3>
-            <ul className="small">{o.tender_state.history.map((h, i) => (
-              <li key={i}>{h.at ? dateTime(h.at) : "date unknown"}: {h.field} {h.from ? `${humanText(h.from)} → ` : ""}{humanText(h.to)}</li>
-            ))}</ul>
-          </>
+        {rel.duplicates.length > 0 && <p className="small"><Tag text={`${rel.duplicates.length} possible duplicate(s)`} tone="b-warn" /> Same name, organisation not
+          established or different: <Link href="/relationships#duplicates">review them</Link> (nothing is merged automatically).</p>}
+        {rel.people_at_organisation.length > 0 && (
+          <p className="small">Also known at {rel.organisations[0]?.name}: {rel.people_at_organisation.map((p) => (
+            <span key={p.id}><Link href={`/relationships/${p.id}`}>{p.full_name}</Link> ({p.state_label}) </span>))}</p>
         )}
-      </Section>
+      </section>
 
-      <Qualification d={d} reload={reload} />
-      <ScopeForm o={o} lookups={lookups} onDone={reload} />
-      <Priority d={d} />
-      <Economics d={d} lookups={lookups} onDone={reload} />
-      <Section title="History">
-        {d.history.length === 0 ? <Empty title="No changes recorded" /> : (
-          <TableWrap label="History"><table><thead><tr><th>When</th><th>What</th><th>Change</th><th>Reason</th></tr></thead>
-            <tbody>{d.history.map((h, i) => (
-              <tr key={i}><td>{dateTime(h.changed_at)}</td><td>{label(h.field)}</td>
-                <td>{h.from_value ? `${h.field === "deadline" ? deadlineHistory(h.from_value) : label(h.from_value)} → ` : ""}{h.field === "deadline" ? deadlineHistory(h.to_value) : h.field === "scope" ? humanText(h.to_value) : label(h.to_value)}</td>
-                <td className="small">{h.reason}</td></tr>
-            ))}</tbody></table></TableWrap>
-        )}
-      </Section>
+      <div className="grid grid-2">
+        <section className="panel" aria-label="Existing relationships">
+          <p className="question">What existing relationship is recorded?</p>
+          {rel.relationships.length === 0 ? <p className="muted">None recorded. A relationship is recorded on the person&apos;s page, with who holds it and how it is known.</p> : (
+            <ul className="list-plain">{rel.relationships.map((r) => (
+              <li key={r.id}><Link href={`/relationships/${r.person_id}`}>{r.person}</Link> <span className="small muted">· held by {r.holder_label} · {label(r.nature)}
+                {r.status !== "current" ? ` · ${r.status}` : ""}</span><div className="small">{r.basis}</div></li>))}</ul>
+          )}
+        </section>
+        <section className="panel" aria-label="Introduction routes">
+          <p className="question">Who could introduce us?</p>
+          {rel.routes_available.length === 0 && rel.routes_possible.length === 0 ? <p className="muted">No introduction route recorded. A route is available only when the introducer&apos;s relationship and willingness are confirmed.</p> : <>
+            {rel.routes_available.length > 0 && <><p className="fact-label">Confirmed introductions</p><ul className="list-plain" aria-label="Confirmed introductions">{rel.routes_available.map((r) => (
+              <li key={r.id}><Link href={`/relationships/${r.target_person_id}`}>{r.target}</Link> via {r.introducer} <Tag text={r.status === "available" ? "Introduction available" : label(r.status)} tone="b-good" />
+                <div className="small muted">{r.connection_basis} · willingness: {r.willingness_basis}</div></li>))}</ul></>}
+            {rel.routes_possible.length > 0 && <><p className="fact-label">Possible routes (not confirmed)</p><ul className="list-plain" aria-label="Possible routes">{rel.routes_possible.map((r) => (
+              <li key={r.id}><Link href={`/relationships/${r.target_person_id}`}>{r.target}</Link> via {r.introducer} <Tag text="Possible route, not confirmed" tone="b-warn" />
+                <div className="small muted">{r.connection_basis}</div></li>))}</ul></>}
+          </>}
+        </section>
+      </div>
+
+      <ResearchCoverage id={id} rel={rel} onChanged={reload} />
+
+      <section className="panel" aria-label="Relationship gaps">
+        <p className="question">What relationship information is missing?</p>
+        <ul>{rel.gaps.map((g) => <li key={g}>{g}</li>)}</ul>
+        {rel.actions.length > 0 && <><p className="fact-label">Useful next actions</p><ul>{rel.actions.map((x) => <li key={x}>{x}</li>)}</ul></>}
+        <p className="fact-label">Targeted LinkedIn searches ({rel.linkedin_integration}). These are searches, not contacts.</p>
+        <ul className="list-plain small">{rel.searches.map((s) => (
+          <li key={s.url}><a href={s.url} target="_blank" rel="noreferrer noopener">{s.role} · {s.organisation}{s.country ? ` · ${s.country}` : ""}</a></li>))}</ul>
+        {rel.latest_research && <p className="muted small">Last researched {dateTime(rel.latest_research.started_at)}
+          {rel.latest_research.outcome ? ` (${OUTCOME[rel.latest_research.outcome]?.[0].toLowerCase() ?? rel.latest_research.outcome})` : ""} using{" "}
+          {rel.latest_research.methods.map(methodLabel).join(", ") || "no method"};
+          not available: {rel.latest_research.unavailable.map((u) => methodLabel(u.method)).join(", ") || "none"}.</p>}
+      </section>
+
+      <Workspace id={id} i={i} reload={reload} />
+
+      <TechnicalDetails id={id} reload={reload} />
     </div>
   );
 }
 
-function Qualification({ d, reload }: { d: Detail; reload: () => void }) {
-  const o = d.opportunity;
-  const a = useAction();
-  const [code, setCode] = useState("eligibility");
-  const [result, setResult] = useState("pass");
-  const [reason, setReason] = useState("");
-  const [expires, setExpires] = useState("");
-  async function override(e: FormEvent) {
-    e.preventDefault();
-    const r = await a.run(() => api.post(`/opportunities/${o.id}/overrides`, { check_code: code, result, reason, expires_at: expires ? `${expires}T23:59:59Z` : null }),
-                          "Recorded; qualification recomputed");
-    if (r) { setReason(""); reload(); }
-  }
+/** Collapsed by default so validation detail never fills the page; a link with ?detail=technical opens it. */
+function TechnicalDetails({ id, reload }: { id: string; reload: () => void }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("detail") === "technical") setOpen(true); }, []);
   return (
-    <Section title="Qualification">
-      <TableWrap label="Qualification checks">
-        <table><thead><tr><th>Check</th><th>Evidence result</th><th>Judgement</th><th>Blocking</th><th>Rationale</th></tr></thead>
-          <tbody>{d.checks.map((c) => {
-            const j = d.overrides.find((x) => !x.revoked_at && x.check_code === c.check_code && (!x.expires_at || new Date(x.expires_at) > new Date()));
-            return (
-            <tr key={c.check_code}><td>{label(c.check_code)}{COMMERCIAL_CHECKS.includes(c.check_code) ? <span className="muted small">commercial judgement</span> : <span className="muted small">factual</span>}</td>
-              <td><Badge value={c.result} /></td><td>{j ? <Badge value={j.override_result} /> : <span className="muted">—</span>}</td><td>{c.blocking ? "Yes" : "No"}</td><td className="small">{humanText(c.rationale)}</td></tr>
-            );
-          })}</tbody></table>
-      </TableWrap>
-      {d.overrides.filter((x) => !x.revoked_at).length > 0 && (
-        <p className="small muted">Recorded judgements: {d.overrides.filter((x) => !x.revoked_at).map((x) => `${label(x.check_code)} → ${x.override_result} (“${x.reason}”${x.expires_at ? `, until ${dateOnly(x.expires_at)}` : ""})`).join("; ")}</p>
-      )}
-      <form onSubmit={override} className="form-grid" style={{ marginTop: 12 }}>
-        <label className="field">Commercial check
-          <select className="select" value={code} onChange={(e) => setCode(e.target.value)}>{COMMERCIAL_CHECKS.map((c) => <option key={c} value={c}>{label(c)}</option>)}</select></label>
-        <label className="field">Judgement
-          <select className="select" value={result} onChange={(e) => setResult(e.target.value)}><option value="pass">Pass</option><option value="fail">Fail</option><option value="review_required">Review required</option></select></label>
-        <label className="field">Valid until (optional)<input className="input" type="date" value={expires} onChange={(e) => setExpires(e.target.value)} /></label>
-        <label className="field wide">Reason (at least 10 characters; factual checks cannot be overridden)
-          <input className="input" value={reason} onChange={(e) => setReason(e.target.value)} minLength={10} required /></label>
-        <div className="actions"><button className="btn" type="submit" disabled={a.busy || reason.trim().length < 10}>Record judgement</button></div>
-      </form>
-      <div className="actions" style={{ marginTop: 12 }}>
-        {o.qualification_status === "ready_for_review" && (
-          <ReasonAction label="Approve for pursuit" tone="primary" busy={a.busy}
-                        onSubmit={(reason) => a.run(() => api.post(`/opportunities/${o.id}/approve`, { reason }), "Approved for pursuit").then(reload)} />
-        )}
-        {(NEXT_STAGES[o.commercial_stage] ?? []).map((s) => (
-          <ReasonAction key={s} label={`Move to ${label(s)}`} busy={a.busy} minLength={3}
-                        onSubmit={(reason) => a.run(() => api.post(`/opportunities/${o.id}/stage`, { to: s, reason }), `Moved to ${label(s)}`).then(reload)} />
-        ))}
-      </div>
-      <ActionNote state={a} />
-    </Section>
-  );
-}
-
-function ScopeForm({ o, lookups, onDone }: { o: Opp; lookups: Lookups | null; onDone: () => void }) {
-  const [company, setCompany] = useState(o.operating_company_id ?? "");
-  const [service, setService] = useState(o.service_id ?? "");
-  const [station, setStation] = useState(o.station_code ?? "");
-  const [delivery, setDelivery] = useState(o.delivery_start ?? "");
-  const [creds, setCreds] = useState((o.required_credentials ?? []).join(", "));
-  const [owner, setOwner] = useState(o.owner_person_id ?? "");
-  const a = useAction();
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    await a.run(() => api.post<{ qualification_status: string }>(`/opportunities/${o.id}/scope`, {
-      operating_company_id: company || null, service_id: service || null, station_code: station || null, delivery_start: delivery || null,
-      required_credentials: creds.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean) }),
-      (x) => `Scope saved; qualification is now ${label(x.qualification_status)}`);
-    onDone();
-  }
-  const people = lookups?.people ?? [];
-  return (
-    <Section title="Scope and owner">
-      <p className="muted small">Capability is resolved from the capability register for this company, service and station on the delivery date. A station-specific record covers only that station; with no station set, only company-wide records count.</p>
-      <form onSubmit={save} className="form-grid">
-        <label className="field">Operating company
-          <select className="select" value={company} onChange={(e) => setCompany(e.target.value)}><option value="">Not assigned</option>
-            {lookups?.companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-        <label className="field">Service
-          <select className="select" value={service} onChange={(e) => setService(e.target.value)}><option value="">Not assigned</option>
-            {lookups?.services.map((s) => <option key={s.id} value={s.id}>{s.code}: {s.name}</option>)}</select></label>
-        <label className="field">Delivery station
-          <select className="select" value={station} onChange={(e) => setStation(e.target.value)}><option value="">Not set (company level)</option>
-            {lookups?.airports.map((s) => <option key={s.iata_code} value={s.iata_code}>{s.iata_code}: {s.name} ({s.country})</option>)}</select></label>
-        <label className="field">Delivery start<input className="input" type="date" value={delivery} onChange={(e) => setDelivery(e.target.value)} /></label>
-        <label className="field wide">Required credentials (comma-separated, in addition to the service&apos;s own)
-          <input className="input" value={creds} onChange={(e) => setCreds(e.target.value)} placeholder="e.g. IATA_CARGO_AGENT, IATA_DGR" /></label>
-        <div className="actions"><button className="btn btn-primary" type="submit" disabled={a.busy}>Save scope</button></div>
-      </form>
-      <div className="form-grid" style={{ marginTop: 14 }}>
-        <label className="field">Owner (a recorded person, not a login)
-          <select className="select" value={owner} onChange={(e) => setOwner(e.target.value)}><option value="">Unassigned</option>
-            {people.map((p) => <option key={p.id} value={p.id}>{p.full_name}{p.is_internal ? "" : " (external)"}</option>)}</select></label>
-        <div className="actions" style={{ alignItems: "flex-end" }}>
-          <button className="btn" type="button" disabled={a.busy}
-                  onClick={() => a.run(() => api.post(`/opportunities/${o.id}/owner`, { person_id: owner || null }), "Owner saved").then(onDone)}>Save owner</button>
-        </div>
-      </div>
-      <ActionNote state={a} />
-    </Section>
-  );
-}
-
-function Priority({ d }: { d: Detail }) {
-  if (d.assessments.length === 0) {
-    return <Section title="Priority"><p className="muted small">This capability area is ordered by transparent rules rather than a score (see Settings → Prioritisation).</p></Section>;
-  }
-  return (
-    <Section title={`Priority (${d.assessments[0]?.version ?? ""}${d.assessments[0]?.provisional ? ", provisional weights" : ""})`}>
-      <p className="muted small">Four separate dimensions, never combined and not a probability of winning. Unknown factors reduce coverage; risk scores high when risk is LOW. Evidence confidence is a machine-generated score of how many independent sources agree; it is not a verification of any fact — only the per-field verdicts and a reviewer&apos;s confirmation above establish what the evidence states.</p>
-      <div className="dim-grid">
-        {["attractiveness", "evidence_confidence", "readiness", "risk"].map((dim) => {
-          const x = d.assessments.find((s) => s.dimension === dim);
-          return (
-            <div key={dim} className="stat">
-              <div className="stat-label">{label(dim)}</div>
-              <div className="stat-value">{x?.status === "scored" ? Number(x.score).toFixed(0) : "—"}</div>
-              <div className="stat-note">{x ? `${label(x.status)} · coverage ${(Number(x.coverage) * 100).toFixed(0)}%` : "not assessed"}</div>
-            </div>
-          );
-        })}
-      </div>
-      <details style={{ marginTop: 10 }}>
-        <summary className="small">Factors and rationale</summary>
-        <TableWrap label="Priority factors"><table><thead><tr><th>Dimension</th><th>Factor</th><th>Value</th><th>Rationale</th></tr></thead>
-          <tbody>{d.assessments.map((x) => (
-            <Fragment key={x.dimension}>{x.factors.map((f) => (
-              <tr key={`${x.dimension}-${f.code}`}><td>{label(x.dimension)}</td><td>{label(f.code)}{f.gate ? " (gate)" : ""}</td>
-                <td>{f.value === null ? "Unknown" : `${f.value}/4: ${f.anchor}`}</td><td className="small">{f.rationale}</td></tr>
-            ))}</Fragment>
-          ))}</tbody></table></TableWrap>
+      <details className="panel" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+        <summary>Technical detail: evidence checks, qualification, prioritisation factors and full history</summary>
+        {open && <div style={{ marginTop: 12 }}><OpportunityTechnical id={id} onChanged={reload} /></div>}
       </details>
-    </Section>
   );
 }
 
-function Economics({ d, lookups, onDone }: { d: Detail; lookups: Lookups | null | undefined; onDone: () => void }) {
-  const [refTo, setRefTo] = useState("");
-  const [competeWith, setCompeteWith] = useState<PickedOpportunity | null>(null);
-  const [dupOf, setDupOf] = useState<PickedOpportunity | null>(null);
-  const [dupReason, setDupReason] = useState("");
-  const v = d.value;
-  const [f, setF] = useState({ currency: v?.currency ?? "", airline_revenue: v?.airline_revenue ?? "", wfc_remuneration: v?.wfc_remuneration ?? "",
-                               incremental_costs: v?.incremental_costs ?? "", guarantee_exposure: v?.guarantee_exposure ?? "",
-                               duration_months: v?.duration_months ? String(v.duration_months) : "", basis: v?.basis ?? "unknown",
-                               assumption: v?.assumptions?.[0]?.text ?? "", assumption_source: v?.assumptions?.[0]?.source ?? "",
-                               assumption_date: v?.assumptions?.[0]?.source_date ?? "" });
-  const a = useAction();
-  const n = (s: string) => (s.trim() === "" ? null : s.trim());
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    await a.run(() => api.post(`/opportunities/${d.opportunity.id}/value`, {
-      currency: n(f.currency)?.toUpperCase() ?? null, airline_revenue: n(f.airline_revenue), wfc_remuneration: n(f.wfc_remuneration),
-      incremental_costs: n(f.incremental_costs), guarantee_exposure: n(f.guarantee_exposure), duration_months: f.duration_months ? Number(f.duration_months) : null,
-      basis: f.basis, assumptions: f.basis === "scenario" && f.assumption ? [{ text: f.assumption, source: f.assumption_source, source_date: f.assumption_date }] : [] }),
-      "Commercial values saved");
-    onDone();
-  }
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+function ResearchResult({ r }: { r: Research }) {
+  const [text, tone] = OUTCOME[r.outcome] ?? [r.outcome, "b-none"];
   return (
-    <Section title="Economics">
-      <p className="muted small">Airline revenue is not WFC contribution. Retained contribution = WFC remuneration − incremental costs, only on contract terms or a labelled, dated scenario; otherwise it stays unqualified. Amounts keep their currency.</p>
-      {d.contribution && (
-        <p><Badge value={d.contribution.status} /> Retained contribution: {d.contribution.retained_contribution ? money(d.contribution.retained_contribution, d.contribution.currency) : "Unqualified"}
-          <span className="muted small"> {d.contribution.reasons.join("; ")}</span></p>
+    <div className="notice" role="status" aria-label="Research result">
+      <strong><Tag text={text} tone={tone} /> {r.found.length} finding(s) in this run{r.found.length === 0 && r.outcome === "people_found" ? " (people found earlier are listed below)" : ""},
+        from {r.methods.map(methodLabel).join(", ") || "no available method"}.</strong>
+      {r.found.length > 0 && <ul className="small">{r.found.map((f, n) => (
+        <li key={n}><Link href={`/relationships/${f.person_id}`}>{f.name}</Link>{f.role ? `, ${f.role}${f.role_status !== "current" ? ` (${f.role_status})` : ""}` : ", title not established"}
+          {" · "}{f.organisation ? `${f.organisation} (${f.affiliation_label.toLowerCase()})` : "organisation not established"} · {f.method}{f.source ? `: ${f.source}` : ""}
+          {f.new ? "" : " (already known)"}</li>))}</ul>}
+      {r.outcome === "incomplete" && <div className="small"><b>Still to do:</b> {[...r.coverage.remaining, ...(r.coverage.limits_hit ?? [])].join("; ")}. Choose Continue research.</div>}
+      <div className="small muted">Not searched: {r.coverage.not_searched.join("; ")}.</div>
+      <div className="small muted">Found people are research candidates until a person confirms who they are. Being named in a source does not make someone a decision maker.</div>
+    </div>
+  );
+}
+
+function PeopleTable({ title, rows, empty, busy, onLink }: { title: string; rows: Person[]; id: string; empty: string; busy: boolean;
+                                                              onLink: (pid: string, status: string, msg: string) => void }) {
+  return (
+    <>
+      <p className="fact-label">{title} ({rows.length})</p>
+      {rows.length === 0 ? <p className="small muted">{empty}</p> : (
+        <TableWrap label={title}>
+          <table><thead><tr><th>Person</th><th>Evidenced title and organisation</th><th>Role on this opportunity</th><th>Status</th><th>Why relevant (evidence)</th><th>LinkedIn</th><th /></tr></thead>
+            <tbody>{rows.map((p) => (
+              <tr key={p.id} className={p.link_status === "not_relevant" ? "muted" : undefined}>
+                <td><Link href={`/relationships/${p.id}`}>{p.full_name}</Link><div className="small muted">{personLine(p)}</div></td>
+                <td className="small">{(p.roles ?? []).length === 0 ? <span className="muted">No title or organisation bound by a source</span> : (
+                  <ul className="list-plain">{(p.roles ?? []).slice(0, 3).map((r, n) => (
+                    <li key={n} title={r.quote ?? r.binding}>{r.role_title ?? "title not stated"}{r.role_status !== "current" ? ` (${r.role_status})` : ""}
+                      {" · "}{r.organisation ?? "organisation not established"}{r.organisation ? <span className="muted"> · {r.affiliation_label.toLowerCase()}</span> : null}
+                      {r.source === "before_upgrade" ? <span className="muted"> · recorded before the evidence rules</span> : null}</li>))}</ul>)}</td>
+                <td className="small">{ROLE_LABEL[p.role_on_opportunity ?? "unknown"]}</td>
+                <td><Tag text={p.state_label} tone={STATE_TONE[p.state]} />{p.link_status === "not_relevant" && <div className="small">marked not relevant</div>}</td>
+                <td className="small">{p.relevance_basis}</td>
+                <td className="small">{p.linkedin_profile_url ? <a href={p.linkedin_profile_url} target="_blank" rel="noreferrer noopener">Confirmed profile</a>
+                  : <a href={p.linkedin_search_url} target="_blank" rel="noreferrer noopener">Search LinkedIn</a>}</td>
+                <td className="actions">{p.link_status !== "not_relevant" ? (
+                  <button type="button" className="btn btn-small" disabled={busy} onClick={() => onLink(p.id, "not_relevant", "Marked not relevant")}>Not relevant</button>
+                ) : (
+                  <button type="button" className="btn btn-small" disabled={busy} onClick={() => onLink(p.id, "relevant", "Restored")}>Restore</button>
+                )}</td>
+              </tr>
+            ))}</tbody></table>
+        </TableWrap>
       )}
-      <form onSubmit={save} className="form-grid">
-        <label className="field">Basis<select className="select" value={f.basis} onChange={set("basis")}>
-          <option value="unknown">Unknown (unqualified)</option><option value="contract">Contract terms</option><option value="scenario">Labelled scenario</option></select></label>
-        <label className="field">Currency (ISO 4217)<input className="input" value={f.currency} onChange={set("currency")} maxLength={3} placeholder="USD" /></label>
-        <label className="field">Airline revenue<input className="input" inputMode="decimal" value={f.airline_revenue} onChange={set("airline_revenue")} /></label>
-        <label className="field">WFC remuneration<input className="input" inputMode="decimal" value={f.wfc_remuneration} onChange={set("wfc_remuneration")} /></label>
-        <label className="field">Incremental costs<input className="input" inputMode="decimal" value={f.incremental_costs} onChange={set("incremental_costs")} /></label>
-        <label className="field">Contractual exposure (guarantees)<input className="input" inputMode="decimal" value={f.guarantee_exposure} onChange={set("guarantee_exposure")} /></label>
-        <label className="field">Duration (months)<input className="input" type="number" min={0} value={f.duration_months} onChange={set("duration_months")} /></label>
-        {f.basis === "scenario" && <>
-          <label className="field wide">Scenario assumption<input className="input" value={f.assumption} onChange={set("assumption")} required /></label>
-          <label className="field">Assumption source<input className="input" value={f.assumption_source} onChange={set("assumption_source")} required /></label>
-          <label className="field">Source date<input className="input" type="date" value={f.assumption_date} onChange={set("assumption_date")} required /></label>
-        </>}
-        <div className="actions"><button className="btn" type="submit" disabled={a.busy}>Save economics</button></div>
+    </>
+  );
+}
+
+function ResearchCoverage({ id, rel, onChanged }: { id: string; rel: Rel; onChanged: () => void }) {
+  const run = rel.latest_research;
+  const cov = (run?.coverage ?? {}) as Partial<Coverage>;
+  const searches = run?.searches ?? [];
+  const [text, tone] = run?.outcome ? (OUTCOME[run.outcome] ?? [run.outcome, "b-none"]) : ["Not researched yet", "b-none"];
+  return (
+    <section className="panel" aria-label="Research coverage">
+      <div className="panel-head"><p className="question">Research coverage</p><Tag text={text} tone={tone} /></div>
+      {run && <p className="small">{cov.read ?? 0} of {cov.documents ?? 0} document(s) and page(s) read; {cov.sections_read ?? 0} of {cov.sections_total ?? 0} section(s) read by
+        the rules; {cov.ai_connected ? `${cov.ai_sections_read ?? 0} section(s) read by the configured AI extractor` : "the configured AI extractor is not connected"};
+        {" "}{cov.failed ?? 0} could not be fetched; {cov.skipped ?? 0} skipped; {cov.queued ?? 0} still to read.</p>}
+      {(cov.remaining ?? []).length > 0 && <><p className="fact-label">Remaining work</p><ul className="small">{(cov.remaining ?? []).concat(cov.limits_hit ?? []).map((x) => <li key={x}>{x}</li>)}</ul></>}
+      {(cov.not_searched ?? []).length > 0 && <><p className="fact-label">Not searched</p><ul className="small">{(cov.not_searched ?? []).map((x) => <li key={x}>{x}</li>)}</ul></>}
+      {searches.length > 0 && <>
+        <p className="fact-label">Web searches</p>
+        <ul className="list-plain small" aria-label="Web searches">{searches.map((s) => (
+          <li key={s.query}>{s.purpose}: <code>{s.query}</code> · {s.status === "run" ? `searched, ${s.results} result(s)` : s.status === "failed" ? `failed (${s.reason})` : "not searched by ATLAS"}
+            {" · "}<a href={s.link} target="_blank" rel="noreferrer noopener">open this search yourself</a></li>))}</ul></>}
+      {rel.documents.length > 0 && (
+        <TableWrap label="Documents and pages">
+          <table><thead><tr><th>Document or page</th><th>How it was found</th><th>Status</th><th>Sections read</th><th>People</th></tr></thead>
+            <tbody>{rel.documents.map((d) => {
+              const [st, stTone] = DOC_STATUS[d.status] ?? [d.status, "b-none"];
+              return (
+                <tr key={d.id}>
+                  <td>{d.url ? <a href={d.url} target="_blank" rel="noreferrer noopener">{d.title ?? d.url}</a> : (d.title ?? "Document")}
+                    <div className="small muted">{ORIGIN_LABEL[d.origin] ?? d.origin}{d.organisation ? ` · ${d.organisation}` : ""}</div></td>
+                  <td className="small">{d.found_via ?? "—"}</td>
+                  <td><Tag text={st} tone={stTone} />{d.status_reason && <div className="small muted">{d.status_reason}</div>}</td>
+                  <td className="small">{d.sections_total ? `rules ${d.sections_read}/${d.sections_total}` : "—"}
+                    {d.sections_total ? ` · AI ${d.ai_status === "not_connected" ? "not connected" : `${d.ai_sections_read}/${d.sections_total}`}` : ""}</td>
+                  <td className="num">{d.people_found}</td>
+                </tr>
+              );
+            })}</tbody></table>
+        </TableWrap>
+      )}
+      <AddResearchSource id={id} onAdded={onChanged} />
+    </section>
+  );
+}
+
+function AddResearchSource({ id, onAdded }: { id: string; onAdded: () => void }) {
+  const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const a = useAction();
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    let ok;
+    if (file) {
+      const fd = new FormData();
+      fd.append("file", file);
+      if (title) fd.append("title", title);
+      ok = await a.run(() => api.post(`/opportunities/${id}/research/documents`, fd), "Document added: it is read at the next research run");
+    } else {
+      ok = await a.run(() => api.post(`/opportunities/${id}/research/sources`, url ? { url, title: title || null } : { text, title: title || null }),
+                       url ? "Page added: it is read at the next research run" : "Document added: it is read at the next research run");
+    }
+    if (ok) { setUrl(""); setTitle(""); setText(""); setFile(null); onAdded(); }
+  }
+  return (
+    <form className="form-grid" onSubmit={submit} aria-label="Add a page or document for research">
+      <p className="fact-label" style={{ gridColumn: "1 / -1" }}>Add a relevant page or document (company announcement, press release, biography, market report)</p>
+      <label className="field">Page URL<input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" /></label>
+      <label className="field">Title (optional)<input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+      <label className="field">Or a document (PDF, HTML or text)<input className="input" type="file" accept=".pdf,.html,.htm,.txt,.md"
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+      <label className="field" style={{ gridColumn: "1 / -1" }}>Or paste the document text<textarea className="textarea" value={text} onChange={(e) => setText(e.target.value)} /></label>
+      <div className="actions"><button className="btn" type="submit" disabled={a.busy || (!url && !text.trim() && !file) || (!!url && !/^https?:\/\/\S+$/.test(url))}>Add for research</button></div>
+      <ActionNote state={a} />
+    </form>
+  );
+}
+
+function ResearchPagesForm({ org, onSaved }: { org: Org; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ website: org.website ?? "", newsroom_url: org.newsroom_url ?? "", leadership_url: org.leadership_url ?? "" });
+  const a = useAction();
+  const ok = (u: string) => !u || /^https?:\/\/\S+$/.test(u);
+  if (!open) return <><button type="button" className="btn btn-small" onClick={() => setOpen(true)} aria-label={`Research pages for ${org.name}`}>
+    {org.website || org.newsroom_url || org.leadership_url ? "Edit research pages" : "Add research pages"}</button><ActionNote state={a} /></>;
+  return (
+    <form className="form-grid" aria-label={`Research pages for ${org.name}`} onSubmit={async (e) => { e.preventDefault();
+      if (await a.run(() => api.post(`/organisations/${org.id}/research-pages`, { website: f.website || null, newsroom_url: f.newsroom_url || null,
+                                                                                leadership_url: f.leadership_url || null }), "Research pages saved")) { setOpen(false); onSaved(); } }}>
+      <label className="field">Website<input className="input" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} placeholder="https://…" /></label>
+      <label className="field">Newsroom or press page<input className="input" value={f.newsroom_url} onChange={(e) => setF({ ...f, newsroom_url: e.target.value })} /></label>
+      <label className="field">Leadership or team page<input className="input" value={f.leadership_url} onChange={(e) => setF({ ...f, leadership_url: e.target.value })} /></label>
+      <div className="actions"><button className="btn btn-small" type="submit" disabled={a.busy || !ok(f.website) || !ok(f.newsroom_url) || !ok(f.leadership_url)}>Save research pages</button>
+        <button className="btn btn-ghost btn-small" type="button" onClick={() => setOpen(false)}>Cancel</button></div>
+      <ActionNote state={a} />
+    </form>
+  );
+}
+
+function AddPerson({ id, onAdded }: { id: string; onAdded: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ full_name: "", role_title: "", organisation_label: "", relevance_basis: "", source_url: "" });
+  const a = useAction();
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const body = { ...f, source_url: f.source_url || null, organisation_label: f.organisation_label || null, role_title: f.role_title || null,
+                   source_note: f.source_url ? null : "added by a reviewer" };
+    if (await a.run(() => api.post(`/opportunities/${id}/people`, body), "Person added as a research candidate")) {
+      setF({ full_name: "", role_title: "", organisation_label: "", relevance_basis: "", source_url: "" }); setOpen(false); onAdded();
+    }
+  }
+  if (!open) return <button type="button" className="btn btn-small" onClick={() => setOpen(true)}>Add a person</button>;
+  return (
+    <form className="form-grid" onSubmit={submit} aria-label="Add a person">
+      <label className="field">Full name<input className="input" required minLength={3} value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} /></label>
+      <label className="field">Role or title<input className="input" value={f.role_title} onChange={(e) => setF({ ...f, role_title: e.target.value })} /></label>
+      <label className="field">Organisation<input className="input" value={f.organisation_label} onChange={(e) => setF({ ...f, organisation_label: e.target.value })} /></label>
+      <label className="field">Why relevant<input className="input" value={f.relevance_basis} onChange={(e) => setF({ ...f, relevance_basis: e.target.value })} placeholder="e.g. named as contact on the tender page" /></label>
+      <label className="field">Source URL (optional)<input className="input" value={f.source_url} onChange={(e) => setF({ ...f, source_url: e.target.value })} /></label>
+      <div className="actions"><button className="btn btn-primary" type="submit" disabled={a.busy}>Add</button>
+        <button className="btn btn-ghost" type="button" onClick={() => setOpen(false)}>Cancel</button></div>
+      <ActionNote state={a} />
+    </form>
+  );
+}
+
+function Workspace({ id, i, reload }: { id: string; i: Intel; reload: () => void }) {
+  const ws = i.workspace;
+  const a = useAction();
+  const [owner, setOwner] = useState(ws.owner_label ?? "");
+  const [action, setAction] = useState(ws.next_action ?? "");
+  const [due, setDue] = useState(ws.next_action_due ?? "");
+  const [note, setNote] = useState("");
+  return (
+    <section className="panel" aria-label="Progress and next action">
+      <p className="question">Track progress</p>
+      <div className="filters">
+        <div className="field">Progress
+          <div className="segmented" role="group" aria-label="Progress">
+            {PROGRESS.map(([k, l]) => (
+              <button key={k} type="button" aria-pressed={ws.progress === k} disabled={a.busy}
+                      onClick={() => a.run(() => api.post(`/opportunities/${id}/progress`, { to: k }), `Progress: ${l}`).then(reload)}>{l}</button>
+            ))}
+          </div>
+          <span className="small muted">Tender status is kept separately: {ws.tender_status_label ?? "n/a"}.</span>
+        </div>
+        <form className="inline" onSubmit={(e) => { e.preventDefault(); a.run(() => api.post(`/opportunities/${id}/owner-label`, { owner }), "Owner set").then(reload); }}>
+          <label className="field">Owner (descriptive)<input className="input" value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. WFC Kenya commercial lead" /></label>
+          <button className="btn btn-small" type="submit" disabled={a.busy}>Set owner</button>
+        </form>
+      </div>
+      <form className="filters" onSubmit={(e) => { e.preventDefault(); a.run(() => api.post(`/opportunities/${id}/next-action`, { action, due: due || null }), "Next action saved").then(reload); }}>
+        <label className="field" style={{ flex: "2 1 300px" }}>Next action<input className="input" value={action} onChange={(e) => setAction(e.target.value)} /></label>
+        <label className="field">Due<input className="input" type="date" value={due} onChange={(e) => setDue(e.target.value)} /></label>
+        <button className="btn" type="submit" disabled={a.busy}>Save next action</button>
+      </form>
+      <form className="filters" onSubmit={(e) => { e.preventDefault(); a.run(() => api.post(`/opportunities/${id}/notes`, { body: note }), "Note added").then((ok) => { if (ok) { setNote(""); reload(); } }); }}>
+        <label className="field" style={{ flex: "2 1 300px" }}>Add a note<input className="input" value={note} onChange={(e) => setNote(e.target.value)} /></label>
+        <button className="btn" type="submit" disabled={a.busy || note.trim().length < 2}>Add note</button>
       </form>
       <ActionNote state={a} />
-      {d.competing.length > 0 && <p className="small muted">Competes with: {d.competing.map((c) => c.title).join(", ")} (only the largest counts in pipeline totals).</p>}
-      {d.referrals.length > 0 && <p className="small muted">Referrals: {d.referrals.map((x) => `${x.from_company} → ${x.to_company} (${x.status})`).join("; ")}.
-        {d.referrals.some((x) => x.status === "accepted" || x.status === "closed") && " Pipeline reports count this opportunity once, for the company that accepted the referral."}</p>}
-      <div className="filters">
-        <label className="field">Refer to another WFC company
-          <select className="select" value={refTo} onChange={(e) => setRefTo(e.target.value)}>
-            <option value="">Choose…</option>
-            {lookups?.companies.filter((c) => c.id !== d.opportunity.operating_company_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
-        <button className="btn" type="button" disabled={a.busy || !refTo || !d.opportunity.operating_company_id}
-                title={d.opportunity.operating_company_id ? undefined : "Assign the responsible company first"}
-                onClick={() => a.run(() => api.post("/referrals", { opportunity_id: d.opportunity.id, from_company: d.opportunity.operating_company_id, to_company: refTo }), "Referral recorded").then((ok) => { if (ok) { setRefTo(""); onDone(); } })}>
-          Refer
-        </button>
-        <OpportunityPicker label="Competing alternative" excludeId={d.opportunity.id} value={competeWith} onChange={setCompeteWith} />
-        <button className="btn" type="button" disabled={a.busy || !competeWith}
-                onClick={() => competeWith && a.run(() => api.post(`/opportunities/${d.opportunity.id}/competition`, { with_opportunity_id: competeWith.id }), "Grouped as competing alternatives; only the largest counts").then((ok) => { if (ok) { setCompeteWith(null); onDone(); } })}>
-          Group as alternatives
-        </button>
-        <OpportunityPicker label="Same tender as" excludeId={d.opportunity.id} value={dupOf} onChange={setDupOf} />
-        <label className="field">Why
-          <input className="input" value={dupReason} onChange={(e) => setDupReason(e.target.value)} placeholder="e.g. corrigendum to this RFP" />
-        </label>
-        <button className="btn" type="button" disabled={a.busy || !dupOf || dupReason.trim().length < 5}
-                onClick={() => dupOf && a.run(() => api.post("/merge-candidates", { opportunity_id: d.opportunity.id, other_opportunity_id: dupOf.id, reason: dupReason.trim() }),
-                                     "Sent to merge review; nothing is merged until it is decided in Evidence Review").then((ok) => { if (ok) { setDupOf(null); setDupReason(""); } })}>
-          Propose as duplicate
-        </button>
-        {d.competing.length > 0 && <button className="btn" type="button" disabled={a.busy}
-                onClick={() => a.run(() => api.post(`/opportunities/${d.opportunity.id}/competition`, { with_opportunity_id: null }), "Removed from competing group").then(onDone)}>Remove from group</button>}
-      </div>
-    </Section>
+      {i.notes.length > 0 && <ul className="list-plain small" aria-label="Notes">{i.notes.map((n) => (
+        <li key={n.id}>{n.body} <span className="muted">· {n.author_label ?? "shared workspace"} · {dateTime(n.created_at)}</span></li>))}</ul>}
+      {i.relationships.engagements.length > 0 && <>
+        <p className="fact-label">Relationship activity on this opportunity</p>
+        <ul className="list-plain small">{i.relationships.engagements.map((e) => (
+          <li key={e.id}>{dateTime(e.occurred_at)} · {label(e.kind)} with {e.person_id ? <Link href={`/relationships/${e.person_id}`}>{e.person}</Link> : "—"}: {e.summary}
+            {e.owner_label ? <span className="muted"> · {e.owner_label}</span> : null}</li>))}</ul></>}
+      <p className="small muted">Nothing is sent from ATLAS: outreach is done by people, outside the system.</p>
+    </section>
   );
 }
 
-/** Deadline history holds the deadline AS STATED ("2026-11-30 (date only; …)", "2026-11-30 17:00 EAT");
- *  rows written before precision was kept hold an ISO instant. Never re-render a stated deadline as a timestamp. */
-function deadlineHistory(v: string): string {
-  if (v === "unknown") return "Unknown";
-  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v) ? dateTime(v) : v;
+const METHOD_LABEL: Record<string, string> = { source_documents: "the source documents", configured_extractor: "the configured AI extractor",
+                                               organisation_website: "organisation websites", organisation_pages: "the organisations' own pages",
+                                               reviewer_sources: "pages and documents added by the team", web_search: "authorised web search",
+                                               rules: "the evidence rules", linkedin_profiles: "LinkedIn profiles" };
+function methodLabel(m: string): string {
+  return METHOD_LABEL[m] ?? label(m).toLowerCase();
+}
+
+/** The person's title and organisation: the confirmed record fields, else the first evidenced role (with its status). */
+function personLine(p: Person): string {
+  if (p.role_title || p.organisation) return `${p.role_title ?? "role not established"} · ${p.organisation ?? "organisation not established"}`;
+  const r = (p.roles ?? []).find((x) => x.role_status !== "former");
+  if (!r) return "role not established · organisation not established";
+  return `${r.role_title ?? "role not established"}${r.role_status !== "current" ? ` (${r.role_status})` : ""} · ${r.organisation ?? "organisation not established"}`;
 }

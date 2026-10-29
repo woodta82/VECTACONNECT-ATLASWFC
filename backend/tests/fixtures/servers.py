@@ -32,6 +32,12 @@ SEARCH_INDEX = {
 }
 
 
+# Simulated search index (relationship research): (words the query must contain, fixture path, title).
+SEARCH_STANDIN = [
+    (("savanna example air", "appoint"), "/sea-press/appointment.html", "Savanna Example Air appoints Country Manager Uganda"),
+]
+
+
 class _SiteHandler(BaseHTTPRequestHandler):
     def log_message(self, *a):  # quiet
         pass
@@ -47,13 +53,28 @@ class _SiteHandler(BaseHTTPRequestHandler):
             return self._send(200, "text/html; charset=utf-8", body)
         if parts.path == "/broken/":
             return self._send(503, "text/html", b"<html><body>Service unavailable</body></html>")
+        if parts.path == "/search-api/res/v1/web/search":
+            return self._search(parse_qs(parts.query))
         rel = parts.path.lstrip("/")
         if rel.endswith("/") or rel == "":
             rel += "index.html"
         f = (SITE / rel).resolve()
         if not str(f).startswith(str(SITE)) or not f.is_file():
             return self._send(404, "text/html", b"<html><body>Not found</body></html>")
-        return self._send(200, "application/pdf" if f.suffix == ".pdf" else "text/html; charset=utf-8", f.read_bytes())
+        ctype = {".pdf": "application/pdf", ".txt": "text/plain; charset=utf-8"}.get(f.suffix, "text/html; charset=utf-8")
+        return self._send(200, ctype, f.read_bytes())
+
+    def _search(self, q: dict) -> None:
+        """SIMULATED stand-in for the Brave Search API (local stack and tests only): a fixed index of fixture pages."""
+        if not self.headers.get("X-Subscription-Token"):
+            return self._send(401, "application/json", b'{"error": "missing token"}')
+        text = (q.get("q") or [""])[0].lower()
+        base = f"http://{self.headers.get('Host')}"
+        hits = []
+        for keys, path, title in SEARCH_STANDIN:
+            if all(k in text for k in keys):
+                hits.append({"url": base + path, "title": title, "description": "fixture page (simulated search result)"})
+        return self._send(200, "application/json", json.dumps({"web": {"results": hits}}).encode())
 
     def _send(self, code: int, ctype: str, body: bytes) -> None:
         self.send_response(code)
@@ -262,6 +283,41 @@ CANNED += [
 ]
 
 
+# Relationship-intelligence journey (fixture site /people/ and /people-later/, 28 Oct 2026).
+QSK = ("Savanna Example Air invites proposals from cargo general sales and service agents for Kenya. Reference SEA-CGO-2026-81. "
+       "Proposals must be submitted by 15 March 2027.")
+QSU = ("Savanna Example Air invites proposals from cargo general sales and service agents for Uganda. Reference SEA-CGO-2026-82. "
+       "Proposals must be submitted by 22 March 2027.")
+QSR = "Savanna Example Air will start a twice-weekly freighter service between Nairobi and Dubai from 5 January 2027"
+QSC = "Tender SEA-CGO-2026-81 (cargo GSSA, Kenya, Savanna Example Air) has been cancelled."
+
+
+def _sea(quote: str, ref: str, country: str, deadline: str) -> dict:
+    return {"language": "en", "claims": [{"claim_type": "gssa_tender", "stance": "supports", "quote": quote, "fields": {
+        "airline": _f("Savanna Example Air", quote), "country": _f(country, quote), "service": _f("GSSA", quote), "status": _f("open", quote),
+        "tender_ref": _f(ref, quote), "deadline": _f(deadline, quote)}}]}
+
+
+CANNED += [
+    ("Tender SEA-CGO-2026-81 (cargo GSSA", {"language": "en", "claims": [{"claim_type": "tender_status", "stance": "supports", "quote": QSC,
+                                            "fields": {"airline": _f("Savanna Example Air", QSC), "tender_ref": _f("SEA-CGO-2026-81", QSC),
+                                                       "status": _f("cancelled", QSC)}}]}),
+    ("Reference SEA-CGO-2026-81.", _sea(QSK, "SEA-CGO-2026-81", "Kenya", "2027-03-15")),
+    ("Reference SEA-CGO-2026-82.", _sea(QSU, "SEA-CGO-2026-82", "Uganda", "2027-03-22")),
+    ("freighter service between Nairobi and Dubai", {"language": "en", "claims": [
+        {"claim_type": "route_launch", "stance": "supports", "quote": QSR,
+         "fields": {"airline": _f("Savanna Example Air", QSR), "origin": _f("Kenya", QSR), "destination": _f("United Arab Emirates", QSR)}}]}),
+]
+
+# SIMULATED replies to the people-reading prompt (app/ai/people.py): the people each fixture document names, with a quote.
+PEOPLE_CANNED = [
+    ("Contact: Grace Achieng", {"people": [{"name": "Grace Achieng", "role": "Cargo Procurement Manager", "organisation": None,
+                                            "quote": "Contact: Grace Achieng, Cargo Procurement Manager."}]}),
+    ("Head of Cargo Daniel Mwangi", {"people": [{"name": "Daniel Mwangi", "role": "Head of Cargo", "organisation": "Savanna Example Air",
+                                                 "quote": "said Head of Cargo Daniel Mwangi."}]}),
+]
+
+
 class _AIHandler(BaseHTTPRequestHandler):
     calls: list[dict] = []
     delay: float = 0.0          # seconds per call; lets process tests stop a worker mid-extraction
@@ -278,11 +334,18 @@ class _AIHandler(BaseHTTPRequestHandler):
         user = body["messages"][0]["content"]
         m = re.search(r"<document>\n(.*)\n</document>", user, re.S)
         doc = m.group(1) if m else ""
-        out = {"language": "en", "claims": []}
-        for key, response in CANNED:
-            if key in doc:
-                out = response
-                break
+        out: dict = {"language": "en", "claims": []}
+        if "the people it explicitly names" in str(body.get("system", "")):
+            out = {"people": []}
+            for key, response in PEOPLE_CANNED:
+                if key in doc:
+                    out = response
+                    break
+        else:
+            for key, response in CANNED:
+                if key in doc:
+                    out = response
+                    break
         _AIHandler.calls.append({"model": body.get("model"), "matched": out is not None})
         text = json.dumps(out, ensure_ascii=False)
         return self._json(200, {"id": "msg_fixture", "type": "message", "role": "assistant", "model": body.get("model"),
