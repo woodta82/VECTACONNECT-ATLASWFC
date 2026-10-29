@@ -12,8 +12,11 @@ from pydantic import BaseModel, Field
 from ..domain import control_panel as cp
 from ..domain import exports as ex
 from ..domain import overview as ov
+from ..domain import relationship_health as rh
 from ..domain import relationships as rel
 from ..reference.geography import COUNTRIES
+from ..services import contact_discovery as cd
+from ..services import relationship_intelligence as ri
 from ..services import relationship_service as rs
 from .common import db_of, exact, meta_of, not_found
 from .routes import _geo
@@ -27,7 +30,7 @@ def _translate(fn):
     def wrapper(*a, **k):
         try:
             return fn(*a, **k)
-        except rs.RelationshipRejected as exc:
+        except (rs.RelationshipRejected, cd.DiscoveryRejected, ri.IntelligenceRejected) as exc:
             raise HTTPException(exc.status, exc.detail) from exc
     return wrapper
 
@@ -480,15 +483,195 @@ def opportunity_brief(request: Request, opp_id: str):
 @router.get("/people", tags=["Relationships"])
 @exact
 def people(request: Request, states: str | None = None, q: str | None = None, org: str | None = None, has_action: bool | None = None,
+           country: str | None = None, module: str | None = None, stakeholder_type: str | None = None,
+           sort: Literal["status", "health", "attention", "name", "recent"] = "status", min_health: int | None = Query(None, ge=0, le=100),
            limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
-    rows = db_of(request).all("rel_people_list", states=_csv_list(states), q=q or None, org=org or None, since=None, has_action=has_action,
-                              limit=limit, offset=offset)
-    total = int(rows[0]["total"]) if rows else 0
+    return _people(db_of(request), states=states, q=q, org=org, has_action=has_action, country=country, module=module,
+                   stakeholder_type=stakeholder_type, sort=sort, min_health=min_health, limit=limit, offset=offset)
+
+
+def _people(db, *, states, q, org, has_action, country, module, stakeholder_type, sort, min_health, limit, offset) -> dict[str, Any]:
+    # health and attention are computed on read for everyone, so sorting by them needs the whole list first
+    rows = db.all("rel_people_list", states=_csv_list(states), q=q or None, org=org or None, since=None, has_action=has_action,
+                  country=(country or "").upper() or None, module=module or None, stakeholder_type=stakeholder_type or None,
+                  limit=MAX_RECORDS, offset=0)
+    health = ri.health_index(db)
     for r in rows:
         r.pop("total", None)
         r["state_label"] = rel.STATE_LABELS[r["state"]]
         r["linkedin_search_url"] = rel.linkedin_search_url(r["full_name"], r.get("organisation"))
-    return {"items": rows, "total": total, "limit": limit, "offset": offset, "states": rel.STATE_LABELS}
+        h = health.get(str(r["id"])) or {}
+        for k in ("health_score", "health_band", "health_band_label", "at_risk", "momentum", "momentum_state", "attention", "recommended_action",
+                  "stakeholder_label", "influence_score", "explanation"):
+            r[k] = h.get(k)
+        r["stakeholder_label"] = r["stakeholder_label"] or rh.STAKEHOLDER_TYPES.get(r.get("stakeholder_type") or "unknown")
+        r["posture_label"] = rh.POSTURES.get(r.get("posture") or "unknown")
+        r["capability_area_label"] = ov.CATEGORY_LABELS.get(r.get("capability_area") or "", None)
+    if min_health is not None:
+        rows = [r for r in rows if r["health_score"] is not None and r["health_score"] >= min_health]
+    if sort == "health":
+        rows.sort(key=lambda r: (r["health_score"] is None, -(r["health_score"] or 0), r["full_name"]))
+    elif sort == "attention":
+        rows.sort(key=lambda r: (-(r["attention"] or 0), r["full_name"]))
+    elif sort == "name":
+        rows.sort(key=lambda r: r["full_name"].lower())
+    elif sort == "recent":
+        rows.sort(key=lambda r: str(r.get("updated_at") or ""), reverse=True)
+    total = len(rows)
+    return {"items": rows[offset: offset + limit], "total": total, "limit": limit, "offset": offset, "states": rel.STATE_LABELS,
+            "stakeholder_types": rh.STAKEHOLDER_TYPES, "postures": rh.POSTURES, "decision_authority": rh.DECISION_AUTHORITY,
+            "capability_areas": ov.CATEGORY_LABELS}
+
+
+@router.get("/people/export.csv", tags=["Relationships"])
+def people_export(request: Request, states: str | None = None, q: str | None = None, org: str | None = None, country: str | None = None,
+                  module: str | None = None, stakeholder_type: str | None = None,
+                  sort: Literal["status", "health", "attention", "name", "recent"] = "status"):
+    data = _people(db_of(request), states=states, q=q, org=org, has_action=None, country=country, module=module, stakeholder_type=stakeholder_type,
+                   sort=sort, min_health=None, limit=MAX_RECORDS, offset=0)
+    out = []
+    for r in data["items"]:
+        out.append([r["full_name"], r.get("role_title") or "", r.get("organisation") or "", r["state_label"], r["stakeholder_label"],
+                    rh.DECISION_AUTHORITY.get(r.get("decision_authority") or "unknown"), r["posture_label"], r.get("capability_area_label") or "",
+                    "" if r["health_score"] is None else r["health_score"], r.get("health_band_label") or "Not assessed", r.get("momentum") or "",
+                    r.get("relationship_owner") or "", r.get("next_action") or "", r.get("linkedin_profile_url") or r["linkedin_search_url"],
+                    r.get("recommended_action") or ""])
+    csv = ex.to_csv(["Name", "Title", "Organisation", "Research status", "Stakeholder type", "Decision authority", "Posture", "Capability area",
+                     "Health (0-100)", "Health band", "Momentum", "Relationship owner", "Next action", "LinkedIn (profile or search)",
+                     "Recommended action"], out, scope_note="Health is a measure of a relationship's upkeep from recorded engagements; not a probability of winning",
+                    generated_at=datetime.now(timezone.utc).isoformat())
+    return Response(csv, media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="atlas-contacts.csv"'})
+
+
+# ------------------------------------------------------------------ Relationship intelligence (ATLAS v1.0 parameters, 29 Oct 2026)
+@router.get("/relationships/questions", tags=["Relationships"])
+@exact
+def relationship_questions(request: Request, limit: int = Query(8, ge=1, le=30)):
+    """Who matters most, who are we missing, what is improving, what is at risk, where to invest time: computed on read from
+    recorded engagements, the team's stakeholder judgements and live opportunity links."""
+    return ri.questions(db_of(request), limit=limit)
+
+
+@router.get("/relationships/impact/{opp_id}", tags=["Relationships"])
+@exact
+@_translate
+def relationship_impact(request: Request, opp_id: str):
+    return ri.impact(db_of(request), opp_id)
+
+
+@router.get("/people/{person_id}/health", tags=["Relationships"])
+@exact
+@_translate
+def person_health(request: Request, person_id: str):
+    return ri.person_health(db_of(request), person_id)
+
+
+class JudgementIn(BaseModel):
+    stakeholder_type: str = "unknown"
+    decision_authority: str = "unknown"
+    posture: str = "unknown"
+    basis: str | None = Field(None, max_length=2000)
+    by_label: str | None = Field(None, max_length=200)
+    key_interests: str | None = Field(None, max_length=2000)
+    strategic_account: bool = False
+
+
+@router.post("/people/{person_id}/judgement", tags=["Relationships"])
+@exact
+@_translate
+def person_judgement(request: Request, person_id: str, body: JudgementIn):
+    ri.set_judgement(db_of(request), person_id, body.model_dump(), meta_of(request))
+    return {"ok": True}
+
+
+class OutreachIn(BaseModel):
+    channel: Literal["email", "linkedin_message", "call_notes"] = "email"
+    opportunity_id: str | None = None
+    sender_label: str | None = Field(None, max_length=200)
+    use_ai: bool = True
+
+
+@router.post("/people/{person_id}/outreach-drafts", tags=["Relationships"])
+@exact
+@_translate
+def outreach_draft(request: Request, person_id: str, body: OutreachIn):
+    return ri.draft_outreach(db_of(request), request.app.state.settings, person_id, body.model_dump(), meta_of(request))
+
+
+@router.get("/people/{person_id}/outreach-drafts", tags=["Relationships"])
+@exact
+def outreach_list(request: Request, person_id: str):
+    return {"items": db_of(request).all("outreach_for", id=person_id)}
+
+
+class OutreachEditIn(BaseModel):
+    subject: str | None = Field(None, max_length=300)
+    body: str | None = Field(None, min_length=10, max_length=8000)
+
+
+@router.post("/outreach-drafts/{draft_id}", tags=["Relationships"])
+@exact
+@_translate
+def outreach_edit(request: Request, draft_id: str, body: OutreachEditIn):
+    ri.update_draft(db_of(request), draft_id, body.subject, body.body, meta_of(request))
+    return {"ok": True}
+
+
+class OutreachStatusIn(BaseModel):
+    status: Literal["sent", "discarded"]
+    by_label: str | None = Field(None, max_length=200)
+    note: str | None = Field(None, max_length=1000)
+
+
+@router.post("/outreach-drafts/{draft_id}/status", tags=["Relationships"])
+@exact
+@_translate
+def outreach_status(request: Request, draft_id: str, body: OutreachStatusIn):
+    ri.set_draft_status(db_of(request), draft_id, body.status, body.by_label, body.note, meta_of(request))
+    return {"ok": True}
+
+
+# ------------------------------------------------------------------ Open-market contact discovery
+class DiscoveryIn(BaseModel):
+    organisation_name: str | None = Field(None, max_length=200)
+    countries: list[str] = Field(default_factory=list, max_length=5)
+    region: str | None = Field(None, max_length=40)
+    capability_area: str | None = None
+    role_focus: str | None = Field(None, max_length=120)
+    requested_by_label: str | None = Field(None, max_length=200)
+
+
+@router.post("/contacts/discover", tags=["Relationships"])
+@exact
+@_translate
+def discover_contacts(request: Request, body: DiscoveryIn):
+    """A standalone search for contacts in the open market, by organisation, country or region, WFC capability area and role
+    focus. Reads the organisation's own pages and the authorised web search's results under the evidence rules."""
+    st = request.app.state
+    return cd.start(db_of(request), st.settings, body.model_dump(), meta_of(request), fetch=getattr(st, "fetch", None),
+                    transport=getattr(st, "ai_transport", None), search_transport=getattr(st, "search_transport", None))
+
+
+@router.post("/contacts/discoveries/{disc_id}/continue", tags=["Relationships"])
+@exact
+@_translate
+def discovery_continue(request: Request, disc_id: str):
+    st = request.app.state
+    return cd.continue_(db_of(request), st.settings, disc_id, meta_of(request), fetch=getattr(st, "fetch", None),
+                        transport=getattr(st, "ai_transport", None), search_transport=getattr(st, "search_transport", None))
+
+
+@router.get("/contacts/discoveries", tags=["Relationships"])
+@exact
+def discoveries(request: Request, limit: int = Query(20, ge=1, le=100)):
+    return {"items": cd.list_discoveries(db_of(request), limit=limit)}
+
+
+@router.get("/contacts/discoveries/{disc_id}", tags=["Relationships"])
+@exact
+@_translate
+def discovery(request: Request, disc_id: str):
+    return cd.detail(db_of(request), disc_id)
 
 
 class PersonIn(BaseModel):
@@ -631,13 +814,14 @@ def route_status(request: Request, route_id: str, body: RouteStatusIn):
 
 
 class EngagementIn(BaseModel):
-    kind: Literal["meeting", "call", "email", "proposal", "visit", "other"]
+    kind: Literal["meeting", "call", "email", "proposal", "visit", "introduction", "event", "message", "note", "other"]
     summary: str = Field(min_length=3, max_length=2000)
     occurred_at: datetime | None = None
     opportunity_id: str | None = None
     owner_label: str | None = Field(None, max_length=200)
-    outcome: Literal["positive", "neutral", "negative", "pending"] | None = None
+    outcome: Literal["positive", "neutral", "negative", "no_response", "pending"] | None = None
     next_step: str | None = Field(None, max_length=500)
+    direction: Literal["outbound", "inbound", "mutual"] = "outbound"
 
 
 @router.post("/people/{person_id}/engagements", tags=["Relationships"])

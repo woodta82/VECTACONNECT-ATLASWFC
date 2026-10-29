@@ -52,6 +52,41 @@ def build_queries(*, module: str, title: str, reference: str | None, organisatio
     return uniq[:limit]
 
 
+def build_discovery_queries(*, module: str | None, organisation: str | None, countries: list[str], role_focus: str | None,
+                            limit: int = 8) -> list[Query]:
+    """Open-market contact searches for a discovery brief (29 Oct 2026): the target roles of the WFC capability area, the
+    organisation when named, the country names, and a role focus typed by the team. Most specific first."""
+    out: list[Query] = []
+    country = countries[0] if countries else None
+    where = f" {country}" if country else ""
+    roles = target_roles(module) if module else ()
+    quoted = f'"{organisation}"' if organisation else None
+    if role_focus:
+        rf = f'"{role_focus.strip()}"'
+        out.append(Query(f"{role_focus} at {organisation}" if organisation else f"{role_focus}{where}",
+                         (f"{quoted} {rf}" if quoted else f"{rf} cargo OR freight OR airline") + where))
+    if quoted:
+        for r in roles:
+            terms = " OR ".join(f'"{t}"' for t in r.search_terms[:2])
+            out.append(Query(f"{r.label} at {organisation}", f"{quoted} ({terms}){where}"))
+        out.append(Query(f"Appointment announcements by {organisation}", f"{quoted} appoints OR appointed OR \"joins as\" cargo"))
+        out.append(Query(f"Leadership and management of {organisation}", f"{quoted} leadership team OR management team"))
+    else:
+        for r in roles:
+            terms = " OR ".join(f'"{t}"' for t in r.search_terms[:2])
+            out.append(Query(f"{r.label}{(' in ' + country) if country else ''}", f"({terms}) cargo airline OR forwarder OR GSSA{where}"))
+        if country:
+            out.append(Query(f"Cargo appointments in {country}", f"appointed OR appoints \"head of cargo\" OR \"cargo manager\" {country}"))
+            out.append(Query(f"Air cargo and freight news in {country}", f"air cargo OR freight forwarder news {country}"))
+    seen: set[str] = set()
+    uniq: list[Query] = []
+    for q in out:
+        if q.text.lower() not in seen:
+            seen.add(q.text.lower())
+            uniq.append(q)
+    return uniq[:limit]
+
+
 _LEADER = re.compile(r"leader|management|executive|our[- ]?team|\bteam\b|our[- ]?people|who[- ]?we[- ]?are|board|directors|about", re.I)
 _NEWSROOM = re.compile(r"\bnews\b|newsroom|press|media[- ]?(?:centre|center|room)?|releases?|announcements?", re.I)
 _ITEM = re.compile(r"appoint|join|names|welcome|promot|cargo|freight|gsa|gssa|tender|procure|partner|director|manager|head of|chief", re.I)

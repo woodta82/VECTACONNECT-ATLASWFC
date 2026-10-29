@@ -4,7 +4,7 @@ defaults: secrets are required, never defaulted."""
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 def _release() -> str:
@@ -111,8 +111,11 @@ def load(env: dict[str, str] | None = None) -> Settings:
         search_max_queries=max(0, min(20, int(e.get("SEARCH_MAX_QUERIES", "6") or 6))),
         search_results_per_query=max(1, min(10, int(e.get("SEARCH_RESULTS_PER_QUERY", "5") or 5))),
     )
-    if s.search_provider and s.search_provider != "brave":
-        raise ConfigError("SEARCH_PROVIDER must be 'brave' (the only search connector implemented) or empty")
+    if s.search_provider and s.search_provider not in ("brave", "anthropic"):
+        raise ConfigError("SEARCH_PROVIDER must be 'brave' (Brave Search API), 'anthropic' (the Claude API's web search tool, using "
+                          "ANTHROPIC_API_KEY) or empty")
+    if s.search_provider == "anthropic" and not s.search_api_key:
+        s = replace(s, search_api_key=s.anthropic_api_key)
     if not s.search_api_base_url.startswith("https://") and environment not in {"development", "test"}:
         raise ConfigError("SEARCH_API_BASE_URL must be https outside development/test")
     if s.proxy_signature_secret and len(s.proxy_signature_secret) < 32:

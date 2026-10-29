@@ -1,4 +1,15 @@
-# Release 4.2.0-wfc.13: Control panel, electric cyan brand colour, relationship research
+# Release 4.4.0-wfc.15: open-web discovery by default, relationships to the ATLAS v1.0 parameters, Control panel, electric cyan
+
+**4.4.0-wfc.15** (fifth commit) makes open-web discovery the default: a country, region or worldwide search for the nine
+capability categories searches public information directly through the server's search connector, reads every page it finds,
+labels restricted results and looks for public originals, and keeps outcomes distinct. Registered sources stay optional. Schema
+`wfc_0014` (additive). Details: `BUILD_REPORT.md`, first section.
+
+**4.3.0-wfc.14** (fourth commit) brings the Relationships section to the ATLAS v1.0 parameters with open-market contact discovery
+for the WFC capability areas: discovery by organisation, country or region, capability area and role focus; relevance out of 100
+per contact; stakeholder judgements; relationship health, momentum and attention; the five questions; the relationship share of
+the opportunity score; outreach drafted by ATLAS and sent by a person. Schema `wfc_0013` (additive). Details: `BUILD_REPORT.md`,
+first section.
 
 **4.2.0-wfc.13** (third commit) adds the Control panel: live opportunities per region, market, country and capability area,
 and a provisional score out of 100 per opportunity with its breakdown (not a probability of winning). Details:
@@ -10,7 +21,7 @@ hover, the logo symbol and DYNAMIC MARKET INTELLIGENCE in cyan. In the light the
 ## 4.1.0-wfc.11: complete, evidence-backed relationship research
 
 **Branch:** `wfc/relationship-research-2026-10-28` → base `main` of `woodta82/VECTACONNECT-ATLASWFC` (3.7.0-wfc.9 and the
-committed locks). The branch is prepared as three commits on top of `main`. It has not been pushed: this session can read
+committed locks). The branch is prepared as five commits on top of `main`. It has not been pushed: this session can read
 the repository but cannot push to it.
 
 ## Why

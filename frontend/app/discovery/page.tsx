@@ -18,6 +18,7 @@ type Saved = { id: string; name: string; geo_mode: GeoMode; countries: string[];
                schedule: { id: string; interval_minutes: number; enabled: boolean; next_run_at: string | null; timezone: string } | null };
 type Options = {
   sources: { id: string; name: string; type: string; global: boolean; countries: string[]; modules: string[]; enabled: boolean }[];
+  open_web: { connected: boolean; detail: string; provider: string | null; enabled: boolean };
   ai: { connected: boolean; detail: string; estimate_per_document_usd: string | null; kill_switch: boolean;
         budget: { cap_usd: string; spent_usd: string; reserved_usd: string } | null };
   saved: Saved[];
@@ -37,7 +38,7 @@ export default function DiscoveryPage() {
   return (
     <>
       <PageHeader eyebrow="Discovery" title="Find new opportunities by country"
-                  description="Searches the enabled sources that cover the selected geography and capability areas, retrieves new documents, extracts and validates claims, and reports what matches and why. Results are limited to the configured sources; a search is never a complete view of a market." />
+                  description="Searches public information directly for the selected geography, capability areas and keywords: airline, airport and company sites, public tender and procurement notices, newsrooms, trade publications, public reports and documents. Every page found is read itself; what it states, and what still needs confirmation, is recorded with its source. A search is never a complete view of a market." />
       {o.stale && <StaleBanner onRetry={o.reload} />}
       {o.status === "loading" && <Loading what="discovery options" />}
       {o.status === "error" && !o.data && <ErrorState error={o.error} onRetry={o.reload} />}
@@ -87,8 +88,9 @@ function SearchForm({ o, onSaved }: { o: Options; onSaved: () => void }) {
   const [name, setName] = useState("");
   const a = useAction();
 
-  const enabled = o.sources.filter((s) => s.enabled);
+  const enabled = o.sources.filter((s) => s.enabled && s.type !== "web_search");
   const covering = enabled.filter((s) => mode === "worldwide" || s.global || (mode !== "region" && s.countries.some((c) => countries.includes(c))));
+  const webOn = o.open_web.enabled && o.open_web.connected;
   const ready = mode === "worldwide" || (mode === "region" ? region !== "" : countries.length > 0);
 
   function body(save: boolean, runNow: boolean) {
@@ -107,6 +109,12 @@ function SearchForm({ o, onSaved }: { o: Options; onSaved: () => void }) {
   }
   return (
     <Section title="New search">
+      {!o.open_web.connected && (
+        <div className="notice" role="status" aria-label="Open-web search status">
+          Open-web search is not configured on the server ({o.open_web.detail}). Only configured monitoring sources are searched until a search
+          connector is set once, server-side (see <Link href="/settings">Settings</Link>, Service status). No tender-platform registration is needed.
+        </div>
+      )}
       {!o.ai.connected && (
         <div className="notice" role="status">
           AI extraction is not connected ({o.ai.detail}). Searches still retrieve and store documents; they wait in the
@@ -160,7 +168,9 @@ function SearchForm({ o, onSaved }: { o: Options; onSaved: () => void }) {
           <label className="field">Name (to save this search)<input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. East Africa GSSA tenders" /></label>
         </div>
         <p className="muted small" role="status">
-          {ready ? `${covering.length} enabled source(s) cover this selection${mode !== "worldwide" && covering.length === 0 ? ": nothing would be searched" : ""}.` : "Select the geography to search."}
+          {ready ? (webOn ? `Public web search for this geography and the selected capability areas${covering.length ? `, plus ${covering.length} configured monitoring source(s)` : ""}.`
+                          : `Open-web search is not configured. ${covering.length} configured monitoring source(s) cover this selection${covering.length === 0 ? ": nothing would be searched" : ""}.`)
+                 : "Select the geography to search."}
           {o.ai.estimate_per_document_usd && ` Up to ${money(o.ai.estimate_per_document_usd, "USD")} AI cost per new document. Each run gets one approved ceiling (its upper-bound estimate, capped by the per-run limit); every call, retry and re-extraction for the run counts against it.`}
         </p>
         <div className="actions">

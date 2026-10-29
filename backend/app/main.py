@@ -26,7 +26,7 @@ from .repo.db import Database, SQLAlchemyDatabase
 from .services import auth_service
 
 log = logging.getLogger("atlas")
-EXPECTED_SCHEMA_REVISION = "wfc_0012"
+EXPECTED_SCHEMA_REVISION = "wfc_0014"
 
 
 def create_app(settings: config.Settings | None = None, db_factory: Callable[[], Database] | None = None) -> FastAPI:

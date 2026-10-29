@@ -17,6 +17,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ..ai import extraction as ai
+from ..connectors import search as web_search
 from ..domain import exports as ex
 from ..reference.geography import COUNTRIES
 from ..services import discovery as dsc
@@ -105,6 +106,8 @@ def discovery_options(request: Request):
             "sources": [{"id": r["id"], "name": r["name"], "type": r["source_type"], "global": r["global_coverage"],
                          "countries": r["country_coverage"], "modules": r["modules"], "enabled": r["enabled"]}
                         for r in db.all("sources_list", kind="web")],
+            "open_web": {"connected": web_search.available(s) is None, "detail": web_search.available(s) or "connected", "provider": s.search_provider or None,
+                         "enabled": bool(db.one("source_open_web") and db.one("source_open_web")["enabled"])},
             "ai": {"connected": per_doc is not None, "detail": ai.available(s) or "connected",
                    "estimate_per_document_usd": per_doc, "kill_switch": db.scalar("flag_get", key="ai_kill_switch"),
                    "budget": db.one("budget_current")},

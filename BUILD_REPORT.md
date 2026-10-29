@@ -1,4 +1,98 @@
 # VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE
+## Release `4.4.0-wfc.15`, 29 October 2026: open-web discovery as the default
+
+Instruction of 29 Oct 2026 ("Continue from atlas-wfc-4.2.0-wfc.13 … using atlas-vecta-v1.0-FINAL as the functional reference for
+public-source discovery"). This release continues from 4.3.0-wfc.14, which already contains the relationship work on top of
+4.2.0-wfc.13; nothing of 4.2.0 or 4.3.0 is removed. The design, Poppins, colours, components, Overview, Control panel and
+responsive behaviour are unchanged; there is no public marketing website in this repository. Schema `wfc_0014` (additive).
+
+**1–3. Open-web discovery is the default; the journey is unchanged.** The Discover screen keeps its inputs (worldwide, region,
+one or several countries; the nine capability categories; optional keywords, organisation or airline; Search now). A built-in
+source, "Open web (authorised search)", is planned for every search: the geography and categories become public web searches
+(`domain/open_web.py`, named by purpose), the search connector returns public pages, and each page is fetched and read itself
+through the existing pipeline (`services/discovery.py`, `web_search` source type). A new country or region needs no website
+registered. Registered sources remain optional monitoring inputs; the open-web source cannot be edited or retired, only disabled.
+Configuration stays in Settings (search provider and key, AI budget, limits). Two connectors: Brave Search API, or the Claude API's
+web search tool (result URLs only).
+
+**2 and 8. Public sources; restricted results.** Queries name tenders and procurement notices, airline and airport sites,
+newsrooms and press releases, trade publications, public reports and documents. A result that needs registration, login or
+payment (HTTP 401/402/403, or a page that shows only a gate) is labelled, not read and never bypassed; a public original or
+corroborating copy is searched for by its title, and the run says whether one was found; other results continue. Each result
+page is attributed to its own site, with authority inferred conservatively (government or procurement portal, the organisation's
+own site, known trade press, otherwise unverified; `source_documents.doc_family`, `doc_authority`).
+
+**4–5. Openings as well as tenders; the nine areas.** Each area has a formal-notice query and commercial-opening queries (mandates
+and appointments, Total Cargo Management, routes and capacity, gateways and road feeder, outsourcing and training, technology,
+partnerships and network). Explicit opportunities and market signals stay separate records; the commercial interpretation is
+labelled as ATLAS's, with what remains unconfirmed. Nothing is invented. WFC internal data stays optional.
+
+**6–7. Every result connects to relationship research**, unchanged from 4.1–4.3 (sourced candidates, confirmed identities,
+recorded relationships, possible routes and gaps shown separately; attribution and duplicate review preserved). Evidence
+controls are unchanged; the run page gains "Public web searches" (what was asked, what each returned, what was not run and why)
+and "Restricted results".
+
+**Outcomes** stay distinct: results, no relevant results, **search not configured**, **search failure**, **inaccessible sources**
+(a flag beside the outcome), incomplete, partial coverage, nothing searched.
+
+**Checks on this release:**
+- backend: **1276 passed** (new: `tests/domain/test_open_web.py`, `tests/sql/test_migration_0014.py`,
+  `tests/integration/test_open_web_discovery.py`: a country search with no registered website; region and worldwide; no connector;
+  failed search; restricted results with corroboration; registered sources beside the open web);
+- browser journeys: **33 passed**, including the acceptance journey of item 8 (`e2e/test_a_open_web_journey.py`, run first, before any website is registered):
+  one-time server-side configuration, a country and category search, public sources found through web search, originals read, a
+  labelled record (unverified publisher) tracked by a person into an opportunity, relationship research, a restricted result that
+  does not stop the search, regional and worldwide searches, "nothing relevant found" distinct from the other outcomes, the
+  Overview and Control panel showing the results; plus every earlier journey;
+- type check, lint and ESLint clean.
+
+**Real public-source demonstration: NOT available in this session.** No search key (Brave or Claude API) and no AI key were
+supplied, and this build environment has no outbound access to public sites. Every result in the evidence is SIMULATED: fixture
+pages served locally and a scripted search stand-in. To run the real demonstration once keys are set: `tools/live_trial.py`
+(opportunities) and `tools/live_research_trial.py` (people) record the queries, pages read, results, limitations and costs.
+
+**One shared login**, unchanged.
+
+## Release `4.3.0-wfc.14`, 29 October 2026: relationships to the ATLAS v1.0 parameters, from the open market
+
+Instruction of 29 Oct 2026: the Relationships section is to work to the parameters of the attached ATLAS v1.0 build
+(`atlas-vecta-v1.0-FINAL`: contact discovery from public sources, stakeholder types, decision authority and posture, relationship
+health with decay and influence weighting, the five questions, impact on success, outreach drafted by AI and sent by a person), and
+relationships are to be based on searching for contacts in the open market relevant to the WFC brief (`ATLAS_WFC_Brief_V2`: the nine
+capability areas). Schema `wfc_0013`.
+
+**What is new** (details: `docs/SCREENS_AND_WORKFLOWS.md`, "Relationship intelligence to the ATLAS v1.0 parameters"):
+- open-market contact discovery (`POST /contacts/discover`, continue, list, detail) by organisation, countries or region, capability
+  area and role focus, through the existing evidence pipeline (organisation pages and their links, authorised search results), with a
+  relevance to the brief out of 100 per contact, every point explained (`domain/contact_relevance.py`);
+- a second search connector: the Claude API's web search tool (`SEARCH_PROVIDER=anthropic`, uses `ANTHROPIC_API_KEY`); only its
+  result URLs are used, then fetched and read like any page;
+- stakeholder judgements recorded with a basis (`POST /people/{id}/judgement`); engagement direction and the `no_response` outcome;
+- relationship health, momentum, attention and the recommended action, computed on read (`domain/relationship_health.py`,
+  `GET /people/{id}/health`), with the ATLAS v1.0 weights and the at-risk cap; shown on the person page, in the directory and the
+  CSV export (`GET /people/export.csv`);
+- the five questions (`GET /relationships/questions`) and the relationship share of the opportunity score
+  (`GET /relationships/impact/{id}`, shown on the opportunity page);
+- outreach drafts (`POST /people/{id}/outreach-drafts`, edit, sent or discarded): template from the record; AI rewording accepted
+  only when it adds no fact and keeps the substance (`ai/outreach.py`); "sent" is recorded by a person and adds an outbound engagement.
+
+**What is different from ATLAS v1.0, and why**: v1.0 asked an AI researcher with web search for named people and a candid score.
+Here the names come only from pages ATLAS fetched and read, with the passage that names them, and the relevance is computed from
+recorded facts so that it can be checked. v1.0 stored health; here it is computed on read from the engagement record, so nothing
+goes stale. The principle "no relationship strength score" of the 28 Oct refocus is replaced by a health score that is explained
+line by line and never changes a research state; win probability is still never computed.
+
+**Checks on this release** (local stack, sample data):
+- backend: **1264 passed** (1263 on the first full run plus the health check corrected to `wfc_0013`; new: `tests/domain/test_relationship_health.py`, `tests/unit/test_search_provider_and_outreach.py`,
+  `tests/sql/test_migration_0013.py`, `tests/integration/test_open_market_relationships.py`);
+- browser journeys: **32 passed**, including the new journey P (discover contacts for Savanna Example Air in Uganda; relevance breakdown; judgement; engagements;
+  health; outreach drafted, edited and recorded as sent; the five questions; export), plus every earlier journey and the responsive
+  and accessibility pages;
+- type check, lint and ESLint clean.
+
+Not done: real sources and keys (the journeys use fixture pages and a simulated search stand-in); WFC has not yet confirmed the
+weights of health, relevance or the opportunity score; no authorised LinkedIn integration.
+
 ## Release `4.2.0-wfc.13`, 29 October 2026: Control panel (opportunities per market, score out of 100)
 
 Asked for on 29 Oct 2026 from a screenshot of a pipeline dashboard. ATLAS holds no contract values, so the panel counts

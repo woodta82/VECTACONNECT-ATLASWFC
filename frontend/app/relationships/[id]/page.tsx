@@ -7,6 +7,7 @@ import { Tag } from "@/components/Records";
 import { Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
 import { DuplicateReview, type Duplicate } from "@/components/Duplicates";
 import { ActionNote } from "@/components/Ui";
+import { HealthPanel, JudgementForm, OutreachPanel, type Draft, type Intelligence } from "@/components/Intelligence";
 import { api } from "@/lib/api";
 import { dateOnly, dateTime, label } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
@@ -25,7 +26,9 @@ type Detail = {
   relationships: { id: string; holder_label: string; nature: string; basis: string; status: string; recorded_at: string }[];
   routes: { id: string; introducer: string; wfc_holder_label: string | null; connection_basis: string; evidence_url: string | null; willingness_confirmed: boolean;
             willingness_basis: string | null; status: string; opportunity_title: string | null; updated_at: string }[];
-  engagements: { id: string; occurred_at: string; kind: string; summary: string; owner_label: string | null; outcome: string | null; next_step: string | null; opportunity_title: string | null }[];
+  engagements: { id: string; occurred_at: string; kind: string; summary: string; owner_label: string | null; outcome: string | null; next_step: string | null;
+                 direction: string; opportunity_title: string | null }[];
+  intelligence: Intelligence; outreach: Draft[];
   roles: { id: string; role_title: string | null; organisation: string | null; organisation_id: string | null; role_status: string; affiliation: string;
            affiliation_label: string; binding: string; source: string; quote: string | null; url: string | null; document_title: string | null }[];
   duplicates: Duplicate[];
@@ -102,6 +105,11 @@ function Body({ id, d, reload }: { id: string; d: Detail; reload: () => void }) 
         </section>
       </div>
 
+      <div className="grid grid-2">
+        <HealthPanel i={d.intelligence} />
+        <JudgementForm id={id} s={d.intelligence.stakeholder} reload={reload} />
+      </div>
+
       <section className="panel" aria-label="Evidence">
         <h2>Source evidence</h2>
         {d.evidence.length === 0 ? <Empty title="No evidence recorded" /> : (
@@ -165,12 +173,14 @@ function Body({ id, d, reload }: { id: string; d: Detail; reload: () => void }) 
         <h2>Engagement history</h2>
         {d.engagements.length === 0 ? <p className="muted">No engagement recorded.</p> : (
           <ul className="list-plain small">{d.engagements.map((e) => (
-            <li key={e.id}>{dateTime(e.occurred_at)} · {label(e.kind)}{e.outcome ? ` · ${e.outcome}` : ""}: {e.summary}
+            <li key={e.id}>{dateTime(e.occurred_at)} · {label(e.kind)} ({e.direction}){e.outcome ? ` · ${label(e.outcome)}` : ""}: {e.summary}
               <span className="muted">{e.owner_label ? ` · ${e.owner_label}` : ""}{e.opportunity_title ? ` · ${e.opportunity_title}` : ""}{e.next_step ? ` · next: ${e.next_step}` : ""}</span></li>))}</ul>
         )}
         <EngagementForm id={id} opportunities={d.opportunities} reload={reload} />
         <p className="small muted">ATLAS records activity; it never sends messages or outreach.</p>
       </section>
+
+      <OutreachPanel id={id} drafts={d.outreach} opportunities={d.opportunities} reload={reload} />
     </div>
   );
 }
@@ -327,19 +337,22 @@ function RouteStatus({ route, reload }: { route: { id: string; status: string; w
 }
 
 function EngagementForm({ id, opportunities, reload }: { id: string; opportunities: { id: string; title: string }[]; reload: () => void }) {
-  const [f, setF] = useState({ kind: "meeting", summary: "", opportunity_id: "", owner_label: "", outcome: "", next_step: "" });
+  const empty = { kind: "meeting", summary: "", opportunity_id: "", owner_label: "", outcome: "", next_step: "", direction: "outbound" };
+  const [f, setF] = useState(empty);
   const a = useAction();
   return (
     <form className="form-grid" aria-label="Record engagement" onSubmit={async (e: FormEvent) => { e.preventDefault();
       const body = { ...f, opportunity_id: f.opportunity_id || null, owner_label: f.owner_label || null, outcome: f.outcome || null, next_step: f.next_step || null };
-      if (await a.run(() => api.post(`/people/${id}/engagements`, body), "Engagement recorded")) { setF({ kind: "meeting", summary: "", opportunity_id: "", owner_label: "", outcome: "", next_step: "" }); reload(); } }}>
+      if (await a.run(() => api.post(`/people/${id}/engagements`, body), "Engagement recorded")) { setF(empty); reload(); } }}>
       <label className="field">Type<select className="select" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>
-        {["meeting", "call", "email", "proposal", "visit", "other"].map((k) => <option key={k} value={k}>{label(k)}</option>)}</select></label>
+        {["meeting", "call", "email", "message", "introduction", "event", "proposal", "visit", "note", "other"].map((k) => <option key={k} value={k}>{label(k)}</option>)}</select></label>
+      <label className="field">Direction<select className="select" value={f.direction} onChange={(e) => setF({ ...f, direction: e.target.value })}>
+        <option value="outbound">WFC reached out</option><option value="inbound">They reached out</option><option value="mutual">Mutual (meeting, event)</option></select></label>
       <label className="field">Opportunity<select className="select" value={f.opportunity_id} onChange={(e) => setF({ ...f, opportunity_id: e.target.value })}>
         <option value="">None</option>{opportunities.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}</select></label>
       <label className="field">Recorded by<input className="input" value={f.owner_label} onChange={(e) => setF({ ...f, owner_label: e.target.value })} /></label>
       <label className="field">Outcome<select className="select" value={f.outcome} onChange={(e) => setF({ ...f, outcome: e.target.value })}>
-        <option value="">Not stated</option>{["positive", "neutral", "negative", "pending"].map((k) => <option key={k} value={k}>{label(k)}</option>)}</select></label>
+        <option value="">Not stated</option>{["positive", "neutral", "negative", "no_response", "pending"].map((k) => <option key={k} value={k}>{label(k)}</option>)}</select></label>
       <label className="field" style={{ gridColumn: "1 / -1" }}>Summary<input className="input" value={f.summary} onChange={(e) => setF({ ...f, summary: e.target.value })} /></label>
       <label className="field" style={{ gridColumn: "1 / -1" }}>Next step<input className="input" value={f.next_step} onChange={(e) => setF({ ...f, next_step: e.target.value })} /></label>
       <div className="actions"><button className="btn" type="submit" disabled={a.busy || f.summary.trim().length < 3}>Record engagement</button></div>

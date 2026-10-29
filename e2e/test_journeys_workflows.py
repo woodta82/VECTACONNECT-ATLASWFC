@@ -14,6 +14,7 @@ import json
 import os
 import re
 import time
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -151,6 +152,13 @@ def test_l_onboarding_rules_capacity_recommendation_and_network_gap(page: Page, 
 # ------------------------------------------------------------------ M. the intended journey (28 Oct 2026 refocus)
 def api(page: Page, path: str) -> dict:
     r = page.request.get(f"{BASE}/api{path}")
+    assert r.ok, (path, r.status, r.text()[:300])
+    return r.json()
+
+
+def api_post(page: Page, path: str, body: dict) -> dict:
+    csrf = page.request.get(f"{BASE}/api/auth/session").json()["csrf_token"]          # the session cookie is shared with the page
+    r = page.request.post(f"{BASE}/api{path}", data=json.dumps(body), headers={"content-type": "application/json", "x-csrf-token": csrf})
     assert r.ok, (path, r.status, r.text()[:300])
     return r.json()
 
@@ -466,4 +474,95 @@ def test_o_control_panel_markets_and_scores(page: Page):
     code = next(c["code"] for c in data["by_country"] if c["code"])
     narrowed = api(page, f"/control-panel?countries={code}")
     assert all(code in s["countries"] for s in narrowed["scored"]) and narrowed["totals"]["live"] <= data["totals"]["live"]
+    assert not [e for e in page.errors if "pageerror" in e], page.errors  # type: ignore[attr-defined]
+
+
+# ------------------------------------------------------------------ P. relationships to the ATLAS v1.0 parameters, from the open market
+def test_p_open_market_discovery_judgement_health_questions_and_outreach(page: Page):
+    """SIMULATED: the company site and the search provider are fixture stand-ins; the AI provider is simulated."""
+    go(page, "/relationships")
+    expect(page.get_by_role("region", name="Relationship questions")).to_be_visible()
+    # 1. discover contacts in the open market for a WFC capability area at a named organisation (its pages + the search stand-in)
+    page.get_by_role("button", name="Discover contacts").click()
+    form = page.get_by_role("region", name="Discover contacts")
+    form.get_by_label("Organisation (optional)").fill("Savanna Example Air")
+    form.get_by_label("Capability area").select_option("airline_representation")
+    form.get_by_label("Requested by").fill("WFC Uganda commercial lead")
+    form.get_by_label("Countries").fill("UG")
+    page.get_by_role("option", name=re.compile("Uganda")).first.click()
+    form.get_by_role("button", name="Find contacts").click()
+    result = page.get_by_role("region", name="Discovery result")
+    expect(result).to_be_visible(timeout=90_000)
+    expect(result).to_contain_text("Savanna Example Air")
+    found = result.get_by_role("region", name="Discovered contacts")
+    expect(found).to_contain_text("Ruth Namubiru")                      # from the search stand-in's appointment page
+    expect(found).to_contain_text("Amina Yusuf")                        # from the organisation's leadership page
+    row = found.get_by_role("row").filter(has_text="Amina Yusuf").first
+    row.get_by_role("button", name="Breakdown").click()
+    expect(row).to_contain_text("Role fit")
+    expect(row).to_contain_text("Research candidate")
+    shot(page, "P1-open-market-discovery")
+    data = api(page, "/contacts/discoveries")["items"][0]
+    assert data["outcome"] in ("people_found", "incomplete") and data["people_found"] >= 2 and "web_search" in data["methods"], data
+    detail = api(page, f"/contacts/discoveries/{data['id']}")
+    amina = next(p for p in detail["people"] if p["full_name"] == "Amina Yusuf")
+    assert sum(c["points"] for c in amina["relevance"]["components"]) == amina["relevance_score"] and amina["source_url"]
+    # 2. the directory shows health as not assessed; the team records the stakeholder judgement with a basis
+    go(page, f"/relationships/{amina['person_id']}")
+    health = page.get_by_role("region", name="Relationship health")
+    expect(health).to_contain_text("Not assessed")
+    judge = page.get_by_role("region", name="Stakeholder judgement")
+    judge.get_by_label("Stakeholder type").select_option("economic_buyer")
+    judge.get_by_label("Decision authority").select_option("final")
+    judge.get_by_label("Posture towards WFC").select_option("neutral")
+    judge.get_by_label("Judged by").fill("WFC Uganda commercial lead")
+    judge.get_by_label("Basis for the judgement").fill("Chief Commercial Officer per the leadership page; owns the GSSA decision per the RFP")
+    judge.get_by_role("button", name="Record judgement").click()
+    expect(page.get_by_text("Judgement recorded", exact=True)).to_be_visible()
+    expect(page.get_by_role("region", name="Relationship health")).to_contain_text("Economic buyer")
+    # 3. an unanswered approach four months ago: a high-influence relationship that has gone quiet is at risk (capped at 40)
+    eng = page.get_by_label("Record engagement")
+    eng.get_by_label("Type").select_option("email")
+    eng.get_by_label("Direction").select_option("outbound")
+    eng.get_by_label("Outcome").select_option("no_response")
+    eng.get_by_label("Summary").fill("Introduction email about GSSA representation in Uganda")
+    eng.get_by_role("button", name="Record engagement").click()
+    expect(page.get_by_text("Engagement recorded", exact=True)).to_be_visible()
+    old = (datetime.now(timezone.utc) - timedelta(days=125)).isoformat()
+    api_post(page, f"/people/{amina['person_id']}/engagements", {"kind": "call", "summary": "Call not returned", "outcome": "no_response",
+                                                                   "direction": "outbound", "occurred_at": old})
+    h = api(page, f"/people/{amina['person_id']}/health")
+    assert h["health"]["assessed"] and {c["factor"] for c in h["health"]["contributions"]} >= {"recency", "influence", "responsiveness"}
+    go(page, f"/relationships/{amina['person_id']}")
+    health = page.get_by_role("region", name="Relationship health")
+    expect(health).to_contain_text("/100")
+    expect(health).to_contain_text("Recommended action")
+    shot(page, "P2-relationship-health")
+    # 4. outreach: drafted from the record, edited by a person, recorded as sent -> an outbound engagement
+    out = page.get_by_role("region", name="Outreach drafts")
+    out.get_by_label("Sender (your name)").fill("WFC Uganda commercial lead")
+    out.get_by_role("button", name="Draft outreach").click()
+    expect(page.get_by_text("Draft written", exact=True)).to_be_visible()
+    draft = page.get_by_label("Edit draft")
+    expect(draft.get_by_label("Text")).to_contain_text("Amina Yusuf")
+    draft.get_by_label("Text").fill(draft.get_by_label("Text").input_value() + "\n\nP.S. We will be in Kampala in November.")
+    draft.get_by_role("button", name="Save edits").click()
+    expect(page.get_by_text("Draft saved", exact=True)).to_be_visible()
+    draft.get_by_label("Sent by").fill("WFC Uganda commercial lead")
+    draft.get_by_role("button", name="I sent this").click()
+    expect(page.get_by_text("Recorded as sent; an outbound engagement was added")).to_be_visible()
+    expect(page.get_by_role("region", name="Outreach drafts")).to_contain_text("Sent by a person")
+    expect(page.get_by_role("region", name="Engagement history")).to_contain_text("Outreach sent by WFC Uganda commercial lead")
+    shot(page, "P3-outreach-sent")
+    # 5. the five questions and the directory reflect the record; the export carries health
+    go(page, "/relationships")
+    q = page.get_by_role("region", name="Relationship questions")
+    expect(q.get_by_label("Who matters most")).to_contain_text("Amina Yusuf")
+    expect(q.get_by_label("Where to invest time")).to_contain_text("Amina Yusuf")
+    expect(q).to_contain_text("Not a probability of winning")
+    page.get_by_label("Sort by").select_option("attention")
+    expect(page.get_by_role("region", name="People").get_by_role("row").nth(1)).to_contain_text("Amina Yusuf")
+    shot(page, "P4-relationship-questions")
+    csv = page.request.get(f"{BASE}/api/people/export.csv").text()
+    assert "Amina Yusuf" in csv and "Economic buyer" in csv and "Health (0-100)" in csv
     assert not [e for e in page.errors if "pageerror" in e], page.errors  # type: ignore[attr-defined]

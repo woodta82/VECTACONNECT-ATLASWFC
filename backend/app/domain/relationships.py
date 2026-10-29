@@ -9,7 +9,9 @@ Principles carried through every function:
 - Being named in an announcement is evidence of involvement, not of decision-making authority.
 - A public association between two people is at most a POSSIBLE introduction route.
 - A generated LinkedIn search link is a search suggestion, never a researched or confirmed identity.
-- No win probabilities and no relationship "strength" scores are computed.
+- No win probabilities are computed. The relationship HEALTH score (domain/relationship_health.py, 29 Oct 2026, the ATLAS v1.0
+  parameters) measures the upkeep of a relationship from recorded engagements and the team's own stakeholder judgements, with
+  its breakdown shown wherever it appears; it never changes a derived state and is never a probability of winning.
 """
 from __future__ import annotations
 

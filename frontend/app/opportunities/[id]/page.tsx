@@ -208,6 +208,7 @@ function Body({ id, b, i, reload }: { id: string; b: Base; i: Intel; reload: () 
 
       <section className="panel" aria-label="Relationship gaps">
         <p className="question">What relationship information is missing?</p>
+        <RelationshipImpact id={id} />
         <ul>{rel.gaps.map((g) => <li key={g}>{g}</li>)}</ul>
         {rel.actions.length > 0 && <><p className="fact-label">Useful next actions</p><ul>{rel.actions.map((x) => <li key={x}>{x}</li>)}</ul></>}
         <p className="fact-label">Targeted LinkedIn searches ({rel.linkedin_integration}). These are searches, not contacts.</p>
@@ -251,6 +252,22 @@ function ResearchResult({ r }: { r: Research }) {
       {r.outcome === "incomplete" && <div className="small"><b>Still to do:</b> {[...r.coverage.remaining, ...(r.coverage.limits_hit ?? [])].join("; ")}. Choose Continue research.</div>}
       <div className="small muted">Not searched: {r.coverage.not_searched.join("; ")}.</div>
       <div className="small muted">Found people are research candidates until a person confirms who they are. Being named in a source does not make someone a decision maker.</div>
+    </div>
+  );
+}
+
+type Impact = { scored: boolean; reason?: string; score?: number; band_label?: string; relationship_points?: number; relationship_max?: number; headroom?: number;
+                explanation?: string; people_judged?: number; people_linked?: number };
+/** How much of the opportunity's score its relationship position accounts for (ATLAS v1.0 "impact on success", 29 Oct 2026). */
+function RelationshipImpact({ id }: { id: string }) {
+  const r = useApi<Impact>(`/relationships/impact/${id}`);
+  if (!r.data) return null;
+  if (!r.data.scored) return <p className="small muted" aria-label="Relationship impact">Not scored: {r.data.reason}.</p>;
+  const d = r.data;
+  return (
+    <div className="small" aria-label="Relationship impact" style={{ marginBottom: 10 }}>
+      <b>Relationship share of the score:</b> {d.relationship_points} of {d.relationship_max} points (score {d.score}, {d.band_label}); {d.headroom} more available.
+      <span className="muted"> {d.people_judged} of {d.people_linked} linked people judged as stakeholders. {d.explanation}</span>
     </div>
   );
 }

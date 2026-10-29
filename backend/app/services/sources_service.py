@@ -140,6 +140,8 @@ def update_source(db: Database, source_id: str, spec: SourceSpec, meta: RequestM
             raise SourceRejected(404, "source not found")
         if cur["source_type"] == "file_import":
             raise SourceRejected(409, "import sources are managed by the import workflow")
+        if cur["source_type"] == "web_search":
+            raise SourceRejected(409, "the built-in open-web source is configured on the server (search connector); it can only be enabled or disabled")
         other = tx.scalar("source_by_name", name=s.name)
         if other is not None and str(other) != source_id:
             raise SourceRejected(409, f"a source named {s.name!r} already exists")
@@ -169,6 +171,8 @@ def retire_source(db: Database, source_id: str, meta: RequestMeta) -> None:
             raise SourceRejected(404, "source not found")
         if cur["source_type"] == "file_import":
             raise SourceRejected(409, "import sources cannot be retired")
+        if cur["source_type"] == "web_search":
+            raise SourceRejected(409, "the built-in open-web source cannot be retired; disable it instead")
         tx.run("source_retire", id=source_id)
         sched = tx.one("schedule_for_source", source=source_id)
         if sched is not None:

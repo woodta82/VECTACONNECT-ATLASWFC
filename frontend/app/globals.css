@@ -408,3 +408,24 @@ td.num .cp-meter { margin: 4px 0 6px auto; width: 70px; }
 }
 /* Bright cyan on white is too faint for chart marks: the light theme draws them in the deeper cyan. */
 html.light .cp-hbar, html.light .cp-meter > span { background: var(--accent-ring); }
+
+/* ------------------------------------------------------------- relationship intelligence (29 Oct 2026) */
+.health-badge { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.health-badge b { font-size: 15px; }
+.health-facts { margin: 10px 0; }
+.health-facts > div { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.cp-breakdown-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.cp-breakdown-list li { display: grid; grid-template-columns: 150px 90px 36px 110px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 12.5px; }
+.cp-breakdown-list .cp-meter { width: 90px; min-width: 0; }
+.questions .question { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.questions h3 { font-size: 13.5px; font-weight: 600; margin: 0 0 2px; }
+.questions ol, .questions ul { margin-top: 8px; }
+.questions li + li { margin-top: 8px; }
+.draft { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-top: 10px; }
+.draft-text { white-space: pre-wrap; font-family: var(--font); font-size: 13px; min-height: 160px; }
+pre.draft-text { background: var(--panel-raised); padding: 10px; border-radius: 8px; min-height: 0; }
+.notice-warn { background: var(--warn-bg); border: 1px solid var(--warn); border-radius: 8px; padding: 8px 10px; }
+@media (max-width: 767px) {
+  .cp-breakdown-list li { grid-template-columns: 1fr auto; }
+  .cp-breakdown-list li .cp-meter, .cp-breakdown-list li .muted:last-child { grid-column: 1 / -1; }
+}

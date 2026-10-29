@@ -17,7 +17,7 @@ export default function SourcesPage() {
   return (
     <>
       <PageHeader eyebrow="Data Sources" title="Public sources and schedules"
-                  description="Register the official portals, airline newsrooms, procurement searches and trade press that discovery searches. Each source states its authority, country coverage, language and refresh frequency. Sources start disabled until you enable them."
+                  description="Discovery searches the open web by default (the built-in Open web source, run through the search connector configured on the server). Sources registered here are optional monitoring inputs: official portals, airline newsrooms, procurement searches and trade press, each with its authority, country coverage, language and refresh frequency. Registered sources start disabled until you enable them."
                   actions={<><button className="btn btn-primary" type="button" onClick={() => setEditing("new")}>Add source</button>
                     <Link className="btn" href="/data-sources">Imports and setup</Link></>} />
       {editing && <SourceForm initial={editing === "new" ? null : editing} onDone={() => { setEditing(null); r.reload(); }} onCancel={() => setEditing(null)} />}
@@ -41,15 +41,16 @@ export default function SourcesPage() {
                   <td><Badge value={!s.enabled ? "disabled" : failing ? "failed" : s.last_success_at ? "healthy" : "not_connected"} />
                     <span className="muted small">{failing ? s.last_error : s.last_success_at ? `ok ${dateTime(s.last_success_at)}` : "never run"} · {s.documents} docs</span></td>
                   <td className="actions">
-                    <button className="btn" type="button" onClick={() => setEditing(s)}>Edit</button>
+                    {s.source_type !== "web_search" && <button className="btn" type="button" onClick={() => setEditing(s)}>Edit</button>}
                     <button className="btn" type="button" disabled={a.busy}
                             onClick={() => a.run(() => api.post(`/sources/${s.id}/enabled`, { enabled: !s.enabled }), s.enabled ? "Disabled" : "Enabled").then(r.reload)}>
                       {s.enabled ? "Disable" : "Enable"}
                     </button>
-                    <button className="btn" type="button" disabled={a.busy || !s.enabled}
+                    {s.source_type !== "web_search" && <button className="btn" type="button" disabled={a.busy || !s.enabled}
                             onClick={() => a.run(() => api.post<{ run_id: string }>(`/sources/${s.id}/run`), (x) => `Run queued (${x.run_id.slice(0, 8)}); see the source page for results`).then(r.reload)}>
                       Run now
-                    </button>
+                    </button>}
+                    {s.source_type === "web_search" && <Link className="btn" href="/discovery">Search from Discover</Link>}
                   </td>
                 </tr>
               );

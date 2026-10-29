@@ -162,7 +162,8 @@ def test_no_coverage_source_failure_and_incomplete_are_distinguished(env):
     # A country no source covers (and the global wire disabled): nothing was searched, never "no results".
     srcs.set_enabled(db, wire, False, META)
     _, run = run_search(db, settings, geo_mode="country", countries=["BR"], regions=[], modules=[])
-    assert (run["status"], run["outcome"]) == ("completed", "no_sources")
+    # nothing registered covers the search and the open-web search is not configured: never "no relevant results"
+    assert (run["status"], run["outcome"]) == ("completed", "search_not_configured")
     assert run["plan"]["coverage_gaps"] == ["BR"] and "Nothing was searched" in run["plan"]["coverage_note"]
     # Every planned source failing is a source failure.
     db.pg.run(f"UPDATE sources SET base_url = '{site.base}/broken/' WHERE id = '{portal}'")

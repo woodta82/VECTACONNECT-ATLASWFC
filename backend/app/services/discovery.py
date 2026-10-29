@@ -51,11 +51,13 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlsplit
 
 from ..ai import extraction as ai
 from ..config import Settings
+from ..connectors import search as web_search
 from ..domain import content as ct
+from ..domain import open_web as ow
 from ..domain import publication
 from ..domain import retrieval
 from ..reference.geography import COUNTRIES, expand_geography
@@ -71,6 +73,8 @@ MODULES = ("airline_representation", "account_growth", "forwarder_sales", "capac
 MAX_URLS_PER_SOURCE_PER_RUN = 25           # documents fetched and extracted per source per run (cost control)
 MAX_COUNTRY_QUERIES_PER_SOURCE = 60
 MAX_LINK_ATTEMPTS = 3                       # a queued link that fails to fetch this many times is given up (and listed)        # per-country search pages per template source per run
+MAX_WEB_QUERIES_PER_COUNTRY = 12            # open-web search: queries per country per run (then the per-run document bound applies)
+MAX_WEB_QUERIES_PER_RUN = 40                # open-web search: queries per run; countries beyond resume from the saved cursor
 SCOPE_ROLES = ("delivery", "contract_territory", "origin", "destination")
 
 
@@ -183,8 +187,15 @@ def plan(db: Database, search: dict[str, Any] | None, source_id: str | None, set
             mod_ok = not modules or not (s["modules"] or []) or bool(set(s["modules"]) & set(modules))
             if geo_ok and mod_ok:
                 sources.append(s)
+    # The open web is searched for every search when a connector is configured. Without one, it is planned only when nothing else
+    # covers the search, so the run says "search not configured" rather than "nothing searched"; beside configured monitoring
+    # sources it is reported as not configured in the plan and not counted as a failed source.
+    search_reason = web_search.available(settings)
+    if not source_id and search_reason and len(sources) > 1:
+        sources = [s for s in sources if s["source_type"] != "web_search"]
     covered: set[str] = set()
-    global_sources = [s for s in sources if s["global_coverage"]]
+    # an unconfigured open-web search covers nothing
+    global_sources = [s for s in sources if s["global_coverage"] and not (s["source_type"] == "web_search" and search_reason)]
     for s in sources:
         covered |= set(s["country_coverage"] or [])
     gaps: list[str] = []
@@ -194,7 +205,17 @@ def plan(db: Database, search: dict[str, Any] | None, source_id: str | None, set
     per_doc = ai.estimate_per_document(settings)
     bounds = {str(s["id"]): _doc_bound(s, wanted) for s in sources}
     max_docs = sum(bounds.values())
+    open_web = [s for s in sources if s["source_type"] == "web_search"]
+    web_enabled = bool(open_web) or (not source_id and any(s["source_type"] == "web_search" for s in db.all("sources_discoverable")))
+    n_countries = len(wanted) if wanted is not None else 1
+    web_queries = min(len(ow.build_queries(countries=sorted(wanted) if wanted is not None else [None], country_names={c: v[0] for c, v in COUNTRIES.items()},
+                                           modules=modules, keywords=(search or {}).get("keywords"), organisation=(search or {}).get("organisation"),
+                                           airline=(search or {}).get("airline"), max_per_country=MAX_WEB_QUERIES_PER_COUNTRY)),
+                      MAX_WEB_QUERIES_PER_RUN) if open_web else 0
     return {
+        "open_web": {"planned": bool(open_web), "enabled": web_enabled, "connected": search_reason is None, "reason": search_reason,
+                     "provider": settings.search_provider or None, "queries": web_queries, "countries": n_countries,
+                     "max_documents": sum(bounds[str(s["id"])] for s in open_web)},
         "countries": sorted(wanted) if wanted is not None else "worldwide",
         "modules": modules or "all",
         "sources": [{"id": str(s["id"]), "name": s["name"], "type": s["source_type"], "authority": s["authority"],
@@ -205,7 +226,9 @@ def plan(db: Database, search: dict[str, Any] | None, source_id: str | None, set
         "planned_countries": sorted(_planned_countries(sources, wanted)),
         "coverage_gaps": gaps,
         "coverage_note": _coverage_note(len(sources), wanted, covered, bool(global_sources),
-                                        capped=[s["name"] for s in sources if _country_queries(s, wanted) > MAX_COUNTRY_QUERIES_PER_SOURCE]),
+                                        capped=[s["name"] for s in sources if _country_queries(s, wanted) > MAX_COUNTRY_QUERIES_PER_SOURCE],
+                                        open_web=(search_reason is None) if (open_web or (web_enabled and not source_id)) else None, web_queries=web_queries,
+                                        n_web=len(open_web)),
         # An UPPER BOUND: the executor never extracts more documents than max_documents (see _doc_bound).
         "estimated_cost_usd": str((per_doc * max_docs).quantize(Decimal("0.0001"))) if per_doc is not None else None,
         "estimate_is_upper_bound": True,
@@ -234,6 +257,8 @@ def _doc_bound(src: dict[str, Any], wanted: set[str] | None) -> int:
     per_page = int(src["max_items"] or 1)
     if src["source_type"] == "web_page":
         return 1
+    if src["source_type"] == "web_search":
+        return min(per_page, MAX_URLS_PER_SOURCE_PER_RUN)
     if src["source_type"] == "search_template":
         queries = min(_country_queries(src, wanted), MAX_COUNTRY_QUERIES_PER_SOURCE)
         return min(per_page * queries, MAX_URLS_PER_SOURCE_PER_RUN)
@@ -253,6 +278,8 @@ def _planned_countries(sources: list[dict[str, Any]], wanted: set[str] | None) -
 
 def _country_queries(src: dict[str, Any], wanted: set[str] | None) -> int:
     """How many per-country search pages a template source would need for this geography."""
+    if src["source_type"] == "web_search":
+        return len(wanted) if wanted is not None else 1
     if src["source_type"] != "search_template" or "{country" not in (src["query_template"] or ""):
         return 1
     cover = set(src["country_coverage"] or [])
@@ -261,16 +288,27 @@ def _country_queries(src: dict[str, Any], wanted: set[str] | None) -> int:
     return len(wanted) if src["global_coverage"] else len(wanted & cover)
 
 
-def _coverage_note(n_sources: int, wanted: set[str] | None, covered: set[str], has_global: bool, capped: list[str] | None = None) -> str:
+def _coverage_note(n_sources: int, wanted: set[str] | None, covered: set[str], has_global: bool, capped: list[str] | None = None,
+                   open_web: bool | None = None, web_queries: int = 0, n_web: int = 0) -> str:
     cap = (f" Per run, {', '.join(capped)} search{'es' if len(capped) == 1 else ''} at most {MAX_COUNTRY_QUERIES_PER_SOURCE} countries; "
            "the countries not reached are listed on the run and it is marked incomplete." if capped else "")
+    if open_web is True:
+        monitoring = n_sources - n_web
+        where = "worldwide" if wanted is None else f"{len(wanted)} selected country(ies)"
+        tail = (" Results are not a complete worldwide view." if wanted is None else " A search is still not a complete view of a market.")
+        return (f"Open-web search: {web_queries} public web search(es) for {where} and the selected capability areas, each result page fetched and "
+                f"read itself" + (f", plus {monitoring} configured monitoring source(s)" if monitoring else "") +
+                ". Public information is searched directly." + tail + cap)
+    prefix = ("Open-web search is NOT configured on the server (Settings → Service status): no public web search was run. "
+              if open_web is False else "")
+    n_sources -= n_web
     if n_sources == 0:
-        return "No enabled source covers this geography and capability area. Nothing was searched."
+        return prefix + "No enabled source covers this geography and capability area. Nothing was searched."
     if wanted is None:
-        return (f"Worldwide search across {n_sources} configured source(s). Results are limited to these sources and are "
+        return (prefix + f"Worldwide search across {n_sources} configured source(s). Results are limited to these sources and are "
                 "not a complete worldwide view." + cap)
     hit = len(wanted & covered) if not has_global else len(wanted)
-    return (f"{n_sources} source(s) covering {hit} of {len(wanted)} selected country(ies)"
+    return (prefix + f"{n_sources} source(s) covering {hit} of {len(wanted)} selected country(ies)"
             + (" (including sources with global coverage)" if has_global else "") + ". Results are limited to these sources." + cap)
 
 
@@ -350,7 +388,10 @@ def _date_status(published: datetime | None, search: dict[str, Any] | None) -> s
 
 # Issue reasons. All but the deliberate exclusions make a run incomplete: a potentially relevant target was not processed.
 MATERIAL_ISSUES = {"retrieval_failed", "language_not_permitted", "extraction_not_run", "extraction_rejected", "not_fetched_limit",
-                   "budget_run_cap", "source_disabled", "document_partially_read"}
+                   "budget_run_cap", "source_disabled", "document_partially_read", "search_failed", "search_not_configured"}
+# Inaccessible sources: labelled and listed, never read. Not incomplete work (nothing more can be done without bypassing the
+# restriction, which ATLAS never does), but reported separately from "nothing relevant found".
+RESTRICTED_ISSUES = {"access_restricted"}
 DELIBERATE_ISSUES = {"date_unknown_excluded"}
 # Listed on the run but not incomplete work: the document was extracted, some proposed claims were rejected into review.
 INFORMATIONAL_ISSUES = {"some_claims_rejected", "listing_links_not_followed"}
@@ -384,7 +425,7 @@ def _rotate(countries: list[str | None], offset: int) -> list[str | None]:
 
 
 def execute_run(db: Database, settings: Settings, run_id: str, job_ctx: Any = None, *,
-                fetch: Any = None, transport: Any = None, now: datetime | None = None) -> dict[str, Any]:
+                fetch: Any = None, transport: Any = None, now: datetime | None = None, search_transport: Any = None) -> dict[str, Any]:
     run = db.one("run_get", id=run_id)
     if run is None:
         raise DiscoveryRejected(404, "run not found")
@@ -399,7 +440,7 @@ def execute_run(db: Database, settings: Settings, run_id: str, job_ctx: Any = No
     ctx.tick(sources_total=len(sources))
     counts: dict[str, Any] = {"documents": 0, "new_documents": 0, "skipped_out_of_range": 0, "skipped_language": 0, "unextracted": 0,
                               "failed_sources": 0, "partial_sources": 0, "succeeded_sources": 0, "claims": 0, "rejected_claims": 0,
-                              "date_unknown": 0, "issues": [], "issue_counts": {},
+                              "date_unknown": 0, "issues": [], "issue_counts": {}, "web_searches": [], "restricted": [],
                               "coverage": {"planned": list(run["plan"].get("planned_countries") or []), "attempted": [],
                                            "retrieved": [], "extracted": []}}
     touched: dict[str, dict[str, Any]] = {}   # signal_id -> {"is_new": bool, "sources": set, "date_unknown": bool}
@@ -416,7 +457,7 @@ def execute_run(db: Database, settings: Settings, run_id: str, job_ctx: Any = No
                 continue
             ctx.tick(current_source=src["name"])
             status = _run_source(db, settings, run_id, src, search, wanted, fetch, transport, ctx, counts, touched, now,
-                                 bound=int(s.get("max_documents") or _doc_bound(src, wanted)))
+                                 bound=int(s.get("max_documents") or _doc_bound(src, wanted)), search_transport=search_transport)
             counts[{"succeeded": "succeeded_sources", "partial": "partial_sources", "failed": "failed_sources"}[status]] += 1
             ctx.tick(sources_done=ctx.progress["sources_done"] + 1)
     except RunCancelled:
@@ -434,9 +475,16 @@ def _issue(counts: dict[str, Any], issues: list[dict[str, Any]], url: str, reaso
         counts["issues"].append(item)
 
 
+def _web_queries(src: dict[str, Any], search: dict[str, Any] | None, wanted: set[str] | None) -> list[ow.WebQuery]:
+    return ow.build_queries(countries=sorted(wanted) if wanted is not None else [None], country_names={c: v[0] for c, v in COUNTRIES.items()},
+                            modules=list((search or {}).get("modules") or []), keywords=(search or {}).get("keywords"),
+                            organisation=(search or {}).get("organisation"), airline=(search or {}).get("airline"),
+                            max_per_country=MAX_WEB_QUERIES_PER_COUNTRY)
+
+
 def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, Any], search: dict[str, Any] | None,
                 wanted: set[str] | None, fetch: Any, transport: Any, ctx: _Ctx, counts: dict[str, Any],
-                touched: dict[str, dict[str, Any]], now: datetime | None, *, bound: int) -> str:
+                touched: dict[str, dict[str, Any]], now: datetime | None, *, bound: int, search_transport: Any = None) -> str:
     """Process one source. Returns 'succeeded' (every target fully processed), 'partial' (some processed,
     some not) or 'failed' (nothing processed). Every target not fully processed is recorded with its reason."""
     ing_run = str(db.scalar("ingestion_run_start2", source=str(src["id"]), job=None, discovery_run=run_id))
@@ -459,16 +507,37 @@ def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, An
         db.run("queue_add", scope=scope, source=sid, url=url, title=(title or "")[:300] or None, country=country, published=published,
                reason=reason, run=run_id, error=(error or "")[:500] or None)
 
-    queries = _urls_for(src, search, wanted)
+    is_web = src["source_type"] == "web_search"
+    purposes: dict[str, ow.WebQuery] = {}
+    if is_web:
+        wq = _web_queries(src, search, wanted)
+        purposes = {q.text: q for q in wq}
+        queries = [(q.text, q.country) for q in wq]
+        query_limit = MAX_WEB_QUERIES_PER_RUN
+        reason = web_search.available(settings)
+        if reason:
+            # Nothing is searched: every planned query is listed as not run, with a link a person can open.
+            for q in wq:
+                counts["web_searches"].append({"purpose": q.purpose, "query": q.text, "country": q.country, "status": "not_run", "results": 0,
+                                               "link": web_search.web_search_link(q.text), "reason": reason})
+            _issue(counts, issues, "search://open-web", "search_not_configured", reason)
+            db.run("ingestion_run_finish2", id=ing_run, status="failed", stats={"documents": 0, "new_documents": 0, "failures": 0, "issues": 1},
+                   error=f"search not configured: {reason}")
+            db.run("run_source_set", run=run_id, source=sid, status="failed", detail=f"open-web search not configured: {reason}", documents=0,
+                   new_documents=0, failures=0, issues=issues)
+            return "failed"
+    else:
+        queries = _urls_for(src, search, wanted)
+        query_limit = MAX_COUNTRY_QUERIES_PER_SOURCE
     cursor = (search or {}).get("coverage_cursor") or {}
     cursor_plan: tuple[int, int] | None
-    if len(queries) > MAX_COUNTRY_QUERIES_PER_SOURCE:
+    if len(queries) > query_limit:
         # Resume where the previous run of this search stopped, then save where this one stops.
         offset = int((cursor.get(sid) or {}).get("offset", 0)) % len(queries)
         ordered = queries[offset:] + queries[:offset]
-        skipped = [c for _u, c in ordered[MAX_COUNTRY_QUERIES_PER_SOURCE:] if c]
+        skipped = [c for _u, c in ordered[query_limit:] if c]
         counts["not_searched_countries"] = sorted(set(counts.get("not_searched_countries", [])) | set(skipped))
-        queries = ordered[:MAX_COUNTRY_QUERIES_PER_SOURCE]
+        queries = ordered[:query_limit]
         cursor_plan = (offset, len(ordered))
     else:
         cursor_plan = None
@@ -480,6 +549,25 @@ def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, An
             if c and c not in cov["attempted"]:
                 cov["attempted"].append(c)
         try:
+            if is_web:
+                q = purposes.get(url)
+                try:
+                    hits = web_search.search(settings, url, country=country, transport=search_transport)
+                except web_search.SearchFailed as exc:
+                    counts["web_searches"].append({"purpose": q.purpose if q else url, "query": url, "country": country, "status": "failed",
+                                                   "results": 0, "link": web_search.web_search_link(url), "reason": str(exc)[:200]})
+                    raise retrieval.RetrievalFailed(f"search failed: {exc}") from exc
+                counts["web_searches"].append({"purpose": q.purpose if q else url, "query": url, "country": country, "status": "run",
+                                               "results": len(hits), "link": web_search.web_search_link(url)})
+                for h in hits:
+                    if h.url.startswith("search://"):
+                        continue
+                    targets.append((h.url, h.title or None, None, country))
+                any_query_ok = True
+                for c in ([country] if country else []):
+                    if c and c not in cov["retrieved"]:
+                        cov["retrieved"].append(c)
+                continue
             fr = fetch(url)
             if src["source_type"] == "rss":
                 items = ct.parse_feed(fr.body, fr.final_url)
@@ -512,7 +600,7 @@ def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, An
         except (retrieval.RetrievalBlocked, retrieval.RetrievalFailed, ct.ContentUnavailable) as exc:
             failures += 1
             first_failed = qi if first_failed is None else first_failed
-            _issue(counts, issues, url, "retrieval_failed", f"{exc.__class__.__name__}: {exc}", country)
+            _issue(counts, issues, url, "search_failed" if is_web else "retrieval_failed", f"{exc.__class__.__name__}: {exc}", country)
             continue
         any_query_ok = True
         for c in ([country] if country else source_countries):
@@ -545,10 +633,21 @@ def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, An
         enqueue(url, title, pub, country, "not_fetched_limit")
         _issue(counts, issues, url, "not_fetched_limit",
                f"beyond this source's per-run limit of {bound} document(s); queued for the next run", country)
-    for url, title_hint, feed_date, country in ordered_targets[:bound]:
+    org_hosts = [ow.host_of(w) for w in (r["website"] for r in db.all("organisation_websites")) if w] if is_web else []
+    corroborated: set[str] = set()
+    work = list(ordered_targets[:bound])
+    processed = 0
+    while work:
+        url, title_hint, feed_date, country = work.pop(0)
+        processed += 1
+        doc_info = info
+        if is_web:
+            # A page found on the open web is its own publisher: authenticity is judged against its own site, not the search.
+            origin = "{0.scheme}://{0.netloc}".format(urlsplit(url))
+            doc_info = ing.SourceInfo(info.id, ow.host_of(url) or info.family, ow.infer_authority(url, org_hosts), origin, info.retention_permitted)
         try:
-            outcome = process_document(db, settings, info, src, url, ing_run, search, fetch, transport, ctx, now,
-                                       feed_published=feed_date, run_id=run_id)
+            outcome = process_document(db, settings, doc_info, src, url, ing_run, search, fetch, transport, ctx, now,
+                                       feed_published=feed_date, run_id=run_id, web=is_web)
         except (retrieval.RetrievalBlocked, retrieval.RetrievalFailed, ct.ContentUnavailable) as exc:
             failures += 1
             enqueue(url, title_hint, feed_date, country, "retrieval_failed", f"{exc.__class__.__name__}: {exc}")
@@ -565,6 +664,33 @@ def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, An
             if outcome.get("gave_up"):
                 db.run("queue_mark_gave_up", scope=scope, source=sid, url=url)
         skip = outcome.get("skip")
+        if skip == "access_restricted":
+            # Labelled, never read, never bypassed. A public original or corroborating copy is looked for by its title.
+            label = ow.RESTRICTION_LABELS.get(outcome["restriction"], outcome["restriction"])
+            counts["restricted"].append({"url": url, "title": title_hint, "restriction": outcome["restriction"], "label": label, "country": country,
+                                         "corroboration": None})
+            _issue(counts, issues, url, "access_restricted", f"{label}: not read; a public original or corroborating source was searched for", country)
+            cq = ow.corroboration_query(title_hint, url) if is_web else None
+            if cq and cq not in corroborated and web_search.available(settings) is None:
+                corroborated.add(cq)
+                try:
+                    hits = web_search.search(settings, cq, country=country, transport=search_transport)
+                    fresh_hits = [h for h in hits if h.url != url and h.url not in {t[0] for t in work} and states.get(h.url) != "done"
+                                  and not h.url.startswith("search://")]
+                    counts["web_searches"].append({"purpose": f"Public original or corroboration of a restricted item ({label.lower()})", "query": cq,
+                                                   "country": country, "status": "run", "results": len(hits), "link": web_search.web_search_link(cq)})
+                    counts["restricted"][-1]["corroboration"] = f"{len(fresh_hits)} other source(s) found and read" if fresh_hits else "no other source found"
+                    for h in fresh_hits:
+                        if processed + len(work) < bound:
+                            work.append((h.url, h.title or None, None, country))
+                        else:
+                            enqueue(h.url, h.title, None, country, "not_fetched_limit")
+                            _issue(counts, issues, h.url, "not_fetched_limit", f"beyond this source's per-run limit of {bound} document(s); queued for the next run", country)
+                except web_search.SearchFailed as exc:
+                    counts["web_searches"].append({"purpose": "Public original or corroboration of a restricted item", "query": cq, "country": country,
+                                                   "status": "failed", "results": 0, "link": web_search.web_search_link(cq), "reason": str(exc)[:200]})
+            db.run("queue_done", scope=scope, source=sid, url=url, run=run_id)
+            continue
         if skip == "out_of_range":
             counts["skipped_out_of_range"] += 1
             continue
@@ -638,9 +764,20 @@ def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, An
 
 def process_document(db: Database, settings: Settings, info: ing.SourceInfo, src: dict[str, Any], url: str, ing_run: str,
                      search: dict[str, Any] | None, fetch: Any, transport: Any, ctx: _Ctx | None,
-                     now: datetime | None, *, feed_published: datetime | None = None, run_id: str | None = None) -> dict[str, Any]:
-    fr = fetch(url)
+                     now: datetime | None, *, feed_published: datetime | None = None, run_id: str | None = None,
+                     web: bool = False) -> dict[str, Any]:
+    try:
+        fr = fetch(url)
+    except retrieval.RetrievalFailed as exc:
+        m = re.search(r"HTTP (\d{3})", str(exc))
+        restriction = ow.restriction_from_status(int(m.group(1))) if m else None
+        if restriction:
+            return {"skip": "access_restricted", "restriction": restriction}
+        raise
     page = ct.extract(fr.body, fr.content_type, fr.final_url)
+    restriction = ow.restriction_from_page(page.text or "", page.title)
+    if restriction:
+        return {"skip": "access_restricted", "restriction": restriction}
     if not page.text:
         raise ct.ContentUnavailable("no readable text")
     # Publication date (fourth instruction of 27 Oct, item 2): the notice's own stated issue date, the page's or PDF's metadata,
@@ -658,7 +795,7 @@ def process_document(db: Database, settings: Settings, info: ing.SourceInfo, src
     language = page.language or src["language"]
     if language and language != "en" and not src["local_language_permitted"]:
         return {"skip": "language_not_permitted", "language": language}
-    doc = ing.IncomingDocument(info, url, fr.final_url, page.text, title=page.title, publisher=src["name"],
+    doc = ing.IncomingDocument(info, url, fr.final_url, page.text, title=page.title, publisher=(ow.host_of(fr.final_url) or src["name"]) if web else src["name"],
                                published_at=published, published_source=published_source, content_type=fr.content_type,
                                run_id=ing_run, language=language, publication_flag=pub.flag, publication_note=pub.note)
     existing = db.one("document_by_content", canonical=ing.ev.canonicalize_url(fr.final_url), hash=ing.ev.content_hash(page.text))
@@ -683,6 +820,8 @@ def process_document(db: Database, settings: Settings, info: ing.SourceInfo, src
         stored = ing.ingest(db, doc, [], now=now_, extraction_status="pending")
         doc_id, family_key, document_new = stored.document_id, stored.family_key, stored.document_new
         prior_progress = None
+        if web:
+            db.run("document_set_web_publisher", id=doc_id, family=info.family, authority=info.authority)
     else:   # stored earlier but not completely read: resume where reading stopped
         doc_id, family_key, document_new = str(existing["id"]), existing["family_key"] or str(existing["id"]), False
         prior_progress = existing["read_progress"]
@@ -744,10 +883,21 @@ def _finish(db: Database, run_id: str, search: dict[str, Any] | None, wanted: se
         flags.append("source_failure")
     if material or truncated:
         flags.append("incomplete")
+    restricted = int(counts["issue_counts"].get("access_restricted", 0))
+    if restricted:
+        flags.append("inaccessible_sources")
+    web_planned = bool((plan.get("open_web") or {}).get("planned"))
+    web_not_configured = int(counts["issue_counts"].get("search_not_configured", 0)) > 0
+    web_failed = int(counts["issue_counts"].get("search_failed", 0))
+    web_run = sum(1 for w in counts.get("web_searches", []) if w["status"] == "run")
     if cancelled:
         status, outcome = "cancelled", "cancelled"
     elif n_sources == 0:
         status, outcome = "completed", "no_sources"      # nothing was searched: never "no relevant results"
+    elif web_planned and web_not_configured and n_sources == 1:
+        status, outcome = "completed", "search_not_configured"     # the open web was the only source and no connector is configured
+    elif web_planned and web_failed and not web_run and n_sources == 1:
+        status, outcome = "failed", "search_failure"               # every public web search failed: not an absence of opportunities
     elif counts["failed_sources"] == n_sources:
         status, outcome = "failed", "source_failure"
     elif material or truncated or counts["failed_sources"] or counts["partial_sources"]:
@@ -756,6 +906,7 @@ def _finish(db: Database, run_id: str, search: dict[str, Any] | None, wanted: se
         status, outcome = "completed", "partial_coverage"
     else:
         status, outcome = "completed", ("results" if matched else "no_relevant_results")
+    counts["restricted_count"] = restricted
     cov = counts["coverage"]
     for k in ("attempted", "retrieved", "extracted"):
         cov[k] = sorted(cov[k])

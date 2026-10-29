@@ -32,9 +32,16 @@ SEARCH_INDEX = {
 }
 
 
-# Simulated search index (relationship research): (words the query must contain, fixture path, title).
+# Simulated search index (relationship research and open-web discovery): (words the query must contain, fixture path, title).
+# Discovery queries carry the country name in quotes and the area's terms; the index answers a few of them with fixture pages
+# (one of which is registration-restricted, to show that a restricted result is labelled and does not stop the search).
 SEARCH_STANDIN = [
     (("savanna example air", "appoint"), "/sea-press/appointment.html", "Savanna Example Air appoints Country Manager Uganda"),
+    (("oman", "ground handling"), "/tradewire/oman-handling.html", "Coastal Handling signs partnership agreement in Oman"),
+    (("oman", "ground handling"), "/restricted/oman-handling-tender.html", "Tender: cargo terminal handling services, Muscat (members only)"),
+    (("united arab emirates", "road feeder"), "/procure/ae-rfs-sample-airways.html", "RFQ SAW-RFS-2026-07: Road feeder services, UAE"),
+    (("côte d'ivoire", "outsourcing"), "/procure/ci-formation-fret.html", "Appel d'offres : formation du personnel fret"),
+    (("ivory coast", "outsourcing"), "/procure/ci-formation-fret.html", "Appel d'offres : formation du personnel fret"),
 ]
 
 
@@ -53,6 +60,9 @@ class _SiteHandler(BaseHTTPRequestHandler):
             return self._send(200, "text/html; charset=utf-8", body)
         if parts.path == "/broken/":
             return self._send(503, "text/html", b"<html><body>Service unavailable</body></html>")
+        if parts.path.startswith("/restricted/"):
+            # a registration-restricted result: labelled by discovery, never read, never bypassed
+            return self._send(401, "text/html", b"<html><body>Please log in or register to view this tender notice.</body></html>")
         if parts.path == "/search-api/res/v1/web/search":
             return self._search(parse_qs(parts.query))
         rel = parts.path.lstrip("/")

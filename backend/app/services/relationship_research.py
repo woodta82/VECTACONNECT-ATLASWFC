@@ -61,11 +61,12 @@ class ResearchRejected(Exception):
 
 @dataclass
 class _Run:
-    opp_id: str
+    opp_id: str | None                      # opportunity-led research, or
     meta: RequestMeta
     org_names: list[str]
     subject: list[str]
     orgs: list[dict[str, Any]]
+    disc_id: str | None = None              # an open-market contact discovery (29 Oct 2026)
     fetches: int = 0
     ai_sections: int = 0
     cost: Decimal = Decimal("0")
@@ -79,6 +80,11 @@ class _Run:
 
 def _country_name(code: str | None) -> str | None:
     return COUNTRIES.get(code, (None,))[0] if code else None
+
+
+def _scope(run: _Run) -> dict[str, Any]:
+    """Query parameters selecting this run's research documents: the opportunity's or the discovery's."""
+    return {"id": run.opp_id, "disc": run.disc_id}
 
 
 def _sha(text: str) -> str:
@@ -112,7 +118,7 @@ def record_mention(tx: Database, run: _Run, m: attr.Mention, *, kind: str, docum
     org_id, org_label = _org_resolve(tx, run, m.organisation)
     # identity: the same passage first, then the same name at the same KNOWN organisation; never the name alone
     pid = tx.scalar("rel_person_by_passage", name=name, kind=kind, doc=document_id, rdoc=rdoc_id, url=url, quote=m.quote)
-    if pid is None:
+    if pid is None and run.opp_id:
         pid = tx.scalar("rel_person_by_statement_on_opp", name=name, opp=run.opp_id, quote=m.quote)
     if pid is None and (org_id or org_label):
         pid = tx.scalar("rel_person_by_name_org", name=name, org=org_id, org_label=org_label)
@@ -120,7 +126,8 @@ def record_mention(tx: Database, run: _Run, m: attr.Mention, *, kind: str, docum
     if created:
         current = m.role_status == "current"
         pid = tx.scalar("rel_person_insert", name=name, role=m.role if current else None, org=org_id if current else None,
-                        org_label=org_label if current else None, origin="document" if kind == "source_document" else "research",
+                        org_label=org_label if current else None,
+                        origin="discovery" if run.disc_id else ("document" if kind == "source_document" else "research"),
                         remit=None, remit_countries=None, notes=None)
         for other in tx.all("rel_people_same_name", id=str(pid), name=name):
             known_both = bool((org_id or org_label) and (other["organisation_id"] or other["organisation_label"]))
@@ -148,8 +155,10 @@ def record_mention(tx: Database, run: _Run, m: attr.Mention, *, kind: str, docum
     if m.role or m.organisation:
         tx.scalar("rel_role_add", person=pid, role=m.role, org=org_id, org_label=org_label, status=m.role_status,
                   affiliation=m.affiliation, binding=m.binding, evidence=str(role_ev or rel_ev), source=source)
-    if m.role_status != "former":
+    if m.role_status != "former" and run.opp_id:
         tx.run("rel_link_upsert", opp=run.opp_id, person=pid, role=m.role_on_opportunity, basis=m.relevance_basis, status="candidate")
+    if run.disc_id:
+        tx.run("disc_person_link", disc=run.disc_id, person=pid, new=created)
     run.found.append({"person_id": pid, "name": name, "role": m.role, "role_status": m.role_status, "organisation": m.organisation,
                       "affiliation": m.affiliation, "affiliation_label": attr.AFFILIATION_LABELS[m.affiliation], "binding": m.binding,
                       "new": created, "method": method, "source": url})
@@ -162,7 +171,7 @@ def _queue(db: Database, run: _Run, *, origin: str, url: str | None = None, sour
            status: str = "queued", reason: str | None = None) -> str | None:
     if url and not urlsplit(url).path:
         url = url + "/"                                   # https://example.com and https://example.com/ are the same page
-    rid = db.scalar("rdoc_add", opp=run.opp_id, org=org_id, origin=origin, url=url, source_doc=source_doc, title=title,
+    rid = db.scalar("rdoc_add", opp=run.opp_id, disc=run.disc_id, org=org_id, origin=origin, url=url, source_doc=source_doc, title=title,
                     page_kind=page_kind, found_via=found_via, status=status, reason=reason, body=body[:MAX_BODY_CHARS] if body else None,
                     sha=_sha(body) if body else None, session_ref=run.meta.session_ref)
     return str(rid) if rid else None
@@ -205,6 +214,15 @@ def _enqueue_start(db: Database, settings: Settings, run: _Run, opp: dict[str, A
                    page_kind="document", found_via="source of this opportunity", status="skipped",
                    reason="the source does not permit retaining its text, so it cannot be re-read for people")
     # 3. organisation pages recorded on the organisation profile
+    _queue_org_pages(db, run)
+    # 4. authorised web search
+    queries = plan.build_queries(module=opp["module"], title=opp["title"], reference=opp.get("tender_ref"), organisations=run.org_names,
+                                 countries=[c for c in (_country_name(c) for c in countries) if c], limit=max(settings.search_max_queries, 1))
+    return _run_searches(db, settings, run, queries, countries, search_transport)
+
+
+def _queue_org_pages(db: Database, run: _Run) -> None:
+    """The website, newsroom and leadership pages recorded for the run's organisations (their links are followed when read)."""
     for o in run.orgs:
         for url, kind, via in ((o.get("leadership_url"), "leadership", "leadership page recorded for the organisation"),
                                (o.get("newsroom_url"), "news", "newsroom recorded for the organisation"),
@@ -213,11 +231,13 @@ def _enqueue_start(db: Database, settings: Settings, run: _Run, opp: dict[str, A
                 _queue(db, run, origin="organisation_page", url=str(url), org_id=str(o["id"]), page_kind=kind, found_via=via)
         if not o.get("website") and not o.get("newsroom_url") and not o.get("leadership_url"):
             run.unavailable.append({"method": "organisation_website",
-                                    "reason": f"no website, newsroom or leadership page recorded for {o['name']}: add one on the "
-                                              "opportunity to include its public pages"})
-    # 4. authorised web search
-    queries = plan.build_queries(module=opp["module"], title=opp["title"], reference=opp.get("tender_ref"), organisations=run.org_names,
-                                 countries=[c for c in (_country_name(c) for c in countries) if c], limit=max(settings.search_max_queries, 1))
+                                    "reason": f"no website, newsroom or leadership page recorded for {o['name']}: record one to include "
+                                              "its public pages"})
+
+
+def _run_searches(db: Database, settings: Settings, run: _Run, queries: list[plan.Query], countries: list[str],
+                  search_transport: web_search.Transport | None) -> list[dict[str, Any]]:
+    """Runs the queries through the authorised search connector and queues every hit; without a connector, lists them as not run."""
     searches: list[dict[str, Any]] = []
     reason = web_search.available(settings)
     if reason:
@@ -423,13 +443,23 @@ def research(db: Database, settings: Settings, opp_id: str, meta: RequestMeta, *
     else:
         latest = db.one("rel_research_latest", id=opp_id)
         searches = list((latest or {}).get("searches") or [])
-        db.all("rdoc_requeue_failed", id=opp_id)
+        db.all("rdoc_requeue_failed", id=opp_id, disc=None)
     ai_reason = ai_extraction.available(settings)
     if ai_reason:
         run.unavailable.append({"method": "configured_extractor", "reason": ai_reason})
+    _read_everything(db, settings, run, fetch, transport, ai_reason)
+    run.unavailable.append({"method": "linkedin_profiles",
+                            "reason": "no authorised LinkedIn integration is connected: targeted LinkedIn searches are provided instead, "
+                                      "and a profile is saved only when a person confirms it"})
+    return _finish(db, settings, run, opp, countries, searches, ai_connected=ai_reason is None)
+
+
+def _read_everything(db: Database, settings: Settings, run: _Run, fetch: Fetch, transport: ai_extraction.Transport | None,
+                     ai_reason: str | None) -> None:
+    """Reads everything queued for the run within the per-run fetch limit, then the AI extractor section by section."""
     # read everything queued, within the per-run fetch limit
     while True:
-        pending = db.all("rdoc_pending", id=opp_id)
+        pending = db.all("rdoc_pending", **_scope(run))
         if not pending:
             break
         progressed = False
@@ -464,7 +494,7 @@ def research(db: Database, settings: Settings, opp_id: str, meta: RequestMeta, *
             break
     # the configured AI extractor, section by section, under the budget controls
     if not ai_reason:
-        for d in db.all("rdoc_ai_pending", id=opp_id):
+        for d in db.all("rdoc_ai_pending", **_scope(run)):
             if run.ai_sections >= MAX_AI_SECTIONS_PER_RUN:
                 run.limits_hit.append("AI reading limit for one run reached")
                 break
@@ -473,17 +503,13 @@ def research(db: Database, settings: Settings, opp_id: str, meta: RequestMeta, *
             if "AI budget refused further reading" in run.limits_hit:
                 break
     else:
-        for d in db.all("rdoc_ai_pending", id=opp_id):
+        for d in db.all("rdoc_ai_pending", **_scope(run)):
             if d["ai_status"] == "not_run":
                 db.run("rdoc_ai", id=str(d["id"]), ai_status="not_connected", ai_read=0)
-    run.unavailable.append({"method": "linkedin_profiles",
-                            "reason": "no authorised LinkedIn integration is connected: targeted LinkedIn searches are provided instead, "
-                                      "and a profile is saved only when a person confirms it"})
-    return _finish(db, settings, run, opp, countries, searches, ai_connected=ai_reason is None)
 
 
-def coverage(db: Database, opp_id: str, *, ai_connected: bool, searches: list[dict[str, Any]]) -> dict[str, Any]:
-    docs = db.all("rdoc_for_opp", id=opp_id)
+def coverage(db: Database, opp_id: str | None, *, ai_connected: bool, searches: list[dict[str, Any]], disc_id: str | None = None) -> dict[str, Any]:
+    docs = db.all("rdoc_for_opp", id=opp_id, disc=disc_id)
     by = lambda st: [d for d in docs if d["status"] == st]  # noqa: E731
     sections_total = sum(int(d["sections_total"]) for d in docs)
     sections_read = sum(int(d["sections_read"]) for d in docs)
@@ -532,7 +558,7 @@ def _finish(db: Database, settings: Settings, run: _Run, opp: dict[str, Any], co
     if cov["searches_not_run"]:
         actions.append("Open the listed web searches yourself, and add any relevant page or document to the research")
     roles = [{"key": r.key, "label": r.label} for r in rel.target_roles(opp["module"])]
-    docs = db.all("rdoc_for_opp", id=run.opp_id)
+    docs = db.all("rdoc_for_opp", **_scope(run))
     read = {d["origin"] for d in docs if d["status"] in ("read", "partial")}
     methods = []
     if "opportunity_source" in read:

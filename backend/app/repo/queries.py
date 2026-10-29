@@ -115,7 +115,7 @@ Q["opportunity_claims"] = """
 SELECT c.id AS claim_id, c.claim_type, c.status, c.value, c.deadline_utc, c.deadline_source_tz,
        ce.stance, ce.excerpt, ce.page_ref, ce.assessed_by,
        d.id AS document_id, d.canonical_url, d.publisher, d.published_at, d.retrieved_at, d.content_hash,
-       f.family_key, src.authority
+       f.family_key, coalesce(d.doc_authority, src.authority) AS authority
 FROM opportunities o
 JOIN signal_claims sc ON sc.signal_id = o.signal_id
 JOIN claims c ON c.id = sc.claim_id
@@ -206,7 +206,7 @@ VALUES (CAST(:claim AS uuid), CAST(:doc AS uuid), CAST(:stance AS text), CAST(:e
         CAST(:assessed_by AS text))
 ON CONFLICT (claim_id, source_document_id, stance) DO NOTHING"""
 Q["claim_links"] = """
-SELECT ce.source_document_id::text AS document_id, f.family_key, coalesce(s.authority, 'unverified') AS authority, ce.stance,
+SELECT ce.source_document_id::text AS document_id, f.family_key, coalesce(d.doc_authority, s.authority, 'unverified') AS authority, ce.stance,
        d.published_at,
        coalesce((SELECT dc.result FROM document_checks dc WHERE dc.source_document_id = d.id AND dc.check_type = 'authenticity'
                  ORDER BY dc.checked_at DESC LIMIT 1), 'unknown') AS authentic
@@ -216,8 +216,8 @@ LEFT JOIN sources s ON s.id = d.source_id
 WHERE ce.claim_id = CAST(:claim AS uuid) AND ce.excluded_at IS NULL"""
 Q["signal_claim_evidence"] = """
 SELECT c.id::text AS claim_id, c.claim_type, c.value, c.deadline_utc, c.deadline_source_tz, ce.stance,
-       d.id::text AS document_id, d.published_at, d.retrieved_at, f.family_key, coalesce(s.family, 'unknown') AS source_family,
-       coalesce(s.authority, 'unverified') AS authority,
+       d.id::text AS document_id, d.published_at, d.retrieved_at, f.family_key, coalesce(d.doc_family, s.family, 'unknown') AS source_family,
+       coalesce(d.doc_authority, s.authority, 'unverified') AS authority,
        coalesce((SELECT dc.result FROM document_checks dc WHERE dc.source_document_id = d.id AND dc.check_type = 'authenticity'
                  ORDER BY dc.checked_at DESC LIMIT 1), 'unknown') AS authentic
 FROM signal_claims sc JOIN claims c ON c.id = sc.claim_id
@@ -1073,7 +1073,7 @@ FROM signals b WHERE a.id = CAST(:id AS uuid) AND b.id = CAST(:src AS uuid)"""
 Q["signal_claim_evidence2"] = """
 SELECT c.id::text AS claim_id, c.claim_type, c.value, c.deadline_utc, c.deadline_source_tz, c.deadline_info, c.review_status, ce.stance,
        ce.assessed_by, ce.excluded_at, d.id::text AS document_id, d.published_at, d.retrieved_at, f.family_key, d.status_contradiction,
-       coalesce(s.family, 'unknown') AS source_family, coalesce(s.authority, 'unverified') AS authority,
+       coalesce(d.doc_family, s.family, 'unknown') AS source_family, coalesce(d.doc_authority, s.authority, 'unverified') AS authority,
        coalesce((SELECT dc.result FROM document_checks dc WHERE dc.source_document_id = d.id AND dc.check_type = 'authenticity'
                  ORDER BY dc.checked_at DESC LIMIT 1), 'unknown') AS authentic,
        ce.excerpt, (SELECT cf.quote FROM claim_fields cf WHERE cf.claim_id = c.id AND cf.field = 'status' AND cf.superseded_at IS NULL
@@ -1251,10 +1251,10 @@ SELECT s.id, s.module, s.related_modules, s.classification, s.title, s.gaps, s.t
        (SELECT count(DISTINCT d.announcement_family_id) FROM signal_claims sc JOIN claim_evidence ce ON ce.claim_id = sc.claim_id
           JOIN source_documents d ON d.id = ce.source_document_id WHERE sc.signal_id = s.id AND ce.stance = 'supports'
           AND ce.excluded_at IS NULL) AS families,
-       (SELECT src.authority FROM signal_claims sc JOIN claim_evidence ce ON ce.claim_id = sc.claim_id
+       (SELECT coalesce(d.doc_authority, src.authority) FROM signal_claims sc JOIN claim_evidence ce ON ce.claim_id = sc.claim_id
           JOIN source_documents d ON d.id = ce.source_document_id JOIN sources src ON src.id = d.source_id
          WHERE sc.signal_id = s.id AND ce.stance = 'supports'
-         ORDER BY CASE src.authority WHEN 'official_portal' THEN 0 WHEN 'internal_record' THEN 0 WHEN 'company_release' THEN 1
+         ORDER BY CASE coalesce(d.doc_authority, src.authority) WHEN 'official_portal' THEN 0 WHEN 'internal_record' THEN 0 WHEN 'company_release' THEN 1
                   WHEN 'trade_press' THEN 2 ELSE 3 END LIMIT 1) AS best_authority,
        (SELECT count(*) FROM signal_claims sc JOIN claims c ON c.id = sc.claim_id WHERE sc.signal_id = s.id
           AND c.status = 'supported') AS claims_supported
@@ -1279,7 +1279,7 @@ WHERE id = CAST(:id AS uuid) AND deleted_at IS NULL"""
 Q["source_by_name"] = "SELECT id FROM sources WHERE lower(name) = lower(CAST(:name AS text)) AND deleted_at IS NULL"
 Q["source_retire"] = "UPDATE sources SET deleted_at = now(), enabled = false WHERE id = CAST(:id AS uuid) AND deleted_at IS NULL"
 Q["sources_list"] = """
-SELECT s.id, s.name, s.family, s.base_url, s.authority, s.enabled, s.source_type, ARRAY(SELECT unnest(s.country_coverage)::text) AS country_coverage,
+SELECT s.id, s.name, s.family, s.base_url, s.authority, s.enabled, s.source_type, s.builtin, ARRAY(SELECT unnest(s.country_coverage)::text) AS country_coverage,
        s.global_coverage, s.language, s.local_language_permitted, s.modules, s.refresh_minutes, s.query_template, s.max_items,
        s.retention_permitted, s.authorisation_note, s.notes, s.freshness_sla_hours, s.updated_at,
        (SELECT max(r.finished_at) FROM ingestion_runs r WHERE r.source_id = s.id AND r.status = 'succeeded') AS last_success_at,
@@ -2131,6 +2131,8 @@ _PERSON_COLS = """p.id, p.full_name, p.role_title, p.organisation_id, coalesce(o
        org.country::text AS organisation_country, p.remit_text, p.remit_countries, p.remit_basis, p.identity_confirmed_at, p.identity_basis,
        p.last_verified_at, p.linkedin_profile_url, p.linkedin_confirmed_at, p.relationship_owner, p.notes, p.next_action, p.next_action_due,
        p.origin, p.email, p.created_at, p.updated_at, ps.state, ps.current_relationships, ps.available_routes, ps.possible_routes,
+       p.stakeholder_type, p.decision_authority, p.posture, p.judgement_basis, p.judgement_by_label, p.judgement_at, p.key_interests,
+       p.strategic_account, p.capability_area, org.kind AS organisation_kind,
        (SELECT max(e.occurred_at) FROM engagements e WHERE e.person_id = p.id) AS last_engagement"""
 Q["rel_person_get"] = f"""
 SELECT {_PERSON_COLS.replace("ps.state", "coalesce(ps.state, CASE WHEN p.merged_into_id IS NOT NULL THEN 'merged' END) AS state")},
@@ -2148,6 +2150,11 @@ SELECT {_PERSON_COLS},
    AND (CAST(:org AS uuid) IS NULL OR p.organisation_id = CAST(:org AS uuid))
    AND (CAST(:since AS timestamptz) IS NULL OR p.created_at >= CAST(:since AS timestamptz))
    AND (CAST(:has_action AS boolean) IS NULL OR (p.next_action IS NOT NULL) = CAST(:has_action AS boolean))
+   AND (CAST(:country AS text) IS NULL OR org.country::text = CAST(:country AS text) OR CAST(:country AS text) = ANY(coalesce(p.remit_countries::text[], ARRAY[]::text[])))
+   AND (CAST(:module AS text) IS NULL OR p.capability_area = CAST(:module AS text)
+        OR EXISTS (SELECT 1 FROM opportunity_people op JOIN opportunities oo ON oo.id = op.opportunity_id
+                    WHERE op.person_id = p.id AND op.status <> 'not_relevant' AND oo.module = CAST(:module AS text)))
+   AND (CAST(:stakeholder_type AS text) IS NULL OR p.stakeholder_type = CAST(:stakeholder_type AS text))
  ORDER BY CASE ps.state WHEN 'existing_relationship' THEN 0 WHEN 'introduction_available' THEN 1 WHEN 'identity_confirmed' THEN 2 ELSE 3 END,
           p.next_action_due NULLS LAST, p.updated_at DESC, p.id
  LIMIT CAST(:limit AS int) OFFSET CAST(:offset AS int)"""
@@ -2257,12 +2264,13 @@ SELECT i.*, coalesce(ip.full_name, i.introducer_label) AS introducer, o.title AS
   FROM introduction_routes i LEFT JOIN people ip ON ip.id = i.introducer_person_id LEFT JOIN opportunities o ON o.id = i.opportunity_id
  WHERE i.target_person_id = CAST(:id AS uuid) ORDER BY i.status = 'declined', i.updated_at DESC"""
 Q["rel_engagement_add"] = """
-INSERT INTO engagements (organisation_id, person_id, opportunity_id, occurred_at, kind, summary, owner_label, outcome, next_step, session_ref)
+INSERT INTO engagements (organisation_id, person_id, opportunity_id, occurred_at, kind, summary, owner_label, outcome, next_step, direction,
+                         session_ref)
 SELECT p.organisation_id, p.id, CAST(:opp AS uuid), CAST(:occurred_at AS timestamptz), CAST(:kind AS text), CAST(:summary AS text),
-       CAST(:owner AS text), CAST(:outcome AS text), CAST(:next_step AS text), CAST(:session_ref AS text)
+       CAST(:owner AS text), CAST(:outcome AS text), CAST(:next_step AS text), coalesce(CAST(:direction AS text), 'outbound'), CAST(:session_ref AS text)
   FROM people p WHERE p.id = CAST(:person AS uuid) RETURNING id"""
 Q["rel_engagements_for"] = """
-SELECT e.id, e.occurred_at, e.kind, e.summary, e.owner_label, e.outcome, e.next_step, e.opportunity_id, o.title AS opportunity_title
+SELECT e.id, e.occurred_at, e.kind, e.summary, e.owner_label, e.outcome, e.next_step, e.direction, e.opportunity_id, o.title AS opportunity_title
   FROM engagements e LEFT JOIN opportunities o ON o.id = e.opportunity_id
  WHERE e.person_id = CAST(:id AS uuid) ORDER BY e.occurred_at DESC"""
 Q["rel_engagements_for_opportunity"] = """
@@ -2349,9 +2357,9 @@ _RDOC_COLS = """rd.id, rd.opportunity_id, rd.organisation_id, org.canonical_name
        rd.title, rd.page_kind, rd.found_via, rd.status, rd.status_reason, rd.sections_total, rd.sections_read, rd.ai_status,
        rd.ai_sections_read, rd.people_found, rd.added_at, rd.fetched_at, rd.updated_at"""
 Q["rdoc_add"] = """
-INSERT INTO research_documents (opportunity_id, organisation_id, origin, url, source_document_id, title, page_kind, found_via, status,
-                                status_reason, body_text, content_sha256, session_ref)
-VALUES (CAST(:opp AS uuid), CAST(:org AS uuid), CAST(:origin AS text), CAST(:url AS text), CAST(:source_doc AS uuid), CAST(:title AS text),
+INSERT INTO research_documents (opportunity_id, discovery_id, organisation_id, origin, url, source_document_id, title, page_kind, found_via,
+                                status, status_reason, body_text, content_sha256, session_ref)
+VALUES (CAST(:opp AS uuid), CAST(:disc AS uuid), CAST(:org AS uuid), CAST(:origin AS text), CAST(:url AS text), CAST(:source_doc AS uuid), CAST(:title AS text),
         CAST(:page_kind AS text), CAST(:found_via AS text), CAST(:status AS text), CAST(:reason AS text), CAST(:body AS text),
         CAST(:sha AS text), CAST(:session_ref AS text))
 ON CONFLICT DO NOTHING RETURNING id"""
@@ -2360,23 +2368,24 @@ SELECT {_RDOC_COLS}, rd.body_text, rd.content_sha256 FROM research_documents rd 
  WHERE rd.id = CAST(:id AS uuid)"""
 Q["rdoc_for_opp"] = f"""
 SELECT {_RDOC_COLS} FROM research_documents rd LEFT JOIN organisations org ON org.id = rd.organisation_id
- WHERE rd.opportunity_id = CAST(:id AS uuid)
+ WHERE (rd.opportunity_id = CAST(:id AS uuid) OR rd.discovery_id = CAST(:disc AS uuid))
  ORDER BY CASE rd.status WHEN 'queued' THEN 0 WHEN 'partial' THEN 1 WHEN 'failed' THEN 2 WHEN 'read' THEN 3 ELSE 4 END,
           CASE rd.origin WHEN 'opportunity_source' THEN 0 WHEN 'user_document' THEN 1 WHEN 'user_url' THEN 2 WHEN 'organisation_page' THEN 3
                          WHEN 'followed_link' THEN 4 WHEN 'search_result' THEN 5 ELSE 6 END, rd.added_at"""
 Q["rdoc_pending"] = f"""
 SELECT {_RDOC_COLS}, rd.body_text FROM research_documents rd LEFT JOIN organisations org ON org.id = rd.organisation_id
- WHERE rd.opportunity_id = CAST(:id AS uuid) AND rd.status = 'queued'
+ WHERE (rd.opportunity_id = CAST(:id AS uuid) OR rd.discovery_id = CAST(:disc AS uuid)) AND rd.status = 'queued'
  ORDER BY CASE rd.origin WHEN 'opportunity_source' THEN 0 WHEN 'user_document' THEN 1 WHEN 'user_url' THEN 2 WHEN 'organisation_page' THEN 3
                          WHEN 'followed_link' THEN 4 WHEN 'search_result' THEN 5 ELSE 6 END, rd.added_at"""
 Q["rdoc_ai_pending"] = f"""
 SELECT {_RDOC_COLS}, rd.body_text FROM research_documents rd LEFT JOIN organisations org ON org.id = rd.organisation_id
- WHERE rd.opportunity_id = CAST(:id AS uuid) AND rd.status IN ('read','partial') AND rd.body_text IS NOT NULL
+ WHERE (rd.opportunity_id = CAST(:id AS uuid) OR rd.discovery_id = CAST(:disc AS uuid)) AND rd.status IN ('read','partial') AND rd.body_text IS NOT NULL
    AND rd.ai_sections_read < rd.sections_total AND rd.ai_status IN ('not_run','not_connected','partial','budget_refused','failed')
  ORDER BY rd.added_at"""
 Q["rdoc_requeue_failed"] = """
 UPDATE research_documents SET status = 'queued', status_reason = 'retried after: ' || coalesce(status_reason, 'failure'), updated_at = now()
- WHERE opportunity_id = CAST(:id AS uuid) AND status = 'failed' AND coalesce(status_reason, '') NOT LIKE 'retried after:%'
+ WHERE (opportunity_id = CAST(:id AS uuid) OR discovery_id = CAST(:disc AS uuid)) AND status = 'failed'
+   AND coalesce(status_reason, '') NOT LIKE 'retried after:%'
 RETURNING id"""
 Q["rdoc_read"] = """
 UPDATE research_documents SET status = CAST(:status AS text), status_reason = CAST(:reason AS text),
@@ -2596,3 +2605,152 @@ SELECT r.id, r.person_id, p.full_name AS person, r.holder_label, r.nature, r.bas
     OR r.person_id IN (SELECT p2.id FROM opportunities o JOIN people p2 ON p2.organisation_id = coalesce(o.airline_id, o.organisation_id)
                        WHERE o.id = CAST(:id AS uuid))
  ORDER BY r.status, r.recorded_at DESC"""
+
+
+# ---------------------------------------------------------------- wfc_0013 (29 Oct 2026: ATLAS v1.0 relationship parameters, open-market discovery)
+Q["disc_insert"] = """
+INSERT INTO contact_discoveries (organisation_id, organisation_label, countries, region_code, capability_area, role_focus, brief,
+                                 requested_by_label, session_ref)
+VALUES (CAST(:org AS uuid), CAST(:org_label AS text), ARRAY(SELECT jsonb_array_elements_text(CAST(:countries AS jsonb)))::char(2)[],
+        CAST(:region AS text), CAST(:module AS text), CAST(:role_focus AS text), CAST(:brief AS text), CAST(:by AS text), CAST(:session_ref AS text))
+RETURNING id"""
+Q["disc_finish"] = """
+UPDATE contact_discoveries SET status = 'finished', outcome = CAST(:outcome AS text),
+       methods = ARRAY(SELECT jsonb_array_elements_text(CAST(:methods AS jsonb))), unavailable = CAST(:unavailable AS jsonb),
+       coverage = CAST(:coverage AS jsonb), searches = CAST(:searches AS jsonb),
+       people_found = (SELECT count(*) FROM discovery_people dp WHERE dp.discovery_id = CAST(:id AS uuid)),
+       runs = runs + 1, cost_usd = cost_usd + CAST(:cost AS numeric), finished_at = now()
+ WHERE id = CAST(:id AS uuid)"""
+Q["disc_reopen"] = "UPDATE contact_discoveries SET status = 'running' WHERE id = CAST(:id AS uuid) RETURNING id"
+_DISC_COLS = """d.id, d.organisation_id, coalesce(o.canonical_name, d.organisation_label) AS organisation, o.kind AS organisation_kind,
+       o.website, d.countries::text[] AS countries, d.region_code, d.capability_area, d.role_focus, d.brief, d.status, d.outcome, d.methods,
+       d.unavailable, d.coverage, d.searches, d.people_found, d.runs, d.cost_usd, d.started_at, d.finished_at, d.requested_by_label"""
+Q["disc_get"] = f"SELECT {_DISC_COLS} FROM contact_discoveries d LEFT JOIN organisations o ON o.id = d.organisation_id WHERE d.id = CAST(:id AS uuid)"
+Q["disc_list"] = f"""
+SELECT {_DISC_COLS} FROM contact_discoveries d LEFT JOIN organisations o ON o.id = d.organisation_id
+ ORDER BY d.started_at DESC LIMIT CAST(:limit AS int)"""
+Q["disc_person_link"] = """
+INSERT INTO discovery_people (discovery_id, person_id, new_record) VALUES (CAST(:disc AS uuid), CAST(:person AS uuid), CAST(:new AS boolean))
+ON CONFLICT (discovery_id, person_id) DO NOTHING"""
+Q["disc_person_relevance"] = """
+UPDATE discovery_people SET relevance_score = CAST(:score AS int), relevance = CAST(:relevance AS jsonb)
+ WHERE discovery_id = CAST(:disc AS uuid) AND person_id = CAST(:person AS uuid)"""
+Q["disc_people"] = """
+SELECT dp.person_id, dp.relevance_score, dp.relevance, dp.new_record, p.full_name, p.role_title, p.organisation_id,
+       coalesce(o.canonical_name, p.organisation_label) AS organisation, o.kind AS organisation_kind, o.country::text AS organisation_country,
+       p.remit_countries::text[] AS remit_countries, p.capability_area, p.linkedin_profile_url, ps.state,
+       (SELECT pr.binding FROM person_roles pr WHERE pr.person_id = p.id ORDER BY pr.role_status = 'current' DESC, pr.created_at LIMIT 1) AS binding,
+       (SELECT rd.page_kind FROM person_evidence e JOIN research_documents rd ON rd.id = e.research_document_id
+         WHERE e.person_id = p.id AND rd.discovery_id = dp.discovery_id ORDER BY rd.page_kind = 'leadership' DESC LIMIT 1) AS page_kind,
+       (SELECT coalesce(e.url, rd.url) FROM person_evidence e LEFT JOIN research_documents rd ON rd.id = e.research_document_id
+         WHERE e.person_id = p.id AND e.supports IN ('role','relevance') ORDER BY e.supports = 'role' DESC, e.observed_at LIMIT 1) AS source_url,
+       (SELECT e.quote FROM person_evidence e WHERE e.person_id = p.id AND e.supports IN ('role','relevance')
+         ORDER BY e.supports = 'role' DESC, e.observed_at LIMIT 1) AS quote
+  FROM discovery_people dp JOIN people p ON p.id = dp.person_id LEFT JOIN organisations o ON o.id = p.organisation_id
+  LEFT JOIN person_state ps ON ps.person_id = p.id
+ WHERE dp.discovery_id = CAST(:id AS uuid) ORDER BY dp.relevance_score DESC, p.full_name"""
+Q["person_set_capability_area"] = """
+UPDATE people SET capability_area = coalesce(capability_area, CAST(:module AS text)), updated_at = now() WHERE id = CAST(:id AS uuid)"""
+
+# stakeholder judgements (recorded by a person, with a basis)
+Q["person_judgement_set"] = """
+UPDATE people SET stakeholder_type = CAST(:stakeholder_type AS text), decision_authority = CAST(:decision_authority AS text),
+       posture = CAST(:posture AS text), judgement_basis = CAST(:basis AS text), judgement_by_label = CAST(:by AS text), judgement_at = now(),
+       key_interests = coalesce(CAST(:key_interests AS text), key_interests), strategic_account = CAST(:strategic AS boolean), updated_at = now()
+ WHERE id = CAST(:id AS uuid) RETURNING id"""
+
+# engagement statistics for health
+Q["rel_engagement_stats"] = """
+SELECT count(*) FILTER (WHERE e.occurred_at >= now() - interval '365 days') AS engagements_12m,
+       count(*) FILTER (WHERE e.direction = 'outbound') AS outbound,
+       count(*) FILTER (WHERE e.direction = 'outbound' AND coalesce(e.outcome, 'pending') NOT IN ('no_response','pending')) AS answered,
+       count(*) FILTER (WHERE e.outcome = 'positive') AS positive, count(*) FILTER (WHERE e.outcome = 'neutral') AS neutral,
+       count(*) FILTER (WHERE e.outcome = 'negative') AS negative, max(e.occurred_at) AS last_engagement, min(e.occurred_at) AS first_engagement,
+       count(*) AS total
+  FROM engagements e WHERE e.person_id = CAST(:id AS uuid)"""
+Q["rel_engagements_recent"] = """
+SELECT e.occurred_at, e.outcome, e.kind, e.direction FROM engagements e
+ WHERE e.person_id = CAST(:id AS uuid) AND e.occurred_at >= now() - interval '200 days' ORDER BY e.occurred_at DESC"""
+Q["rel_engagements_recent_all"] = """
+SELECT e.person_id, e.occurred_at, e.outcome, e.kind, e.direction FROM engagements e
+ WHERE e.occurred_at >= now() - interval '200 days' ORDER BY e.occurred_at DESC"""
+Q["rel_engagement_stats_all"] = """
+SELECT e.person_id,
+       count(*) FILTER (WHERE e.occurred_at >= now() - interval '365 days') AS engagements_12m,
+       count(*) FILTER (WHERE e.direction = 'outbound') AS outbound,
+       count(*) FILTER (WHERE e.direction = 'outbound' AND coalesce(e.outcome, 'pending') NOT IN ('no_response','pending')) AS answered,
+       count(*) FILTER (WHERE e.outcome = 'positive') AS positive, count(*) FILTER (WHERE e.outcome = 'neutral') AS neutral,
+       count(*) FILTER (WHERE e.outcome = 'negative') AS negative, max(e.occurred_at) AS last_engagement, min(e.occurred_at) AS first_engagement,
+       count(*) AS total
+  FROM engagements e GROUP BY e.person_id"""
+# live opportunities each person is linked to (for alignment and the questions)
+Q["rel_person_live_links_all"] = """
+SELECT op.person_id, o.id AS opportunity_id, o.title, o.module, o.record_type, o.tender_status, o.progress, o.deadline_utc,
+       coalesce(o.deadline_utc, o.deadline_latest_utc) AS deadline_at, o.created_at,
+       ARRAY(SELECT DISTINCT g.country_code::text FROM opportunity_geography g WHERE g.opportunity_id = o.id
+             AND g.support IN ('supported','internal_record')) AS countries,
+       (SELECT count(*) FROM claims c JOIN signal_claims sc ON sc.claim_id = c.id
+         WHERE sc.signal_id = coalesce(o.signal_id, o.tracked_from_signal_id) AND c.review_status = 'confirmed') AS reviewed_claims,
+       coalesce(cov.level, 'none') AS coverage, s.classification, coalesce(o.freight_scope, s.freight_scope) AS freight_scope,
+       (s.tender_state->>'status_conflict') AS status_conflict,
+       coalesce(CAST(s.tender_state->>'published_at' AS timestamptz), s.first_published_at) AS source_date
+  FROM opportunity_people op JOIN opportunities o ON o.id = op.opportunity_id AND o.merged_into_id IS NULL
+  LEFT JOIN signals s ON s.id = coalesce(o.signal_id, o.tracked_from_signal_id)
+  LEFT JOIN opportunity_relationship_coverage cov ON cov.opportunity_id = o.id
+ WHERE op.status <> 'not_relevant' AND o.record_type NOT IN ('historical','excluded') AND coalesce(o.progress, 'new') <> 'closed'
+   AND coalesce(o.tender_status, '') NOT IN ('cancelled','awarded','closed','expired','historical')"""
+Q["rel_people_all_for_health"] = """
+SELECT p.id, p.full_name, p.role_title, coalesce(o.canonical_name, p.organisation_label) AS organisation, o.kind AS organisation_kind,
+       o.country::text AS organisation_country, p.remit_countries::text[] AS remit_countries, p.stakeholder_type, p.decision_authority,
+       p.posture, p.judgement_basis, p.judgement_at, p.strategic_account, p.relationship_owner, p.next_action, p.next_action_due,
+       p.capability_area, ps.state, p.created_at
+  FROM people p JOIN person_state ps ON ps.person_id = p.id LEFT JOIN organisations o ON o.id = p.organisation_id
+ WHERE NOT p.is_internal AND p.merged_into_id IS NULL"""
+Q["saved_search_countries"] = """
+SELECT DISTINCT unnest(ss.countries)::text AS code FROM discovery_searches ss WHERE ss.saved AND ss.deleted_at IS NULL AND ss.countries IS NOT NULL"""
+# live opportunities and their stakeholder coverage (who are we missing)
+Q["rel_live_opportunities_stakeholders"] = """
+SELECT o.id, o.title, o.module, o.record_type, o.tender_status, o.progress, coalesce(o.deadline_utc, o.deadline_latest_utc) AS deadline_at,
+       coalesce(cov.level, 'none') AS coverage,
+       ARRAY(SELECT DISTINCT p.stakeholder_type FROM opportunity_people op JOIN people p ON p.id = op.person_id
+              WHERE op.opportunity_id = o.id AND op.status <> 'not_relevant' AND p.merged_into_id IS NULL) AS stakeholder_types,
+       ARRAY(SELECT DISTINCT op.role_on_opportunity FROM opportunity_people op JOIN people p ON p.id = op.person_id
+              JOIN person_state ps ON ps.person_id = p.id
+              WHERE op.opportunity_id = o.id AND op.status <> 'not_relevant' AND p.merged_into_id IS NULL AND ps.state <> 'research_candidate'
+              ) AS roles_confirmed,
+       (SELECT count(*) FROM opportunity_people op WHERE op.opportunity_id = o.id AND op.status <> 'not_relevant') AS people
+  FROM opportunities o LEFT JOIN opportunity_relationship_coverage cov ON cov.opportunity_id = o.id
+ WHERE o.merged_into_id IS NULL AND o.record_type NOT IN ('historical','excluded') AND coalesce(o.progress, 'new') <> 'closed'
+   AND coalesce(o.tender_status, '') NOT IN ('cancelled','awarded','closed','expired','historical')
+ ORDER BY o.created_at DESC"""
+
+# outreach drafts: written by ATLAS, sent by a person
+Q["outreach_insert"] = """
+INSERT INTO outreach_drafts (person_id, opportunity_id, channel, subject, body, source, basis, cost_usd, session_ref)
+VALUES (CAST(:person AS uuid), CAST(:opp AS uuid), CAST(:channel AS text), CAST(:subject AS text), CAST(:body AS text), CAST(:source AS text),
+        CAST(:basis AS jsonb), CAST(:cost AS numeric), CAST(:session_ref AS text)) RETURNING id"""
+Q["outreach_get"] = """
+SELECT d.*, p.full_name AS person, o.title AS opportunity_title FROM outreach_drafts d JOIN people p ON p.id = d.person_id
+  LEFT JOIN opportunities o ON o.id = d.opportunity_id WHERE d.id = CAST(:id AS uuid)"""
+Q["outreach_for"] = """
+SELECT d.id, d.opportunity_id, o.title AS opportunity_title, d.channel, d.subject, d.body, d.source, d.basis, d.status, d.sent_at, d.sent_by_label,
+       d.sent_note, d.created_at
+  FROM outreach_drafts d LEFT JOIN opportunities o ON o.id = d.opportunity_id
+ WHERE d.person_id = CAST(:id AS uuid) ORDER BY d.created_at DESC"""
+Q["outreach_update"] = """
+UPDATE outreach_drafts SET subject = coalesce(CAST(:subject AS text), subject), body = coalesce(CAST(:body AS text), body), updated_at = now()
+ WHERE id = CAST(:id AS uuid) AND status = 'draft' RETURNING id"""
+Q["outreach_status"] = """
+UPDATE outreach_drafts SET status = CAST(:status AS text), sent_at = CASE WHEN CAST(:status AS text) = 'sent' THEN now() END,
+       sent_by_label = CAST(:by AS text), sent_note = CAST(:note AS text), updated_at = now()
+ WHERE id = CAST(:id AS uuid) AND status = 'draft' RETURNING id"""
+Q["org_get_for_research"] = """
+SELECT o.id, o.canonical_name AS name, o.kind, o.country::text AS country, o.website, o.newsroom_url, o.leadership_url
+  FROM organisations o WHERE o.id = CAST(:id AS uuid) AND o.merged_into_id IS NULL"""
+
+
+# ---------------------------------------------------------------- wfc_0014 (29 Oct 2026: open-web discovery)
+Q["document_set_web_publisher"] = """
+UPDATE source_documents SET doc_family = CAST(:family AS text), doc_authority = CAST(:authority AS text) WHERE id = CAST(:id AS uuid)"""
+Q["organisation_websites"] = "SELECT website FROM organisations WHERE website IS NOT NULL AND merged_into_id IS NULL"
+Q["source_open_web"] = "SELECT * FROM sources WHERE source_type = 'web_search' AND deleted_at IS NULL ORDER BY created_at LIMIT 1"

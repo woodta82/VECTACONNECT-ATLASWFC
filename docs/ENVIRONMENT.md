@@ -18,7 +18,7 @@ Secrets are read on the server only. Nothing here reaches the browser bundle: th
 | `SNAPSHOT_DIR` | api, worker | no | `/var/lib/atlas/snapshots` | Source snapshots, only where the source permits retention. Include in backups. |
 | `ANTHROPIC_API_KEY` | worker, api | no | empty | Leaves AI extraction **Not connected** when empty. The api uses it for relationship research (AI people reading), under the same budget caps. |
 | `AI_MODEL` | worker, api | with key | empty | Model id. Check against provider documentation when configuring. |
-| `SEARCH_PROVIDER` | api | no | empty | `brave` (the only search connector implemented) enables authorised web search in relationship research. Empty: searches are listed as not run, with links. |
+| `SEARCH_PROVIDER` | api | no | empty | `brave` (Brave Search API, needs `SEARCH_API_KEY`) or `anthropic` (the Claude API's web search tool, uses `ANTHROPIC_API_KEY`; only its result URLs are used) enables the open-web discovery that every search runs by default, relationship research and contact discovery. Empty: the Discover page says so, searches are listed as not run with links, and a run with nothing else to search ends as "search not configured". |
 | `SEARCH_API_KEY` | api | with provider | empty | Brave Search API key. Secret: redacted from logs and errors; never sent to the browser. |
 | `SEARCH_MAX_QUERIES` / `SEARCH_RESULTS_PER_QUERY` | api | no | 6 / 5 | Searches per research run (0–20) and results read per search (1–10). |
 | `SEARCH_API_BASE_URL` | api | no | `https://api.search.brave.com` | Development and test only may point elsewhere (a local stand-in); must be https otherwise. |

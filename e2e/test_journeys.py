@@ -217,7 +217,9 @@ def test_05_register_sources(page: Page):
                 template=f"{SITE}/procure/search?country={{country}}&q={{keywords}}", countries=("AE", "CI", "KE"), language="fr")
     shot(page, "07-sources")
     items = api(page, "/sources?kind=web")["items"]
-    assert len(items) == 3 and all(s["enabled"] for s in items)
+    registered = [s for s in items if s["source_type"] != "web_search"]
+    assert len(registered) == 3 and all(s["enabled"] for s in registered)
+    assert any(s["source_type"] == "web_search" and s["enabled"] for s in items)     # the built-in open-web source stays beside them
 
 
 # ------------------------------------------------------------------ 5. country discovery → run → why it matches

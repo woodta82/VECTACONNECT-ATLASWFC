@@ -122,10 +122,15 @@ def person_detail(db: Database, person_id: str) -> dict[str, Any]:
     if not any(r["organisation"] and r["role_status"] == "current" for r in roles) and not p.get("organisation"):
         gaps.append("Organisation not established by any source: record it when confirmed")
     dups = [d for d in db.all("dup_list", status="open", person=person_id)]
+    from . import relationship_intelligence as ri
+    intelligence = ri.person_health(db, person_id)
+    if intelligence["stakeholder"]["type"] == "unknown":
+        gaps.append("Stakeholder type, decision authority and posture not yet judged by a person")
     return {"person": p, "evidence": db.all("rel_evidence_for", id=person_id), "opportunities": db.all("rel_person_opportunities", id=person_id),
             "relationships": db.all("rel_relationships_for", id=person_id), "routes": db.all("rel_routes_for", id=person_id),
             "engagements": db.all("rel_engagements_for", id=person_id), "roles": roles, "duplicates": dups,
-            "merges": db.all("merges_for", id=person_id), "gaps": gaps}
+            "merges": db.all("merges_for", id=person_id), "gaps": gaps, "intelligence": intelligence,
+            "outreach": db.all("outreach_for", id=person_id)}
 
 
 def create_person(db: Database, data: dict[str, Any], meta: RequestMeta) -> str:
@@ -269,7 +274,7 @@ def add_engagement(db: Database, person_id: str, data: dict[str, Any], meta: Req
         eid = str(tx.scalar("rel_engagement_add", person=person_id, opp=data.get("opportunity_id"),
                             occurred_at=data.get("occurred_at") or datetime.now(timezone.utc), kind=data["kind"], summary=data["summary"],
                             owner=data.get("owner_label"), outcome=data.get("outcome"), next_step=data.get("next_step"),
-                            session_ref=meta.session_ref))
+                            direction=data.get("direction") or "outbound", session_ref=meta.session_ref))
         tx.run("rel_person_verified", id=person_id)
         audit(tx, "engagement_recorded", meta, entity_type="person", entity_id=person_id)
     return eid
@@ -313,7 +318,7 @@ def opportunity_relationships(db: Database, opp_id: str) -> dict[str, Any]:
             "coverage_label": rel.COVERAGE_LABELS[cov.level], "searches": search_suggestions(opp["module"], orgs, countries),
             "target_roles": [{"key": r.key, "label": r.label} for r in rel.target_roles(opp["module"])],
             "latest_research": latest, "gaps": gaps, "actions": actions,
-            "documents": db.all("rdoc_for_opp", id=opp_id),
+            "documents": db.all("rdoc_for_opp", id=opp_id, disc=None),
             "relationships": db.all("rel_relationships_for_opp", id=opp_id),
             "routes_available": [r for r in routes if r["status"] in ("available", "requested", "made")],
             "routes_possible": [r for r in routes if r["status"] == "possible"],

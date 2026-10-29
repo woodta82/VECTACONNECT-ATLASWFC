@@ -321,9 +321,19 @@ def test_e_evidence_is_inspectable_and_eligibility_is_corrected_after_recheck(pa
     psql(f"UPDATE claim_fields SET value = 'a Kenyan cargo agent accreditation and an IATA trading licence', support = 'supported', "
          f"reason = 'requirement stated in the quote', validation_version = 2 WHERE claim_id = '{claim}' AND field = 'eligibility'")
     psql(f"UPDATE claims SET review_status = 'confirmed' WHERE id = '{claim}'")
-    subprocess.run(["psql", "-X", "-q", "-h", PG["host"], "-p", PG["port"], "-U", PG["user"], "-d", STACK_DB, "-v", "ON_ERROR_STOP=1",
-                    "-f", str(SQL_DIR / "wfc_0006_revalidation_v3.sql")], check=True)
-    restore_head_history_check()
+    # Replaying the wfc_0006 file on a head database re-creates its older CHECK on opportunity_status_history.field, which
+    # rejects rows later releases write (e.g. 'record_type' when a signal is tracked, as the open-web journey does). Those rows
+    # are set aside for the replay only and put back with the head definition; `alembic upgrade head` never replays a file.
+    psql("CREATE TABLE IF NOT EXISTS _hist_aside_perm AS SELECT * FROM opportunity_status_history WHERE false;"
+         "INSERT INTO _hist_aside_perm SELECT * FROM opportunity_status_history WHERE field NOT IN "
+         "('commercial_stage','qualification_status','deadline','tender_status','scope','owner','merge','eligibility_evidence','evidence');"
+         "DELETE FROM opportunity_status_history WHERE id IN (SELECT id FROM _hist_aside_perm)")
+    try:
+        subprocess.run(["psql", "-X", "-q", "-h", PG["host"], "-p", PG["port"], "-U", PG["user"], "-d", STACK_DB, "-v", "ON_ERROR_STOP=1",
+                        "-f", str(SQL_DIR / "wfc_0006_revalidation_v3.sql")], check=True)
+    finally:
+        restore_head_history_check()
+        psql("INSERT INTO opportunity_status_history SELECT * FROM _hist_aside_perm; DROP TABLE _hist_aside_perm")
     assert "'progress'" in psql("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'opportunity_status_history_field_check'")
     assert psql("SELECT count(*) FROM jobs WHERE job_type = 'eligibility_revalidation'") == "1"
     deadline = time.time() + 60

@@ -47,7 +47,7 @@ def test_health_reports_release_build_and_schema(client):
     live = client.get("/health/live").json()
     assert live["release"] == config.RELEASE and live["build"] == "pytest"
     ready = client.get("/health/ready")
-    assert ready.status_code == 200 and ready.json()["schema_revision"] == "wfc_0012"
+    assert ready.status_code == 200 and ready.json()["schema_revision"] == "wfc_0014"
 
 
 def test_every_business_route_requires_the_session(client):
@@ -168,7 +168,8 @@ def test_new_workflow_routes_answer(client):
     run = client.post("/discovery/searches", json={"geo_mode": "country", "countries": ["KE"], "modules": ["airline_representation"]}, headers=h)
     assert run.status_code == 200, run.text
     plan = run.json()["run"]["plan"]
-    assert plan["sources"] == [] and plan["coverage_gaps"] == ["KE"]                      # source disabled: nothing searched, said so
+    # source disabled: only the (unconfigured) open-web source remains, which covers nothing; the plan says so
+    assert [s["type"] for s in plan["sources"]] == ["web_search"] and plan["coverage_gaps"] == ["KE"] and not plan["open_web"]["connected"]
     assert client.post("/discovery/searches", json={"geo_mode": "country", "countries": ["KE", "UG"]}, headers=h).status_code == 422
     rid = run.json()["run"]["run_id"]
     assert client.post(f"/discovery/runs/{rid}/cancel", headers=h).status_code == 200

@@ -30,6 +30,9 @@ const ISSUE: Record<string, { label: string; material: boolean }> = {
   budget_run_cap: { label: "Not extracted (run budget ceiling reached)", material: true },
   source_disabled: { label: "Source disabled after planning; not searched", material: true },
   document_partially_read: { label: "Document only partly read (resumes next run)", material: true },
+  search_not_configured: { label: "Open-web search not configured on the server", material: true },
+  search_failed: { label: "Public web search failed", material: true },
+  access_restricted: { label: "Registration, login or payment required: not read", material: false },
   listing_links_not_followed: { label: "Further links on a listing page not followed", material: false },
   date_unknown_excluded: { label: "Excluded: publication date unknown (strict date filter)", material: false },
   some_claims_rejected: { label: "Some proposed claims rejected to review", material: false },
@@ -40,12 +43,16 @@ type Detail = {
          error: string | null; estimated_cost_usd: string | null; actual_cost_usd: string | null; budget_cap_usd: string | null;
          budget_root_id: string | null;
          plan: { countries: string[] | "worldwide"; modules: string[] | "all"; sources: { id: string; name: string; authority: string }[];
-                 coverage_gaps: string[]; coverage_note: string; ai_status: string; max_documents?: number; run_budget_cap_usd?: string | null };
+                 coverage_gaps: string[]; coverage_note: string; ai_status: string; max_documents?: number; run_budget_cap_usd?: string | null;
+                 open_web?: { planned: boolean; connected: boolean; reason: string | null; provider: string | null; queries: number; countries: number } };
          progress: { sources_total?: number; sources_done?: number; documents_seen?: number; documents_new?: number; current_source?: string | null };
          counts: { matched?: number; documents?: number; new_documents?: number; claims?: number; rejected_claims?: number; unextracted?: number;
                    failed_sources?: number; skipped_out_of_range?: number; skipped_language?: number; flags?: string[];
                    not_searched_countries?: string[]; documents_not_fetched?: number; date_unknown?: number;
                    issues?: Issue[]; issue_counts?: Record<string, number>;
+                   web_searches?: { purpose: string; query: string; country: string | null; status: string; results: number; link: string; reason?: string }[];
+                   restricted?: { url: string; title: string | null; restriction: string; label: string; country: string | null; corroboration: string | null }[];
+                   restricted_count?: number;
                    coverage?: { planned: string[]; attempted: string[]; retrieved: string[]; extracted: string[]; not_attempted: string[] };
                    queue?: { pending: number; gave_up: number; resumed: number }; partially_read?: number } };
   search: { id: string; name: string | null; saved: boolean; keywords: string | null; airline: string | null; organisation: string | null } | null;
@@ -55,13 +62,16 @@ type Detail = {
 };
 
 const OUTCOME: Record<string, { tone: string; title: string; text: string }> = {
-  results: { tone: "good", title: "Results found", text: "Every planned source was searched and every new document was read in full." },
-  no_relevant_results: { tone: "none", title: "No relevant results", text: "The sources were searched successfully and nothing matched. This covers only the configured sources." },
+  results: { tone: "good", title: "Results found", text: "Every planned search and source ran and every new document was read in full." },
+  no_relevant_results: { tone: "none", title: "No relevant results", text: "The searches and sources ran successfully and nothing matched. This covers only what was searched, listed below; it is not a complete view of the market." },
   partial_coverage: { tone: "warn", title: "Partial coverage", text: "Some selected countries have no enabled source. Nothing was searched for them." },
   source_failure: { tone: "bad", title: "Source failure", text: "Every planned source failed. This is not an absence of opportunities." },
   incomplete: { tone: "warn", title: "Incomplete search", text: "Some sources failed, some documents could not be extracted, or the per-run limits were reached. Results may be missing." },
   no_sources: { tone: "none", title: "Nothing searched", text: "No enabled source covers this search. This is not an absence of opportunities: add or enable a source for these countries." },
   cancelled: { tone: "none", title: "Cancelled", text: "The run was cancelled before it finished." },
+  search_not_configured: { tone: "bad", title: "Open-web search not configured", text: "No public web search was run because no search connector is configured on the server (Settings → Service status). This is not an absence of opportunities. The searches are listed below with links to open yourself." },
+  search_failure: { tone: "bad", title: "Search failure", text: "Every public web search failed. This is not an absence of opportunities." },
+  inaccessible_sources: { tone: "warn", title: "Some sources inaccessible", text: "Some results need registration, login or payment: they were labelled and not read; a public original was searched for." },
 };
 
 export default function RunPage() {
@@ -121,7 +131,7 @@ function Body({ d, reload }: { d: Detail; reload: () => void }) {
       {out && (
         <div className={`outcome outcome-${out.tone}`} role="status">
           <strong>{out.title}</strong>{out.text}
-          {flags.length > 1 && <div className="small">Also: {flags.filter((f) => f !== run.outcome).map((f) => OUTCOME[f]?.title ?? f).join(", ")}</div>}
+          {flags.some((f) => f !== run.outcome) && <div className="small">Also: {flags.filter((f) => f !== run.outcome).map((f) => OUTCOME[f]?.text ? `${OUTCOME[f].title}: ${OUTCOME[f].text}` : f).join(" ")}</div>}
           {run.counts?.not_searched_countries?.length ? <div className="small">Not reached this run (per-run limit): {run.counts.not_searched_countries.map(countryName).join(", ")}.</div> : null}
           {run.counts?.documents_not_fetched ? <div className="small">{run.counts.documents_not_fetched} linked document(s) not fetched this run (per-run limit).</div> : null}
           {run.error && <div className="small">Error: {run.error}</div>}
@@ -190,6 +200,7 @@ function Body({ d, reload }: { d: Detail; reload: () => void }) {
           )}
         </Section>
       )}
+      {(run.counts?.web_searches?.length ?? 0) > 0 && <WebSearches items={run.counts?.web_searches ?? []} restricted={run.counts?.restricted ?? []} />}
       {run.counts?.coverage && <Coverage c={run.counts.coverage} notSearched={run.counts.not_searched_countries ?? []} />}
       {(run.counts?.issues?.length ?? 0) > 0 && <Issues issues={run.counts?.issues ?? []} counts={run.counts?.issue_counts ?? {}} />}
 
@@ -239,6 +250,36 @@ function Coverage({ c, notSearched }: { c: NonNullable<NonNullable<Detail["run"]
       {remaining.length > 0 && (
         <p className="small"><strong>Not searched in this run:</strong> {remaining.map(countryName).join(", ")}.
           {notSearched.length > 0 && " The next run of this saved search continues from here."}</p>
+      )}
+    </Section>
+  );
+}
+
+type WebSearch = NonNullable<NonNullable<Detail["run"]["counts"]>["web_searches"]>[number];
+type Restricted = NonNullable<NonNullable<Detail["run"]["counts"]>["restricted"]>[number];
+/** What the open web was asked, with what each search returned; and the results that could not be read because of a restriction. */
+function WebSearches({ items, restricted }: { items: WebSearch[]; restricted: Restricted[] }) {
+  const run = items.filter((w) => w.status === "run");
+  const notRun = items.filter((w) => w.status === "not_run");
+  const failed = items.filter((w) => w.status === "failed");
+  return (
+    <Section title="Public web searches">
+      <p className="muted small">{run.length} run ({run.reduce((n, w) => n + w.results, 0)} result page(s)) · {notRun.length} not run · {failed.length} failed.
+        Every result page is fetched and read itself; search snippets are never used as evidence.</p>
+      <details className="small" open={notRun.length > 0 || failed.length > 0}>
+        <summary>Searches ({items.length})</summary>
+        <ul className="list-plain">{items.map((w, i) => (
+          <li key={`${w.query}-${i}`}><Badge value={w.status === "run" ? "run" : w.status === "failed" ? "failed" : "not run"} /> {w.purpose}:{" "}
+            <a href={w.link} target="_blank" rel="noreferrer noopener">{w.query}</a>
+            <span className="muted"> · {w.status === "run" ? `${w.results} result(s)` : w.reason ?? ""}</span></li>))}</ul>
+      </details>
+      {restricted.length > 0 && (
+        <details className="small" open>
+          <summary>Restricted results ({restricted.length}): labelled, not read, never bypassed</summary>
+          <ul className="list-plain">{restricted.map((r) => (
+            <li key={r.url}><Badge value="restricted" /> <a href={r.url} target="_blank" rel="noreferrer noopener">{r.title ?? r.url}</a>
+              <span className="muted"> · {r.label}{r.corroboration ? ` · public original or corroboration: ${r.corroboration}` : ""}</span></li>))}</ul>
+        </details>
       )}
     </Section>
   );
