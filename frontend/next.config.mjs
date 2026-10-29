@@ -12,6 +12,7 @@ const nextConfig = {
   // OpenNext adapter packages the app itself, so the standalone output is left to it.
   output: process.env.NETLIFY ? undefined : "standalone",
   poweredByHeader: false,
+  experimental: { proxyTimeout: 300000 },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${backend}/:path*` }];
   },
