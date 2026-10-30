@@ -126,10 +126,24 @@ def control_panel(request: Request, countries: str | None = None, region: str | 
 @exact
 def records(request: Request, countries: str | None = None, region: str | None = None, modules: str | None = None, org: str | None = None,
             tender: str | None = None, progress: str | None = None, coverage: str | None = None, types: str | None = None,
-            q: str | None = None, deadline_days: int | None = Query(None, ge=1, le=730), saved: bool | None = None,
+            q: str | None = None, deadline_days: int | None = Query(None, ge=1, le=730), saved: bool | None = None, airports: str | None = None,
+            live: bool | None = None, needs: Literal["attention"] | None = None,
             sort: Literal["priority", "deadline", "source_date"] = "priority", limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
+    """`live` and `needs=attention` apply the Dashboard's own rules (services/dashboard.py), so a summary's link opens exactly the records it counts."""
     rows = _records(request, countries=countries, region=region, modules=modules, org=org, tender=tender, progress=progress, coverage=coverage,
                     types=types, q=q, deadline_days=deadline_days, saved=saved, sort=sort)
+    if live or needs:
+        from ..services import dashboard as dash
+        rows = [r for r in rows if dash.is_live(r)]
+        if needs == "attention":
+            research, now = dash.research_state(db_of(request)), datetime.now(timezone.utc)
+            rows = [r for r in rows if r["record_type"] in ("tender", "commercial") and dash.attention(r, research, now)]
+    if airports:
+        from ..services import airport_directory as ad
+        found, _missing = ad.resolve_many(db_of(request), [a for a in airports.split(",") if a.strip()])
+        if found:
+            keep = {str(r["opportunity_id"]) for r in db_of(request).all("opps_with_airports", idents=[a["ident"] for a in found])}
+            rows = [r for r in rows if str(r["id"]) in keep]
     return {"items": rows[offset: offset + limit], "total": len(rows), "limit": limit, "offset": offset, "scope": _scope(countries, region),
             "rule": ov.RULE if sort == "priority" else None}
 
@@ -585,6 +599,19 @@ def person_judgement(request: Request, person_id: str, body: JudgementIn):
     return {"ok": True}
 
 
+class InvolvementIn(BaseModel):
+    involvement: Literal["employee", "appointed_representative", "external_adviser", "press_contact", "unresolved"]
+    basis: str = Field(min_length=10, max_length=500)
+
+
+@router.post("/people/{person_id}/involvement", tags=["Relationships"])
+@exact
+@_translate
+def person_involvement(request: Request, person_id: str, body: InvolvementIn):
+    """A person's correction of someone's involvement; later research never changes it."""
+    return rs.set_involvement(db_of(request), person_id, body.involvement, body.basis, meta_of(request))
+
+
 class OutreachIn(BaseModel):
     channel: Literal["email", "linkedin_message", "call_notes"] = "email"
     opportunity_id: str | None = None
@@ -640,6 +667,7 @@ class DiscoveryIn(BaseModel):
     countries: list[str] = Field(default_factory=list, max_length=5)
     region: str | None = Field(None, max_length=40)
     airport_iata: str | None = Field(None, min_length=3, max_length=3)
+    airports: list[str] = Field(default_factory=list, max_length=20)        # directory idents or IATA/ICAO codes (30 Oct 2026)
     capability_area: str | None = None
     organisation_kinds: list[str] = Field(default_factory=list, max_length=12)
     role_focus: str | None = Field(None, max_length=120)
@@ -678,11 +706,13 @@ def discoveries(request: Request, limit: int = Query(20, ge=1, le=100), purpose:
 def companies(request: Request, kind: str | None = None, country: str | None = None, airport: str | None = None, origin: str | None = None,
               carrier_type: str | None = None, state: Literal["verified", "awaiting_verification", "researched", "unverified"] | None = None,
               discovery: str | None = None, q: str | None = None, sort: Literal["name", "relevance", "recent"] = "name",
+              scope: Literal["all", "cargo", "freighter", "belly", "mixed", "cargo_services", "passenger_only", "unresolved"] | None = None,
               limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
-    """The companies ATLAS knows: discovered from public pages, supplied by a dataset (awaiting verification), or from WFC data."""
+    """The companies ATLAS knows: discovered from public pages, supplied by a dataset (awaiting verification), or from WFC data.
+    `airport`: an IATA/ICAO code or directory ident (office, station or served); `scope`: freight scope ('cargo' = anything but passenger-only)."""
     out = cmp.list_companies(db_of(request), kind=kind or None, country=(country or "").upper() or None, airport=(airport or "").upper() or None,
                              origin=origin or None, carrier_type=carrier_type or None, state=state, discovery=discovery or None, q=q or None,
-                             sort=sort, limit=limit, offset=offset)
+                             sort=sort, scope=None if scope == "all" else scope, limit=limit, offset=offset)
     from ..domain import company_intel as ci
     return {**out, "limit": limit, "offset": offset, "kinds": ci.KIND_LABELS, "carrier_types": ci.CARRIER_LABELS, "states": cmp.STATE_LABELS}
 

@@ -38,6 +38,7 @@ from ..ai import people as ai_people
 from ..config import Settings
 from ..connectors import search as web_search
 from ..domain import attribution as attr
+from ..domain import involvement as inv
 from ..domain import content, retrieval
 from ..domain import relationships as rel
 from ..domain import research_plan as plan
@@ -67,6 +68,7 @@ class _Run:
     subject: list[str]
     orgs: list[dict[str, Any]]
     disc_id: str | None = None              # an open-market contact discovery (29 Oct 2026)
+    org_research_id: str | None = None      # a company's own staged research (30 Oct 2026)
     fetches: int = 0
     ai_sections: int = 0
     cost: Decimal = Decimal("0")
@@ -85,7 +87,7 @@ def _country_name(code: str | None) -> str | None:
 
 def _scope(run: _Run) -> dict[str, Any]:
     """Query parameters selecting this run's research documents: the opportunity's or the discovery's."""
-    return {"id": run.opp_id, "disc": run.disc_id}
+    return {"id": run.opp_id, "disc": run.disc_id, "org": run.org_research_id}
 
 
 def _sha(text: str) -> str:
@@ -156,12 +158,18 @@ def record_mention(tx: Database, run: _Run, m: attr.Mention, *, kind: str, docum
     if m.role or m.organisation:
         tx.scalar("rel_role_add", person=pid, role=m.role, org=org_id, org_label=org_label, status=m.role_status,
                   affiliation=m.affiliation, binding=m.binding, evidence=str(role_ev or rel_ev), source=source)
+    # evidenced involvement: a press contact or an external adviser is kept with their actual role, never as a commercial contact
+    involvement, inv_basis = inv.classify(" ".join(x for x in (m.quote, m.org_quote) if x), m.role, m.organisation, m.affiliation, run.subject)
+    tx.scalar("person_involvement_set", id=pid, inv=involvement, basis=inv_basis, org=m.organisation if involvement in inv.EXTERNAL else None)
+    current_inv = (tx.one("rel_person_get", id=pid) or {}).get("involvement") or involvement
     if m.role_status != "former" and run.opp_id:
-        tx.run("rel_link_upsert", opp=run.opp_id, person=pid, role=m.role_on_opportunity, basis=m.relevance_basis, status="candidate")
+        tx.run("rel_link_upsert", opp=run.opp_id, person=pid, role=m.role_on_opportunity, basis=m.relevance_basis,
+               status="external_contact" if current_inv in inv.EXTERNAL else "candidate")
     if run.disc_id:
         tx.run("disc_person_link", disc=run.disc_id, person=pid, new=created)
     run.found.append({"person_id": pid, "name": name, "role": m.role, "role_status": m.role_status, "organisation": m.organisation,
                       "affiliation": m.affiliation, "affiliation_label": attr.AFFILIATION_LABELS[m.affiliation], "binding": m.binding,
+                      "involvement": current_inv, "involvement_label": inv.LABELS[current_inv],
                       "new": created, "method": method, "source": url})
     return pid, created
 
@@ -172,7 +180,7 @@ def _queue(db: Database, run: _Run, *, origin: str, url: str | None = None, sour
            status: str = "queued", reason: str | None = None) -> str | None:
     if url and not urlsplit(url).path:
         url = url + "/"                                   # https://example.com and https://example.com/ are the same page
-    rid = db.scalar("rdoc_add", opp=run.opp_id, disc=run.disc_id, org=org_id, origin=origin, url=url, source_doc=source_doc, title=title,
+    rid = db.scalar("rdoc_add", opp=run.opp_id, disc=run.disc_id, org=org_id, org_research=run.org_research_id, origin=origin, url=url, source_doc=source_doc, title=title,
                     page_kind=page_kind, found_via=found_via, status=status, reason=reason, body=body[:MAX_BODY_CHARS] if body else None,
                     sha=_sha(body) if body else None, session_ref=run.meta.session_ref)
     return str(rid) if rid else None
@@ -444,11 +452,15 @@ def research(db: Database, settings: Settings, opp_id: str, meta: RequestMeta, *
     else:
         latest = db.one("rel_research_latest", id=opp_id)
         searches = list((latest or {}).get("searches") or [])
-        db.all("rdoc_requeue_failed", id=opp_id, disc=None)
+        db.all("rdoc_requeue_failed", id=opp_id, disc=None, org=None)
     ai_reason = ai_extraction.available(settings)
     if ai_reason:
         run.unavailable.append({"method": "configured_extractor", "reason": ai_reason})
     _read_everything(db, settings, run, fetch, transport, ai_reason)
+    # the organisations named in what was read go on the same canonical company records as discovery and staged research (30 Oct 2026)
+    from .company_intelligence import record_organisations
+    record_organisations(db, run, {"id": None, "opportunity_id": opp_id, "org_research_id": None, "countries": countries, "airport_iata": None,
+                                   "capability_area": opp["module"]})
     run.unavailable.append({"method": "linkedin_profiles",
                             "reason": "no authorised LinkedIn integration is connected: targeted LinkedIn searches are provided instead, "
                                       "and a profile is saved only when a person confirms it"})
@@ -510,7 +522,7 @@ def _read_everything(db: Database, settings: Settings, run: _Run, fetch: Fetch, 
 
 
 def coverage(db: Database, opp_id: str | None, *, ai_connected: bool, searches: list[dict[str, Any]], disc_id: str | None = None) -> dict[str, Any]:
-    docs = db.all("rdoc_for_opp", id=opp_id, disc=disc_id)
+    docs = db.all("rdoc_for_opp", id=opp_id, disc=disc_id, org=None)
     by = lambda st: [d for d in docs if d["status"] == st]  # noqa: E731
     sections_total = sum(int(d["sections_total"]) for d in docs)
     sections_read = sum(int(d["sections_read"]) for d in docs)

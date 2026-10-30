@@ -21,6 +21,7 @@ Secrets are read on the server only. Nothing here reaches the browser bundle: th
 | `SEARCH_PROVIDER` | api | no | empty | `brave` (Brave Search API, needs `SEARCH_API_KEY`) or `anthropic` (the Claude API's web search tool, uses `ANTHROPIC_API_KEY`; only its result URLs are used) enables the open-web discovery that every search runs by default, relationship research and contact discovery. Empty: the Discover page says so, searches are listed as not run with links, and a run with nothing else to search ends as "search not configured". |
 | `SEARCH_API_KEY` | api | with provider | empty | Brave Search API key. Secret: redacted from logs and errors; never sent to the browser. |
 | `SEARCH_MAX_QUERIES` / `SEARCH_RESULTS_PER_QUERY` | api | no | 6 / 5 | Searches per research run (0–20) and results read per search (1–10). |
+| `RATE_LIMIT_PER_MINUTE` | api | no | 300 | Requests per minute per client address (60–10000). Keep the default in deployments; only automated test stacks raise it. |
 | `SEARCH_API_BASE_URL` | api | no | `https://api.search.brave.com` | Development and test only may point elsewhere (a local stand-in); must be https otherwise. |
 | `NOTICE_AGE_REVIEW_DAYS` | api, worker | no | 90 | A notice older than this whose open status has no closing date is shown as *unverified*; one with no supported status wording as *historical*. Triggers review only; never invents a closing date. |
 | `AI_PRICE_INPUT_PER_MTOK`, `AI_PRICE_OUTPUT_PER_MTOK` | worker, api | with key | empty | USD per million tokens, from the provider's published pricing at configuration time. Used for conservative budget reservations. |
@@ -35,3 +36,18 @@ AI spend is blocked on a fresh database (`ai_kill_switch = true`, no monthly bud
 Configuring the AI extractor (directive §3): set `ANTHROPIC_API_KEY`, `AI_MODEL` and both price variables on the worker, then under **Settings** set a monthly budget and lift the kill switch. From that moment, discovery runs extract claims from retrieved documents within the budget; with any of these missing, documents are still retrieved and wait in **Evidence Review** for a person to add claims.
 
 Verification-only variables (`tools/local_stack.py`, `e2e/`): `WFC_STACK_PG`, `STACK_PYTHON`, `STACK_USER`, `STACK_PASSWORD`, `STACK_WEB_CMD`, `E2E_BASE`, `E2E_ARTIFACTS`, `E2E_USER`, `E2E_PASSWORD`, `WFC_TEST_PG`. None of them is read by the application.
+
+
+## Reference datasets (30 Oct 2026)
+
+The global airport directory is loaded from OurAirports' `airports.csv` (public domain) by the `airports` deployment step
+(`python -m app.airports_cli load --auto --if-stale 30 --optional`, after the migration). Optional variables:
+
+| Variable | Purpose |
+|---|---|
+| `AIRPORTS_PACKAGE` | Path inside the container of a verified import package (e.g. `/srv/airports-package`); when set, the package is loaded instead of downloading. |
+| `AIRPORTS_PACKAGE_DIR` | Host directory mounted at `/srv/airports-package` (default `./deploy/airports-package`). |
+
+Manual alternatives: `python tools/load_airports.py --download | --file airports.csv | --package DIR` with `DATABASE_URL` set, or upload
+under Settings → Data sources → Airport directory. Until the full file is loaded the page says **Bundled seed only** (424 airports) or
+**Partial directory**.

@@ -81,7 +81,7 @@ AUDIT_JS = r"""
 }
 """
 
-PAGES = ["/", "/control-panel", "/discovery", "/review", "/opportunities", "/opportunities/{opp}", "/areas", "/areas/forwarder-sales", "/sources",
+PAGES = ["/", "/companies", "/discovery", "/review", "/opportunities", "/opportunities/{opp}", "/areas", "/areas/forwarder-sales", "/sources",
          "/data-sources", "/settings", "/reports", "/service", "/network", "/capabilities", "/lanes", "/relationships",
          "/airlines-forwarders", "/discovery/runs/{run}", "/relationships/{person}", "/signals/{signal}"]
 

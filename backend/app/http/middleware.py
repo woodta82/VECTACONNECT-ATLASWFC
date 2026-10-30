@@ -152,7 +152,7 @@ class AuthGateMiddleware(BaseHTTPMiddleware):
 def install(app, settings: Settings, db_factory: Callable[[], Database]) -> None:
     """Starlette adds middleware outermost-last."""
     app.add_middleware(AuthGateMiddleware, settings=settings, db_factory=db_factory)
-    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RateLimitMiddleware, per_minute=settings.rate_limit_per_minute)
     app.add_middleware(ProxySignatureMiddleware, settings=settings)
     app.add_middleware(SecurityHeadersMiddleware, settings=settings)
     app.add_middleware(RequestContextMiddleware, settings=settings)

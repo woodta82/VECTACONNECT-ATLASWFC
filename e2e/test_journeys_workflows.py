@@ -249,13 +249,14 @@ def test_m_discover_understand_research_relate_track(page: Page):
     assert "worldwide" in text and "not a complete worldwide view" in (world["plan"].get("coverage_note") or "").lower()
     shot(page, "M3-worldwide-coverage")
 
-    # Overview: the opportunity desktop, list and card views
+    # Dashboard: the priority table shows the opportunity with its company, geography, status, relationship position and next action
     go(page, "/")
-    expect(page.get_by_role("region", name="Priority opportunities")).to_contain_text("SEA-CGO-2026-81")
-    shot(page, "M4-overview")
+    expect(page.get_by_role("region", name="Priority table")).to_contain_text("SEA-CGO-2026-81")
+    shot(page, "M4-dashboard")
+    go(page, "/opportunities")
     page.get_by_role("group", name="View").get_by_role("button", name="Cards").first.click()
     expect(page.get_by_label("Opportunity cards").first).to_be_visible()
-    shot(page, "M4b-overview-cards")
+    shot(page, "M4b-opportunity-cards")
 
     # 5. open the opportunity and research relationships
     go(page, f"/opportunities/{ke['id']}")
@@ -332,12 +333,13 @@ def test_m_discover_understand_research_relate_track(page: Page):
     expect(page.get_by_text("Existing relationship").first).to_be_visible()
     shot(page, "M7c-opportunity-after-research")
 
-    # 8. the Overview reflects the opportunity and relationship updates
+    # 8. the Dashboard reflects the opportunity and relationship updates (relationship position and recent changes)
     go(page, "/")
-    expect(page.get_by_role("region", name="With a relationship or introduction")).to_contain_text("SEA-CGO-2026-81")
-    expect(page.get_by_role("region", name="Relevant people identified recently")).to_contain_text("Grace Achieng")
-    expect(page.get_by_role("region", name="Recent changes")).to_contain_text("Progress")
-    shot(page, "M8-overview-updated")
+    expect(page.get_by_role("region", name="Priority table").get_by_role("row").filter(has_text="SEA-CGO-2026-81")).to_contain_text("Existing relationship")
+    expect(page.get_by_role("region", name="Recent changes")).to_contain_text("progress")
+    shot(page, "M8-dashboard-updated")
+    go(page, "/relationships")
+    expect(page.get_by_role("region", name="Contact directory")).to_contain_text("Grace Achieng")
 
     # a market signal tracked as a commercial opportunity, and researched
     sig = next(r for r in api(page, "/records?types=market_signal")["items"] if "Savanna" in (r.get("organisation") or r["title"]))
@@ -358,12 +360,12 @@ def test_m_discover_understand_research_relate_track(page: Page):
     assert after["tender_status"] == "cancelled" and after["coverage"] == "existing_relationship", after
     go(page, f"/opportunities/{ke['id']}")
     expect(page.get_by_text("Cancelled").first).to_be_visible()
-    expect(page.get_by_text(re.compile(r"this tender is cancelled: it cannot be bid for as announced"))).to_be_visible()
+    expect(page.get_by_text(re.compile(r"this tender is cancelled: it cannot be bid for as announced")).first).to_be_visible()
     expect(page.get_by_role("region", name="Relevant people")).to_contain_text("Grace Achieng")
     expect(page.get_by_role("region", name="Existing relationships")).to_contain_text("Grace Achieng")
     shot(page, "M10-cancelled-relationships-kept")
     go(page, "/")
-    expect(page.get_by_role("region", name="Upcoming deadlines")).not_to_contain_text("SEA-CGO-2026-81")
+    expect(page.get_by_role("region", name="Deadlines approaching").first).not_to_contain_text("SEA-CGO-2026-81")
     brief = page.request.get(f"{BASE}/api/opportunities/{ke['id']}/export.md").text()
     assert "Grace Achieng" in brief and "Cancelled" in brief and "has been sent" in brief
     (ART / "opportunity-brief-SEA-CGO-2026-81.md").write_text(brief)
@@ -436,40 +438,45 @@ def test_n_research_follows_sources_binds_roles_reports_coverage_and_reviews_dup
     expect(roles).to_contain_text("Country Manager Uganda")
     expect(roles).to_contain_text("(former)")
     shot(page, "N6-titles-with-evidence")
-    # 7. the Overview reflects the new people
-    go(page, "/")
-    expect(page.get_by_role("region", name="Relevant people identified recently")).to_contain_text("Amina Yusuf")
+    # 7. the Relationships view lists the new people
+    go(page, "/relationships")
+    expect(page.get_by_role("region", name="Contact directory")).to_contain_text("Amina Yusuf")
     brief = page.request.get(f"{BASE}/api/opportunities/{ug['id']}/export.md").text()
     assert "## Research coverage" in brief and "Evidence:" in brief and "has been sent" in brief
     assert not [e for e in page.errors if "pageerror" in e], page.errors  # type: ignore[attr-defined]
 
 
-# ------------------------------------------------------------------ O. Control panel: opportunities per market and the score out of 100
-def test_o_control_panel_markets_and_scores(page: Page):
+# ------------------------------------------------------------------ O. Dashboard (30 Oct 2026): the Control panel's markets and scores live under its detail
+def test_o_dashboard_markets_and_scores(page: Page):
     data = api(page, "/control-panel")
     assert data["totals"]["live"] > 0 and data["scored"], data["totals"]
     for s in data["scored"]:
         assert 0 <= s["score"] <= 100 and s["score"] == sum(c["points"] for c in s["components"]), s
     assert [s["score"] for s in data["scored"]] == sorted((s["score"] for s in data["scored"]), reverse=True)
-    go(page, "/control-panel")
-    expect(page.get_by_role("heading", name="Opportunities by market, scored out of 100")).to_be_visible()
+    dash = api(page, "/dashboard")
+    assert [x["key"] for x in dash["summaries"]] == ["priority", "deadlines", "researched", "gaps"]
+    assert dash["priority"] and all(r["record_type"] in ("tender", "commercial") for r in dash["priority"])
+    assert all(r["record_type"] == "market_signal" for r in dash["signals"])
+    for r in dash["priority"]:
+        assert r["next_action"] and r["coverage_label"] and r["countries_named"] is not None
+    go(page, "/control-panel")                                           # the old address keeps working
+    page.wait_for_url(re.compile(r"/$"), timeout=15000)
+    expect(page.get_by_role("heading", name="What deserves attention, what changed, who is relevant, what next")).to_be_visible()
     nav = page.get_by_role("navigation", name="Sections")
-    expect(nav.get_by_role("link", name="Control panel")).to_have_attribute("aria-current", "page")
-    markets = page.get_by_role("region", name="By market")
-    expect(markets).to_contain_text(data["by_market"][0]["market"])
-    expect(page.get_by_role("region", name="Live opportunities by country")).to_contain_text(data["by_country"][0]["country"])
-    top = data["scored"][0]
-    table = page.get_by_role("region", name="Scored opportunities")
-    first = table.get_by_role("row").nth(1)
-    expect(first).to_contain_text(top["title"])
-    expect(first).to_contain_text(str(top["score"]))
-    shot(page, "O1-control-panel")
-    first.get_by_role("button", name="Breakdown").click()
-    for c in top["components"]:
-        expect(table).to_contain_text(f"{c['points']} / {c['max']}")
+    expect(nav.get_by_role("link", name="Dashboard")).to_have_attribute("aria-current", "page")
+    for title in ("Priority opportunities", "Deadlines approaching", "Companies and people researched", "Research gaps and next actions"):
+        expect(page.get_by_role("region", name=title).first).to_be_visible()
+    table = page.get_by_role("region", name="Priority table")
+    expect(table).to_contain_text(dash["priority"][0]["title"])
     expect(table).to_contain_text("Relationship position")
+    expect(page.get_by_role("region", name="Market signals")).to_contain_text("Not confirmed buying demand")
+    expect(page.get_by_role("region", name="Live opportunities by country")).to_contain_text(data["by_country"][0]["country"])
+    shot(page, "O1-dashboard")
+    page.get_by_text("Score distribution, breakdowns and technical metrics").click()
+    expect(page.get_by_role("region", name="By market and capability area")).to_contain_text(data["by_market"][0]["market"])
+    expect(page.get_by_role("region", name="Opportunities by score")).to_contain_text("Strong")
     expect(page.get_by_text("Not a probability of winning.").first).to_be_visible()
-    shot(page, "O2-score-breakdown")
+    shot(page, "O2-dashboard-detail")
     # filters narrow the panel: one country only
     code = next(c["code"] for c in data["by_country"] if c["code"])
     narrowed = api(page, f"/control-panel?countries={code}")

@@ -6,24 +6,35 @@ import { useState, type FormEvent } from "react";
 import { Tag } from "@/components/Records";
 import { Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
 import { ActionNote, ReasonAction } from "@/components/Ui";
-import { KINDS } from "@/components/Research";
+import { KINDS, PersonEmail, QueueList, type EmailResearch, type QueueItem } from "@/components/Research";
 import { api } from "@/lib/api";
 import { MODULES } from "@/lib/constants";
 import { dateOnly, dateTime, label, moduleLabel } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
 import { useApi } from "@/lib/useApi";
 
-type Contact = { id: string; kind: string; value: string; purpose: string | null; status: string; status_label: string; source_url: string | null; source_note: string | null;
+type Contact = { id: string; kind: string; value: string; purpose: string | null; department: string | null; status: string; status_label: string; source_url: string | null; source_note: string | null;
                  observed_at: string; verified_at: string | null; evidence_quote: string | null };
 type Rel = { id: string; counterparty_id: string | null; counterparty: string | null; counterparty_code: string | null; relationship: string; relationship_label: string;
              territory_countries: string[]; airport_iata: string | null; status: string; status_label: string; basis: string; observed_at: string; verified_at: string | null;
              verified_by_label: string | null; counterparty_carrier_type: string | null; evidence_url: string | null; evidence_quote: string | null };
 type Person = { id: string; full_name: string; role_title: string | null; remit_countries: string[]; linkedin_profile_url: string | null; linkedin_search_url: string;
-                state: string | null; state_label: string; quote: string | null; source_url: string | null; relationships: number };
+                state: string | null; state_label: string; quote: string | null; source_url: string | null; relationships: number; published_email: string | null;
+                published_email_status: string | null; research_status: { email?: EmailResearch } | null };
 type Evidence = { id: string; supports: string; source_kind: string; url: string | null; quote: string | null; note: string | null; observed_at: string;
                   document_title: string | null; supplied_import: string | null };
+type AirportRow = { id: string; airport_ident: string; role: string; role_label: string; status: string; status_label: string; basis: string; iata: string | null; icao: string | null;
+                    name: string | null; city: string | null; country: string | null; evidence_url: string | null };
+type Stage = { stage: string; label: string; status: string; status_label: string; detail: string | null; progress: string | null; counts: Record<string, unknown>; attempts: number; finished_at: string | null };
+type Dup = { id: string; reason: string; a: { id: string; canonical_name: string; country: string | null; website: string | null; origin: string };
+             b: { id: string; canonical_name: string; country: string | null; website: string | null; origin: string } };
 type Profile = {
   id: string; canonical_name: string; kind: string; kind_label: string; country: string | null; country_name: string | null; website: string | null; origin: string;
+  website_basis: string | null; contact_url: string | null; freight_scope: string; freight_scope_label: string; freight_scope_basis: string | null; in_cargo_scope: boolean;
+  airports: AirportRow[]; research: { score: number; found: number; total: number; explanation: string; fields: { field: string; label: string; status: string; status_label: string; detail: string | null; at: string | null }[] };
+  stages: Stage[]; queue: QueueItem[]; research_progress: { state: string; state_label: string; tally: string; completed: number; failed: number; pending: number };
+  evidence_strength: { band: string; explanation: string }; duplicates: Dup[];
+  merges: { id: string; keep_id: string; merged_id: string; note: string | null; merged_at: string; undone_at: string | null }[];
   description: string | null; services_text: string | null; locations_text: string | null; parent_group: string | null; airport_iata: string | null; airport_name: string | null;
   carrier_type: string | null; carrier_type_label: string | null; supplied_at: string | null; verified_at: string | null; verification_basis: string | null;
   last_researched_at: string | null; capability_area_labels: string[]; aliases: string[]; iata_code: string | null; state: string; state_label: string;
@@ -60,9 +71,15 @@ function Company({ p, reload }: { p: Profile; reload: () => void }) {
       <PageHeader eyebrow={`Companies · ${p.kind_label}${p.carrier_type_label ? ` · ${p.carrier_type_label}` : ""}`} title={p.canonical_name}
                   description={[p.country_name ?? "country not established", p.airport_name ? `${p.airport_name} (${p.airport_iata})` : p.airport_iata,
                                 p.parent_group ? `part of ${p.parent_group}` : null, p.aliases.length ? `also recorded as ${p.aliases.join(", ")}` : null].filter(Boolean).join(" · ")}
-                  actions={<><Tag text={p.state_label} tone={STATE_TONE[p.state]} />
+                  actions={<><Tag text={p.state_label} tone={STATE_TONE[p.state]} /><Tag text={p.freight_scope_label} tone={p.in_cargo_scope ? "b-info" : "b-bad"} />
+                             {(p.research_progress.failed > 0 || p.stages.some((s) => s.status === "failed")) &&
+                               <button type="button" className="btn" disabled={a.busy} onClick={() => a.run(() => api.post(`/companies/${p.id}/deep-research/retry-failed`, {}), "Retry run").then(reload)}>Retry failed</button>}
+                             <button type="button" className="btn btn-primary" disabled={a.busy} onClick={() => a.run(() => api.post(`/companies/${p.id}/deep-research`, {}), "Research run").then(reload)}>
+                               {p.research_progress.state === "incomplete" ? "Continue research" : p.research_progress.state === "not_run" ? "Research this company" : "Research again"}</button>
                              {p.kind === "airline" || p.kind === "forwarder" ? <Link className="btn" href={`/airlines-forwarders/${p.id}`}>WFC account view</Link> : null}
                              <button type="button" className="btn" onClick={() => setEditing((v) => !v)}>{editing ? "Close" : "Edit record"}</button></>} />
+      {!p.in_cargo_scope && <div className="notice" role="status">Outside the air cargo scope: {p.freight_scope_basis}. Kept as a record, never counted as a cargo company or an opportunity.</div>}
+      {p.duplicates.length > 0 && <Duplicates p={p} onChanged={reload} />}
       {p.state === "awaiting_verification" && (
         <div className="notice" role="status">This record comes from a supplied dataset ({dateOnly(p.supplied_at)}). Its addresses and represented airlines are not assumed current:
           research it (Discover → Companies, organisation &quot;{p.canonical_name}&quot;) to source current evidence, then verify what is confirmed and mark the rest as lapsed.</div>
@@ -73,10 +90,16 @@ function Company({ p, reload }: { p: Profile; reload: () => void }) {
         <section className="panel" aria-label="Profile">
           <h2>Profile</h2>
           <dl className="kv">
-            <dt>Official website</dt><dd>{p.website ? <a href={p.website} target="_blank" rel="noreferrer noopener">{p.website}</a> : <span className="muted">not recorded — record it to read the company&apos;s pages</span>}</dd>
-            <dt>What it does</dt><dd>{p.services_text ?? p.description ?? <span className="muted">not stated by any source yet</span>}</dd>
-            <dt>Locations</dt><dd>{p.locations_text ?? <span className="muted">not stated</span>}</dd>
-            <dt>Parent or group</dt><dd>{p.parent_group ?? <span className="muted">not stated</span>}</dd>
+            <dt>Official website</dt><dd>{p.website ? <><a href={p.website} target="_blank" rel="noreferrer noopener">{p.website}</a>{p.website_basis && <div className="small muted">{p.website_basis}</div>}</> : <span className="muted">{fieldNote(p, "website")}</span>}</dd>
+            <dt>Contact page</dt><dd>{p.contact_url ? <a href={p.contact_url} target="_blank" rel="noreferrer noopener">{p.contact_url}</a> : <span className="muted">{fieldNote(p, "contact_page")}</span>}</dd>
+            <dt>Freight scope</dt><dd>{p.freight_scope_label}{p.freight_scope_basis && <span className="muted small"> — {p.freight_scope_basis}</span>}</dd>
+            <dt>What it does</dt><dd>{p.services_text ?? p.description ?? <span className="muted">{fieldNote(p, "services")}</span>}</dd>
+            <dt>Offices and locations</dt><dd>{p.locations_text ?? <span className="muted">{fieldNote(p, "locations")}</span>}</dd>
+            <dt>Airports</dt><dd>{p.airports.length === 0 ? <span className="muted">{fieldNote(p, "airports")}</span> : (
+              <ul className="list-plain small">{p.airports.map((x) => <li key={x.id}>{x.name ?? x.airport_ident} ({x.iata ?? x.icao ?? x.airport_ident}) · <b>{x.role_label}</b> <Tag text={x.status_label} tone={STATUS_TONE[x.status]} />
+                <span className="muted"> · {x.basis}</span>{x.evidence_url && <> · <a href={x.evidence_url} target="_blank" rel="noreferrer noopener">source</a></>}</li>)}</ul>)}
+              <div className="small muted">An office, a station it operates, an airport it serves from elsewhere and a gateway are different facts; each is stated by a source.</div></dd>
+            <dt>Parent or group</dt><dd>{p.parent_group ?? <span className="muted">{fieldNote(p, "parent")}</span>}</dd>
             <dt>Capability areas</dt><dd>{p.capability_area_labels.length ? p.capability_area_labels.join(", ") : <span className="muted">—</span>}</dd>
             {p.iata_code && <><dt>IATA designator</dt><dd>{p.iata_code}</dd></>}
             <dt>Record</dt><dd className="small">origin: {label(p.origin)}{p.last_researched_at ? ` · last researched ${dateTime(p.last_researched_at)}` : ""}
@@ -95,14 +118,31 @@ function Company({ p, reload }: { p: Profile; reload: () => void }) {
         </section>
       </div>
 
+      <section className="panel" aria-label="Research progress">
+        <div className="panel-head"><h2>Research progress</h2><span className="muted small">{p.research.found} of {p.research.total} profile fields found · evidence: {p.evidence_strength.explanation}</span></div>
+        <p className="small" role="status"><Tag text={p.research_progress.state_label} tone={p.research_progress.state === "complete" ? "b-good" : p.research_progress.state === "failed" ? "b-bad" : p.research_progress.state === "not_run" ? "b-none" : "b-warn"} /> <span className="muted">{p.research_progress.tally} organisation-stage item(s)</span></p>
+        <div className="grid grid-2">
+          <div>
+            <p className="fact-label">Stages</p>
+            <ul className="list-plain small">{p.stages.map((s) => <li key={s.stage}><Tag text={s.status_label} tone={s.status === "done" ? "b-good" : s.status === "failed" ? "b-bad" : s.status === "incomplete" || s.status === "done_with_failures" ? "b-warn" : "b-none"} /> {s.label}{s.progress && <span> · {s.progress}</span>}{s.detail && <span className="muted"> · {s.detail}</span>}</li>)}</ul>
+            <QueueList queue={p.queue} />
+          </div>
+          <div>
+            <p className="fact-label">Fields</p>
+            <ul className="list-plain small">{p.research.fields.map((f) => <li key={f.field}><Tag text={f.status_label} tone={f.status === "found" ? "b-good" : f.status === "not_searched" ? "b-none" : "b-warn"} /> {f.label}{f.detail && f.status !== "found" && <span className="muted"> · {f.detail}</span>}{f.at && <span className="muted"> · {dateOnly(f.at)}</span>}</li>)}</ul>
+          </div>
+        </div>
+        <p className="small muted">Stages: identify → official identity → company → people → relationships → relevance. A missing website or contact route gets a targeted follow-up search before it is called &quot;not found after research&quot;. Each stage works through a persisted queue of organisations (at most six per run): the rest stay pending and visible here, and the stage is never &quot;done&quot; while one is pending.</p>
+      </section>
+
       <section className="panel" aria-label="Published contact addresses">
         <div className="panel-head"><h2>Published e-mail addresses</h2><span className="muted small">never used automatically; nothing is sent by ATLAS</span></div>
         {p.contacts.length === 0 ? <Empty title="No published address recorded">Research the company or record its website so its contact page can be read.</Empty> : (
           <TableWrap label="Contact addresses">
-            <table><thead><tr><th>Address</th><th>Purpose</th><th>Status</th><th>Where it was published</th><th /></tr></thead>
+            <table><thead><tr><th>Address</th><th>Department</th><th>Status</th><th>Where it was published</th><th /></tr></thead>
               <tbody>{p.contacts.map((c) => (
                 <tr key={c.id}>
-                  <td>{c.value}</td><td className="small">{c.purpose ?? "—"}</td>
+                  <td>{c.value}</td><td className="small">{c.department ?? c.purpose ?? "—"}</td>
                   <td><Tag text={c.status_label} tone={STATUS_TONE[c.status]} />{c.verified_at && <div className="small muted">{dateOnly(c.verified_at)}</div>}</td>
                   <td className="small">{c.source_url ? <a href={c.source_url} target="_blank" rel="noreferrer noopener">{c.source_url}</a> : c.source_note}{c.evidence_quote && <div className="muted">“{c.evidence_quote.slice(0, 140)}”</div>}</td>
                   <td className="actions">{c.status !== "verified" && c.status !== "lapsed" && <>
@@ -144,12 +184,13 @@ function Company({ p, reload }: { p: Profile; reload: () => void }) {
         <div className="panel-head"><h2>Relevant people</h2><Link className="btn btn-small" href="/discovery">Discover people</Link></div>
         {p.people.length === 0 ? <p className="muted small">Nobody recorded at this company yet. Use Discover → People with this organisation named.</p> : (
           <TableWrap label="People">
-            <table><thead><tr><th>Person</th><th>Role</th><th>Remit</th><th>Status</th><th>Evidence</th><th>LinkedIn</th></tr></thead>
+            <table><thead><tr><th>Person</th><th>Role</th><th>Remit</th><th>Published e-mail</th><th>Status</th><th>Evidence</th><th>LinkedIn</th></tr></thead>
               <tbody>{p.people.map((x) => (
                 <tr key={x.id}>
                   <td><Link href={`/relationships/${x.id}`}>{x.full_name}</Link>{x.relationships > 0 && <div className="small muted">{x.relationships} WFC relationship(s)</div>}</td>
                   <td className="small">{x.role_title ?? <span className="muted">not bound</span>}</td>
                   <td className="small">{(x.remit_countries ?? []).join(", ") || "—"}</td>
+                  <td className="small"><PersonEmail email={x.published_email} status={x.published_email_status} research={x.research_status?.email} /></td>
                   <td><Tag text={x.state_label} tone={x.state === "research_candidate" || !x.state ? "b-warn" : "b-good"} /></td>
                   <td className="small">{x.quote ? `“${x.quote.slice(0, 120)}”` : ""}{x.source_url && <> <a href={x.source_url} target="_blank" rel="noreferrer noopener">source</a></>}</td>
                   <td className="small">{x.linkedin_profile_url ? <a href={x.linkedin_profile_url} target="_blank" rel="noreferrer noopener">Confirmed profile</a> : <a href={x.linkedin_search_url} target="_blank" rel="noreferrer noopener">Search</a>}</td>
@@ -237,5 +278,37 @@ function CreateOpportunity({ p, onDone }: { p: Profile; onDone: () => void }) {
         <button className="btn btn-ghost" type="button" onClick={() => setOpen(false)}>Cancel</button></div>
       <ActionNote state={a} />
     </form>
+  );
+}
+
+
+function fieldNote(p: Profile, field: string): string {
+  const f = p.research.fields.find((x) => x.field === field);
+  if (!f || f.status === "not_searched") return "not searched yet";
+  return f.status === "found" ? "" : `${f.status_label.toLowerCase()}${f.detail ? ` — ${f.detail}` : ""}`;
+}
+
+function Duplicates({ p, onChanged }: { p: Profile; onChanged: () => void }) {
+  const a = useAction();
+  return (
+    <section className="panel" aria-label="Possible duplicate companies">
+      <h2>Possible duplicates</h2>
+      <p className="small muted">Records that may be the same company. Nothing is merged automatically; a merge re-points every piece of evidence to the kept record and can be undone.</p>
+      <ul className="list-plain small">{p.duplicates.map((d) => {
+        const other = d.a.id === p.id ? d.b : d.a;
+        return (
+          <li key={d.id}><Link href={`/companies/${other.id}`}>{other.canonical_name}</Link> <span className="muted">· {other.country ?? "country not established"} · {other.origin} · {d.reason}</span>
+            <div className="actions" style={{ marginTop: 4 }}>
+              <ReasonAction label="Merge into this record" minLength={5} busy={a.busy} placeholder="Why they are the same (recorded)"
+                            onSubmit={(note) => a.run(() => api.post("/companies/merge", { keep_id: p.id, merge_id: other.id, note, duplicate_id: d.id }), "Merged (reversible)").then(onChanged)} />
+              <ReasonAction label="Keep apart" minLength={3} busy={a.busy} placeholder="Why they differ"
+                            onSubmit={(note) => a.run(() => api.post(`/companies/duplicates/${d.id}/dismiss`, { note }), "Kept apart").then(onChanged)} />
+            </div></li>);
+      })}</ul>
+      {p.merges.filter((m) => !m.undone_at && m.keep_id === p.id).map((m) => (
+        <p key={m.id} className="small">Merged record {dateOnly(m.merged_at)}{m.note ? ` — ${m.note}` : ""} <button type="button" className="btn btn-small" disabled={a.busy}
+          onClick={() => a.run(() => api.post(`/companies/merges/${m.id}/undo`, {}), "Merge undone").then(onChanged)}>Undo merge</button></p>))}
+      <ActionNote state={a} />
+    </section>
   );
 }

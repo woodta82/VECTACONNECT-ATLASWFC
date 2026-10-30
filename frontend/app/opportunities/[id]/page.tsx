@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { dateOnly, dateTime, deadline, label, type DeadlineInfo } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
 import { useApi } from "@/lib/useApi";
+import { ResearchFile } from "@/components/ResearchFile";
 
 type Evidence = { claim_id: string; claim_type: string; quote: string; review_status: string; source_name: string | null; title: string | null;
                   canonical_url: string; published_at: string | null; retrieved_at: string; summary_en: string | null; excluded_at: string | null };
@@ -116,6 +117,7 @@ function Body({ id, b, i, reload }: { id: string; b: Base; i: Intel; reload: () 
         {i.review_state && <span className="muted"> · {i.review_state}</span>}</div>
       <ActionNote state={a} />
       {research && <ResearchResult r={research} />}
+      <ResearchFile oppId={id} onChanged={reload} />
 
       <div className="grid grid-2">
         <section className="panel" aria-label="What is happening">
@@ -151,7 +153,7 @@ function Body({ id, b, i, reload }: { id: string; b: Base; i: Intel; reload: () 
         <p className="question">Which organisations are involved?</p>
         {rel.organisations.length === 0 ? <Empty title="No organisation established yet" /> : (
           <ul className="list-plain">{rel.organisations.map((g) => (
-            <li key={g.id}><Link href={`/airlines-forwarders/${g.id}`}>{g.name}</Link> <span className="muted small">· {g.involvement}{g.country ? ` · ${g.country}` : ""}</span>
+            <li key={g.id}><Link href={`/companies/${g.id}`}>{g.name}</Link> <span className="muted small">· {g.involvement}{g.country ? ` · ${g.country}` : ""}</span>
               <div className="small">Research pages: {[["website", g.website], ["newsroom", g.newsroom_url], ["leadership page", g.leadership_url]]
                 .filter(([, u]) => u).map(([l, u]) => <span key={l as string}><a href={u as string} target="_blank" rel="noreferrer noopener">{l}</a> </span>)}
                 {!g.website && !g.newsroom_url && !g.leadership_url && <span className="muted">none recorded, so its own pages are not read</span>}</div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Gauge, LayoutDashboard, Search, Settings, Target, Users } from "lucide-react";
+import { Building2, LayoutDashboard, Search, Settings, Target, Users } from "lucide-react";
 import { type ComponentType } from "react";
 import { BrandLockup } from "./Brand";
 
@@ -10,19 +10,15 @@ type Item = { href: string; label: string; short: string; icon: ComponentType<{ 
               also: string[] };
 
 /**
- * Primary sections (refocus of 28 Oct 2026): discover an opportunity, understand it, research the people,
- * find relationships or introduction routes, track progress. The Control panel (29 Oct 2026) adds opportunities per market and the
- * score out of 100. Organisation profiles open from opportunities and people.
- * Source management, evidence review, scanning controls and the optional WFC-data tools live under Settings; their pages
- * are kept and highlight Settings when open.
+ * One workspace (30 Oct 2026): Dashboard (the Overview and the Control panel consolidated), Discover (the research process and its
+ * progress), Opportunities (saved commercial opportunities and linked market signals), Relationships (Companies and People as two
+ * connected views), Settings (technical controls and optional data tools). Old addresses keep working and highlight their section.
  */
 export const NAV: Item[] = [
-  { href: "/", label: "Overview", short: "Overview", icon: LayoutDashboard, also: [] },
-  { href: "/control-panel", label: "Control panel", short: "Panel", icon: Gauge, also: [] },
-  { href: "/opportunities", label: "Opportunities", short: "Opps", icon: Target, also: ["/records", "/signals"] },
+  { href: "/", label: "Dashboard", short: "Dashboard", icon: LayoutDashboard, also: ["/control-panel"] },
   { href: "/discovery", label: "Discover", short: "Discover", icon: Search, also: [] },
-  { href: "/companies", label: "Companies", short: "Companies", icon: Building2, also: ["/airlines-forwarders", "/organisations"] },
-  { href: "/relationships", label: "Relationships", short: "People", icon: Users, also: [] },
+  { href: "/opportunities", label: "Opportunities", short: "Opps", icon: Target, also: ["/records", "/signals"] },
+  { href: "/relationships", label: "Relationships", short: "People", icon: Users, also: ["/companies", "/airlines-forwarders", "/organisations", "/people"] },
   { href: "/settings", label: "Settings", short: "Settings", icon: Settings,
     also: ["/sources", "/review", "/data-sources", "/areas", "/lanes", "/service", "/capabilities", "/network", "/reports"] },
 ];

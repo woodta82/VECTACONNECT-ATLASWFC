@@ -74,7 +74,7 @@ SOURCE_HINTS = ['site:gov OR site:go OR "procurement portal"', 'filetype:pdf', '
 
 
 def build_queries(*, countries: Iterable[str | None], country_names: dict[str, str], modules: Iterable[str], keywords: str | None,
-                  organisation: str | None, airline: str | None, max_per_country: int) -> list[WebQuery]:
+                  organisation: str | None, airline: str | None, max_per_country: int, airport_terms: str = "") -> list[WebQuery]:
     """Queries per country (or one worldwide set) for the selected areas; the named organisation or airline and keywords narrow
     every query. Formal-notice queries come first. Capped per country so a wide search stays within the per-run limits."""
     mods = [m for m in modules if m in AREA_TERMS] or list(ALL_MODULES)
@@ -82,7 +82,7 @@ def build_queries(*, countries: Iterable[str | None], country_names: dict[str, s
     kw = (keywords or "").strip()
     out: list[WebQuery] = []
     for c in list(countries) or [None]:
-        where = f' "{country_names.get(c, c)}"' if c else ""
+        where = (f' "{country_names.get(c, c)}"' if c else "") + (f" {airport_terms}" if airport_terms else "")
         per: list[WebQuery] = []
         for m in mods:
             for i, (purpose, terms) in enumerate(AREA_TERMS[m]):
@@ -117,12 +117,12 @@ MARKET_TERMS = [("New routes, freighters and capacity", '(airline OR carrier) ca
 
 
 def build_market_queries(*, countries: Iterable[str | None], country_names: dict[str, str], brief_terms: str | None, keywords: str | None,
-                         organisation: str | None, airline: str | None, max_per_country: int) -> list[WebQuery]:
+                         organisation: str | None, airline: str | None, max_per_country: int, airport_terms: str = "") -> list[WebQuery]:
     focus = " ".join(f'"{x.strip()}"' for x in (organisation, airline) if x and x.strip())
     kw = " ".join(x for x in ((keywords or "").strip(), (brief_terms or "").strip()) if x)
     out: list[WebQuery] = []
     for c in list(countries) or [None]:
-        where = f' "{country_names.get(c, c)}"' if c else ""
+        where = (f' "{country_names.get(c, c)}"' if c else "") + (f" {airport_terms}" if airport_terms else "")
         tail = f" in {country_names.get(c, c)}" if c else " (worldwide)"
         per: list[WebQuery] = []
         if kw or focus:

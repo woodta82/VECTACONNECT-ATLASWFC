@@ -164,6 +164,7 @@ footer.foot { border-top: 1px solid var(--border); padding: 12px 24px; font-size
 .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid > * { min-width: 0; }                      /* a wide table scrolls inside its panel instead of widening the column (30 Oct 2026) */
 @media (max-width: 1023px) { .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid-3 { grid-template-columns: 1fr; } }
 @media (max-width: 767px) { .grid-2 { grid-template-columns: 1fr; } }   /* .grid-4 (stat cards) stays two-up on phones */
 
@@ -283,6 +284,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .segmented { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
 .segmented button { background: none; border: 0; padding: 7px 12px; cursor: pointer; font-size: 13px; color: var(--text-muted); }
 .segmented button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.segmented a { padding: 7px 12px; font-size: 13px; color: var(--text-muted); text-decoration: none; }
+.segmented a[aria-current="page"] { background: var(--accent); color: var(--on-accent); }
 .progress { height: 6px; background: var(--panel-raised); border-radius: 999px; overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--accent); transition: width 0.3s; }
 .outcome { border-radius: var(--radius); padding: 12px 14px; border: 1px solid var(--border); margin-bottom: 14px; }
@@ -418,6 +421,8 @@ html.light .cp-hbar, html.light .cp-meter > span { background: var(--accent-ring
 .cp-breakdown-list li { display: grid; grid-template-columns: 150px 90px 36px 110px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 12.5px; }
 .cp-breakdown-list .cp-meter { width: 90px; min-width: 0; }
 .questions .question { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.questions .question.summary li, .questions .question.summary p { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text); }
+.questions .question.summary p.muted { color: var(--text-muted); }
 .questions h3 { font-size: 13.5px; font-weight: 600; margin: 0 0 2px; }
 .questions ol, .questions ul { margin-top: 8px; }
 .questions li + li { margin-top: 8px; }
@@ -429,3 +434,4 @@ pre.draft-text { background: var(--panel-raised); padding: 10px; border-radius: 
   .cp-breakdown-list li { grid-template-columns: 1fr auto; }
   .cp-breakdown-list li .cp-meter, .cp-breakdown-list li .muted:last-child { grid-column: 1 / -1; }
 }
+.email-review { text-decoration: underline dotted var(--warn, #b7791f); text-underline-offset: 3px; }

@@ -59,6 +59,8 @@ def stack_env(db: str, no_ai: bool) -> dict[str, str]:
                    AI_PRICE_OUTPUT_PER_MTOK="15", AI_API_BASE_URL="http://127.0.0.1:8090",
                    # SIMULATED search connector: the fixture site's stand-in for the Brave Search API (a fixed index of fixture pages)
                    SEARCH_PROVIDER="brave", SEARCH_API_KEY="local-stub-search-key-not-real", SEARCH_API_BASE_URL="http://127.0.0.1:8089/search-api")
+    # the automated journeys replay many users' clicks per minute from one address; deployments keep the default 300
+    env["RATE_LIMIT_PER_MINUTE"] = "3000"
     return env
 
 
@@ -69,7 +71,21 @@ def spawn(name: str, cmd: list[str], env: dict[str, str], logs: Path) -> int:
     return p.pid
 
 
+def _busy_ports() -> list[int]:
+    import socket
+    busy = []
+    for port in (8000, 3000, 8089, 8090):
+        with socket.socket() as sk:
+            sk.settimeout(0.3)
+            if sk.connect_ex(("127.0.0.1", port)) == 0:
+                busy.append(port)
+    return busy
+
+
 def up(args: argparse.Namespace) -> None:
+    busy = _busy_ports()
+    if busy:   # a stack left running would silently serve this run with old code and another database
+        raise SystemExit(f"ports already in use: {busy} — stop the running stack first (tools/local_stack.py down)")
     logs = Path(args.logs).resolve()
     logs.mkdir(parents=True, exist_ok=True)
     db = args.db
@@ -121,7 +137,8 @@ def restart(args: argparse.Namespace) -> None:
             time.sleep(0.2)
         except ProcessLookupError:
             break
-    cmd = {"worker": [PY, "-m", "app.worker_main"]}[name]
+    cmd = {"worker": [PY, "-m", "app.worker_main"],
+           "api": [PY, "-m", "uvicorn", "--factory", "app.main:app_factory", "--host", "127.0.0.1", "--port", "8000"]}[name]
     pids[name] = spawn(name, cmd, stack_env(args.db, args.no_ai), logs)
     f.write_text(json.dumps(pids))
     print(f"restarted {name} (pid {pids[name]})")
@@ -143,7 +160,7 @@ def down(args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["up", "down", "restart"])
-    ap.add_argument("--service", default="worker", choices=["worker"])
+    ap.add_argument("--service", default="worker", choices=["worker", "api"])
     ap.add_argument("--db", default="atlas_stack")
     ap.add_argument("--logs", default="stack-logs")
     ap.add_argument("--no-ai", action="store_true")

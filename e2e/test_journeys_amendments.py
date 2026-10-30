@@ -453,8 +453,8 @@ def test_h_passenger_notices_stay_out_unsupported_status_never_becomes_open_and_
     shot(page, "H5-review-unresolved-scope-and-conflict")
     # briefing: the historical record is not a live tender; export states status, basis and scope
     go(page, "/")
-    expect(page.get_by_role("region", name="Priority opportunities")).not_to_contain_text("GEA-GSSA-2022-3")   # historical: never live
-    expect(page.get_by_role("region", name="Priority opportunities")).not_to_contain_text("GEA-PAX")          # excluded: never listed
+    expect(page.get_by_role("region", name="Priority table")).not_to_contain_text("GEA-GSSA-2022-3")   # historical: never live
+    expect(page.get_by_role("region", name="Priority table")).not_to_contain_text("GEA-PAX")          # excluded: never listed
     shot(page, "H6-overview-live-vs-historical")
     go(page, "/opportunities")
     with page.expect_download() as dl:

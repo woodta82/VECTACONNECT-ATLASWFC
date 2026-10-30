@@ -64,6 +64,7 @@ class Settings:
     search_api_key: str = field(repr=False, default="")
     search_api_base_url: str = "https://api.search.brave.com"
     search_max_queries: int = 6
+    rate_limit_per_minute: int = 300          # per client address; only automated test stacks raise it
     search_results_per_query: int = 5
 
     @property
@@ -109,6 +110,7 @@ def load(env: dict[str, str] | None = None) -> Settings:
         search_api_key=e.get("SEARCH_API_KEY", ""),
         search_api_base_url=e.get("SEARCH_API_BASE_URL", "https://api.search.brave.com").strip() or "https://api.search.brave.com",
         search_max_queries=max(0, min(20, int(e.get("SEARCH_MAX_QUERIES", "6") or 6))),
+        rate_limit_per_minute=max(60, min(10000, int(e.get("RATE_LIMIT_PER_MINUTE", "300") or 300))),
         search_results_per_query=max(1, min(10, int(e.get("SEARCH_RESULTS_PER_QUERY", "5") or 5))),
     )
     if s.search_provider and s.search_provider not in ("brave", "anthropic"):

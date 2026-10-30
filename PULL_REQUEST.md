@@ -1,4 +1,22 @@
-# Release 4.5.0-wfc.16: four research purposes, company intelligence, open-web discovery, relationships, Control panel, electric cyan
+# Release 4.9.0-wfc.20: operational pilot release — contact involvement and pilot kit
+
+**4.9.0-wfc.20** (tenth commit) classifies each person's evidenced involvement (employee, appointed representative, external adviser, press contact, not established) and keeps press contacts and advisers as external contacts outside relationship coverage and ranking, with a one-time re-check and person corrections; extends the browser journey to the full user path; adds the post-deploy check, the pilot workflows and the runbook. Schema `wfc_0019` (additive). Deployment, the full airport load and the real-source pilot were NOT executed (no outbound network in the build session; deployment is from the team's own hosting account, no connector). Details: `docs/REGRESSION_REPORT_4.9.0.md`.
+
+
+**4.8.0-wfc.19** (ninth commit) makes a matching e-mail local part supporting evidence only, sends unexplained other-domain, supplier and partner addresses to review, marks obsolete / withdrawn / former-employee addresses historical (never a current route) with conflicts shown, re-checks recorded addresses (verified ones untouched); reports stage outcomes truthfully (complete with unresolved failures, failed, incomplete, not run) with consistent counts and an explicit Retry failed; reads pages added after completion; reports the airport directory state in readiness and after failed loads. Schema `wfc_0018` (additive). Full airport load, real-source demonstration and production-stack checks were not executed here. Details: `BUILD_REPORT.md`, `docs/REGRESSION_REPORT_4.8.0.md`.
+
+
+**4.7.0-wfc.18** (eighth commit) replaces the first-address-in-the-sentence e-mail rule with an attribution rule (own name, explicit statement, contact block, table row; shared mailboxes and third-party press contacts never a person's; ambiguous addresses pending review) and re-checks earlier assignments; replaces the six-organisation slicing with a persisted per-stage work queue (pending work visible, never 'done' while pending); loads the full airport directory at deployment or from a verified import package and says which directory is in use; makes every Dashboard summary open exactly its records and keeps research completeness out of the priority order; proves corrections survive research and contradicting evidence prompts a re-check. Adds `tools/public_source_demo.py` for the real-input demonstration (not executed here: no outbound access or keys). Schema `wfc_0017` (additive). Details: `BUILD_REPORT.md`, `docs/AMENDMENT_CHECKLIST_4.7.0.md`.
+
+
+**4.6.0-wfc.17** (seventh commit) consolidates the workspace into five sections (Dashboard = Overview + Control panel; Discover;
+Opportunities; Relationships = Companies + People; Settings) with old URLs redirected; adds staged, resumable research (identify →
+official identity → company → people → relationships → relevance) that enriches the canonical company and person records with
+per-field statuses (found / not searched / not found after research / inaccessible / incomplete) and an opportunity research file
+(summary first, supporting research below); a maintained global airport directory with provenance (OurAirports loader; bundled seed
+of 424 airports until it is loaded) applied to discovery, companies, opportunities and filters; freight-scope labels with passenger-only
+excluded from the cargo view; assessment in five separate parts; company duplicate review with reversible merges. Schema `wfc_0016`
+(additive). Details: `BUILD_REPORT.md`, first section.
 
 **4.5.0-wfc.16** (sixth commit) adds the four research purposes within Discover (Opportunities, Companies, People, Market
 intelligence) against a plain-language brief, with company and people intelligence built directly from public pages — website,

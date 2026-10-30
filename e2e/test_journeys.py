@@ -120,7 +120,7 @@ def test_01_login_identity_and_shared_session(page: Page):
     nav_el = page.get_by_role("navigation", name="Sections")
     # Primary sections (28 Oct 2026 refocus, plus the Control panel of 29 Oct 2026); technical and WFC-data tools are reached from Settings.
     links = [x.strip() for x in nav_el.get_by_role("link").all_inner_texts()]
-    assert links == ["Overview", "Control panel", "Opportunities", "Discover", "Companies", "Relationships", "Settings"], links
+    assert links == ["Dashboard", "Discover", "Opportunities", "Relationships", "Settings"], links
     nav = nav_el.inner_text()
     for retired in ("Capability Areas", "Trade Lanes", "Service Intelligence", "Data Sources and Imports", "Evidence Review"):
         assert retired not in nav, retired

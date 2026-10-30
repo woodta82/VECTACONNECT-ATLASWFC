@@ -109,7 +109,9 @@ def test_r_research_purposes_in_a_new_country_without_a_tender(page: Page):
     expect(page.get_by_text("No tender or opportunity has to exist first.")).to_be_visible()
     page.get_by_label("Research brief (plain language)").fill("Find cargo GSAs operating in Rwanda and the airlines they represent")
     _pick_country(page, "Rwanda")
-    page.get_by_label("Airport (IATA, optional)").fill("KGL")
+    box = page.get_by_role("combobox", name=re.compile("Airports"))
+    box.fill("KGL")
+    page.get_by_role("option").filter(has_text="Kigali International Airport").first.get_by_role("button").click()
     page.get_by_label("Capability area").select_option(value="airline_representation")
     page.get_by_role("button", name="Find companies").click()
     result = page.get_by_role("region", name="Research result")
@@ -215,20 +217,19 @@ def test_r_research_purposes_in_a_new_country_without_a_tender(page: Page):
     expect(page.get_by_role("region", name="Representation and business relationships")).to_contain_text("LOT Polish Airlines")
     expect(page.get_by_role("region", name="Representation and business relationships")).to_contain_text("not resolved")      # FO kept as written
     go(page, "/companies?carrier_type=passenger_belly")
-    expect(page.get_by_role("region", name="Companies")).to_contain_text("Passenger airline (belly cargo)")
+    expect(page.get_by_role("region", name="Companies")).to_contain_text("Belly cargo (passenger aircraft)")
     shot(page, "R5b-belly-carriers")
-    # 6. the Control panel: six separated summaries; then a company leads to an opportunity only with an interpretation
-    go(page, "/control-panel")
-    for title in ("Commercial opportunities", "Companies researched", "Relevant people identified", "Relationship gaps and next actions",
-                  "Important market developments", "Tender deadlines"):
-        expect(page.get_by_role("region", name=title)).to_be_visible()
-    expect(page.get_by_role("region", name="Important market developments")).to_contain_text("route launch")
-    expect(page.get_by_role("region", name="Companies researched")).to_contain_text("Rwanda")
+    # 6. the Dashboard (30 Oct 2026): four summaries, market signals apart; then a company leads to an opportunity only with an interpretation
+    go(page, "/")
+    for title in ("Priority opportunities", "Deadlines approaching", "Companies and people researched", "Research gaps and next actions"):
+        expect(page.get_by_role("region", name=title).first).to_be_visible()
+    expect(page.get_by_role("region", name="Market signals")).to_contain_text("route launch")
+    expect(page.get_by_role("region", name="Companies and people researched")).to_contain_text("Rwanda")
     summaries = {s["key"]: s for s in api(page, "/control-panel/summaries")["summaries"]}
     assert summaries["companies"]["count"] >= 4 and summaries["people"]["count"] >= 2 and summaries["market"]["count"] >= 1
     before = summaries["opportunities"]["count"]
-    shot(page, "R6-control-panel-summaries")
-    page.get_by_role("region", name="Companies researched").get_by_role("link", name="Rwanda").click()
+    shot(page, "R6-dashboard-summaries")
+    page.get_by_role("region", name="Companies and people researched").get_by_role("link", name="Rwanda").click()
     page.wait_for_url(re.compile(r"/companies\?country=RW"), timeout=15000)
     expect(page.get_by_role("region", name="Companies")).to_contain_text("Thousand Hills Cargo Services Ltd")
     go(page, company_url.replace(BASE, ""))

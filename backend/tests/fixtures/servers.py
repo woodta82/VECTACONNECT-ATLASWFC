@@ -49,6 +49,16 @@ SEARCH_STANDIN = [
     (("rwanda", "head of cargo"), "/thousandhills/team.html", "Our leadership — Thousand Hills Cargo Services"),
     (("rwanda", "new route"), "/rw-news/freighter.html", "Savanna Example Air adds weekly freighter to Kigali"),
     (("rwanda", "tender"), "/rw-news/freighter.html", "Savanna Example Air adds weekly freighter to Kigali"),
+    # 30 Oct 2026, journey S: a country and an airport outside the old shortlist (Lithuania, Kaunas KUN); no tender; staged research
+    (("lithuania", "gssa"), "/lt-cargo/directory.html", "Air cargo service providers at Kaunas Airport — directory"),
+    (("kaunas", "gssa"), "/lt-cargo/directory.html", "Air cargo service providers at Kaunas Airport — directory"),
+    (("lithuania", "forwarder"), "/lt-cargo/directory.html", "Air cargo service providers at Kaunas Airport — directory"),
+    (("lithuania", "tender"), "/lt-news/amber-gssa.html", "Amber Example Air seeks cargo GSSA partners for Lithuania and Latvia"),
+    (("lithuania", "appoint"), "/lt-news/amber-gssa.html", "Amber Example Air seeks cargo GSSA partners for Lithuania and Latvia"),
+    (("nemunas cargo services", "official website"), "/nemunascargo/index.html", "Nemunas Cargo Services"),
+    (("nemunas cargo services", "contact"), "/nemunascargo/contact.html", "Contact — Nemunas Cargo Services"),
+    (("nemunas cargo services", "head of cargo"), "/nemunascargo/team.html", "Our leadership — Nemunas Cargo Services"),
+    (("amber example air", "head of cargo"), "/lt-news/amber-gssa.html", "Amber Example Air seeks cargo GSSA partners for Lithuania and Latvia"),
 ]
 
 
@@ -305,6 +315,8 @@ QSK = ("Savanna Example Air invites proposals from cargo general sales and servi
        "Proposals must be submitted by 15 March 2027.")
 QSU = ("Savanna Example Air invites proposals from cargo general sales and service agents for Uganda. Reference SEA-CGO-2026-82. "
        "Proposals must be submitted by 22 March 2027.")
+QLT = ("Amber Example Air invites expressions of interest from cargo GSSA providers for Lithuania and Latvia from April 2027, as its current cargo "
+       "representation agreement ends.")
 QKGL = ("Savanna Example Air will operate a weekly Boeing 737 freighter service between Nairobi (NBO) and Kigali (KGL) from 12 January 2027, "
         "citing growing horticulture and pharmaceutical exports from Rwanda.")
 QSR = "Savanna Example Air will start a twice-weekly freighter service between Nairobi and Dubai from 5 January 2027"
@@ -326,6 +338,9 @@ CANNED += [
     ("freighter service between Nairobi and Dubai", {"language": "en", "claims": [
         {"claim_type": "route_launch", "stance": "supports", "quote": QSR,
          "fields": {"airline": _f("Savanna Example Air", QSR), "origin": _f("Kenya", QSR), "destination": _f("United Arab Emirates", QSR)}}]}),
+    ("invites expressions of interest from cargo GSSA providers for Lithuania and Latvia", {"language": "en", "claims": [
+        {"claim_type": "gssa_tender", "stance": "supports", "quote": QLT,
+         "fields": {"airline": _f("Amber Example Air", QLT), "country": _f("Lithuania", QLT), "service": _f("GSSA", QLT), "status": _f("announced", QLT)}}]}),
     ("freighter service between Nairobi (NBO) and Kigali (KGL)", {"language": "en", "claims": [
         {"claim_type": "route_launch", "stance": "supports", "quote": QKGL,
          "fields": {"airline": _f("Savanna Example Air", QKGL), "origin": _f("Kenya", QKGL), "destination": _f("Rwanda", QKGL)}}]}),

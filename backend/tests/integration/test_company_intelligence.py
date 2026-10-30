@@ -88,7 +88,14 @@ def test_company_discovery_in_a_new_country_without_a_tender_builds_company_peop
     assert lake and any(r["relationship"] == "passenger_representation" and r["counterparty"] == "Savanna Example Air" for r in lake["relationships"])
     assert orgs["Virunga Freight Forwarders Ltd"]["kind"] == "forwarder" and orgs["Nyungwe Ground Handling Ltd"]["kind"] == "handler"
     assert th["relevance_score"] > orgs["Lakeside Travel Agency Ltd"]["relevance_score"]            # a GSSA fits the brief; a ticket agent does not
-    assert sum(c["points"] for c in th["relevance"]["components"]) == th["relevance_score"]
+    # the assessment is kept in separate parts (30 Oct 2026): fit, evidence, completeness, relationship, opportunity; fit is the ranking score
+    parts = th["relevance"]
+    assert {"fit", "evidence", "completeness", "relationship", "opportunity", "freight_scope", "explanation"} <= set(parts)
+    assert parts["fit"]["score"] == th["relevance_score"] and parts["fit"]["band"] in ("strong", "good")
+    assert parts["freight_scope"] == "cargo_services" and parts["completeness"]["found"] >= 4 and parts["evidence"]["band"] in ("several", "well_sourced")
+    assert "probability" in parts["rule"].lower() and "Fit" in parts["explanation"]
+    lake = orgs["Lakeside Travel Agency Ltd"]
+    assert lake["relevance"]["freight_scope"] == "passenger_only" and lake["relevance_score"] == 0      # passenger ticket sales: outside the cargo scope
     assert th["quote"] and th["source_url"]                                                           # evidence for the record
     # people bound to the company by its own leadership page
     people = {p["full_name"]: p for p in out["people"]}
@@ -175,7 +182,8 @@ def _workbook() -> bytes:
 
 def test_a_supplied_station_list_is_preserved_as_data_awaiting_verification_and_a_person_verifies_it(rdb):  # noqa: F811
     db = rdb
-    res = cmp.import_supplied(db, SEARCH, data=_workbook(), filename="FF__GSA_List_BRU.xlsx", name=None, notes="benchmark example", meta=META, by="WFC ops")
+    book = _workbook()          # built once: the xlsx embeds its creation time, so two builds can differ by a second
+    res = cmp.import_supplied(db, SEARCH, data=book, filename="FF__GSA_List_BRU.xlsx", name=None, notes="benchmark example", meta=META, by="WFC ops")
     assert res["airport_iata"] == "BRU" and res["country"] == "BE" and res["rows"] == 4
     assert res["organisations"] == 8 and res["relationships"] == 3 and res["contacts"] == 5   # the IB/VY address is recorded for both carriers
     gsa = cmp.list_companies(db, kind="gssa", country="BE", airport="BRU", origin="supplied", carrier_type=None, state="awaiting_verification", discovery=None,
@@ -205,7 +213,7 @@ def test_a_supplied_station_list_is_preserved_as_data_awaiting_verification_and_
     raws = [r["raw"] for r in imp["rows"]]
     assert {"GSA": "All-Carriers Cargo BV", "Represented Airlines": "ALL", "E-mail address": "ops@allcarriers.example"} in raws, raws
     try:
-        cmp.import_supplied(db, SEARCH, data=_workbook(), filename="FF__GSA_List_BRU.xlsx", name=None, notes=None, meta=META)
+        cmp.import_supplied(db, SEARCH, data=book, filename="FF__GSA_List_BRU.xlsx", name=None, notes=None, meta=META)
         raise AssertionError("duplicate import accepted")
     except cmp.CompanyRejected as exc:
         assert exc.status == 409

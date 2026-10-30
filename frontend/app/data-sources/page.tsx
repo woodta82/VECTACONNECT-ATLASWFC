@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { Badge, Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
+import { Tag } from "@/components/Records";
 import { ActionNote, ReasonAction, Section, Tabs } from "@/components/Ui";
 import { api } from "@/lib/api";
 import { dateTime, label } from "@/lib/format";
@@ -36,7 +37,7 @@ const SETUP_ORDER = ["operating_companies", "airports", "airlines", "territories
 
 export default function DataSourcesPage() {
   const r = useApi<Data>("/data-sources");
-  const [tab, setTab] = useState<"setup" | "operational" | "supplied" | "history" | "connectors">("setup");
+  const [tab, setTab] = useState<"setup" | "operational" | "supplied" | "airports" | "history" | "connectors">("setup");
   return (
     <>
       <PageHeader eyebrow="Data Sources and Imports" title="Set up reference data and load operational files"
@@ -48,7 +49,7 @@ export default function DataSourcesPage() {
       {r.data && (
         <section className="panel">
           <Tabs label="Data sources" value={tab} onChange={setTab} tabs={[
-            { id: "setup", label: "Setup (master data)" }, { id: "operational", label: "Operational data" }, { id: "supplied", label: "Supplied lists" },
+            { id: "setup", label: "Setup (master data)" }, { id: "operational", label: "Operational data" }, { id: "supplied", label: "Supplied lists" }, { id: "airports", label: "Airport directory" },
             { id: "history", label: "Import history", count: r.data.imports.length }, { id: "connectors", label: "Connectors" },
           ]} />
           {tab === "setup" && (
@@ -59,6 +60,7 @@ export default function DataSourcesPage() {
           )}
           {tab === "operational" && <ImportWorkflow datasets={r.data.datasets.filter((d) => d.category === "operational")} onDone={r.reload} />}
           {tab === "supplied" && <SuppliedLists />}
+          {tab === "airports" && <AirportDirectory />}
           {tab === "history" && <History rows={r.data.imports} datasets={r.data.datasets} onDone={r.reload} />}
           {tab === "connectors" && (
             <TableWrap label="Connectors">
@@ -285,6 +287,68 @@ function SuppliedLists() {
               </tr>))}</tbody></table>
         </TableWrap>
       ))}
+    </div>
+  );
+}
+
+
+/* The global airport directory (30 Oct 2026): which dataset is loaded, with provenance and refresh date; load or refresh OurAirports' airports.csv
+   by upload when the server has no outbound access (tools/load_airports.py downloads it otherwise). */
+type DirStatus = { airports: number; maintained_rows: number; maintained: boolean; note: string; using: "seed" | "partial" | "full"; using_label: string;
+                   total_records: number; seed_rows: number; full_min_rows: number; cargo_rule: string;
+                   dataset: { name: string; source: string; url: string | null; licence: string | null; version: string | null; refreshed_at: string | null; loaded_at: string; rows_loaded: number } | null;
+                   datasets: { key: string; name: string; source: string; url: string | null; licence: string | null; version: string | null; refreshed_at: string | null; loaded_at: string; rows_loaded: number; notes: string | null }[] };
+
+function AirportDirectory() {
+  const r = useApi<DirStatus>("/airports/status");
+  const [file, setFile] = useState<File | null>(null);
+  const [version, setVersion] = useState("");
+  const [refreshed, setRefreshed] = useState("");
+  const a = useAction();
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("file", file);
+    if (version) fd.append("version", version);
+    if (refreshed) fd.append("refreshed_at", refreshed);
+    const out = await a.run(() => api.post<{ rows: number }>("/airports/load", fd), (x) => `${x.rows} airport rows loaded`);
+    if (out) { setFile(null); r.reload(); }
+  }
+  return (
+    <div className="stack">
+      {r.data && (
+        <section className="panel" aria-label="Directory in use">
+          <div className="panel-head"><h2>Directory in use: {r.data.using_label}</h2><Tag text={r.data.using === "full" ? "Full" : r.data.using === "partial" ? "Partial" : "Seed"} tone={r.data.using === "full" ? "b-good" : "b-warn"} /></div>
+          <dl className="kv">
+            <dt>Total records</dt><dd>{r.data.total_records.toLocaleString()} <span className="muted small">({r.data.maintained_rows.toLocaleString()} from the maintained dataset, {r.data.seed_rows.toLocaleString()} from the bundled seed)</span></dd>
+            <dt>Source</dt><dd>{r.data.dataset ? <>{r.data.dataset.source}{r.data.dataset.licence && <span className="muted small"> · {r.data.dataset.licence}</span>}</> : "—"}</dd>
+            <dt>Version</dt><dd>{r.data.dataset?.version ?? <span className="muted">not stated</span>}</dd>
+            <dt>Publisher refresh date</dt><dd>{r.data.dataset?.refreshed_at ? dateTime(r.data.dataset.refreshed_at) : <span className="muted">not stated</span>}</dd>
+            <dt>Loaded</dt><dd>{r.data.dataset ? dateTime(r.data.dataset.loaded_at) : "—"}</dd>
+          </dl>
+          <div className={`notice ${r.data.using === "full" ? "notice-info" : ""}`} role="status">{r.data.note}</div>
+          <p className="small muted">{r.data.cargo_rule}</p>
+        </section>
+      )}
+      {r.data && (
+        <TableWrap label="Reference datasets">
+          <table><thead><tr><th>Dataset</th><th>Source and licence</th><th>Version</th><th>Publisher refresh</th><th>Loaded</th><th className="num">Rows</th><th>Notes</th></tr></thead>
+            <tbody>{r.data.datasets.map((d) => (
+              <tr key={d.key}><td>{d.name}</td><td className="small">{d.source}{d.url && <div><a href={d.url} target="_blank" rel="noreferrer noopener">{d.url}</a></div>}<div className="muted">{d.licence}</div></td>
+                <td className="small">{d.version ?? "—"}</td><td className="small">{d.refreshed_at ? dateTime(d.refreshed_at) : <span className="muted">not stated</span>}</td>
+                <td className="small">{dateTime(d.loaded_at)}</td><td className="num">{d.rows_loaded}</td><td className="small muted">{d.notes}</td></tr>))}</tbody></table>
+        </TableWrap>
+      )}
+      <form className="form-grid" onSubmit={submit}>
+        <label className="field">OurAirports airports.csv<input className="input" type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+        <label className="field">Dataset version or file date<input className="input" value={version} onChange={(e) => setVersion(e.target.value)} placeholder="e.g. 2026-10-01" /></label>
+        <label className="field">Publisher refresh date (ISO)<input className="input" value={refreshed} onChange={(e) => setRefreshed(e.target.value)} placeholder="e.g. 2026-10-01" /></label>
+        <div className="actions"><button className="btn btn-primary" type="submit" disabled={!file || a.busy}>{a.busy ? "Loading…" : "Load or refresh the directory"}</button></div>
+      </form>
+      <p className="small muted">Every row keeps the dataset&apos;s identifier, type and status (closed airports are listed but not offered for selection). Presence in the directory never means an
+        airport handles cargo: freight relevance is assessed from evidence, separately from airport selection.</p>
+      <ActionNote state={a} />
     </div>
   );
 }

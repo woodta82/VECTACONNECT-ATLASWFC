@@ -19,14 +19,16 @@ from .api.routes import router
 from .api.routes_discovery import router as discovery_router
 from .api.routes_modules import router as modules_router
 from .api.routes_intel import router as intel_router
+from .api.routes_workspace import router as workspace_router
 from .connectors import registry
 from .domain.prioritisation import SCORED
 from .http import auth_routes, middleware
 from .repo.db import Database, SQLAlchemyDatabase
-from .services import auth_service
+from .services import airport_directory, auth_service, deep_research
+from .services.audit import RequestMeta
 
 log = logging.getLogger("atlas")
-EXPECTED_SCHEMA_REVISION = "wfc_0015"
+EXPECTED_SCHEMA_REVISION = "wfc_0019"
 
 
 def create_app(settings: config.Settings | None = None, db_factory: Callable[[], Database] | None = None) -> FastAPI:
@@ -40,6 +42,23 @@ def create_app(settings: config.Settings | None = None, db_factory: Callable[[],
         if auth_service.bootstrap_credential(db, settings.login_username, settings.bootstrap_password):
             log.warning("Shared credential bootstrapped. Remove LOGIN_BOOTSTRAP_PASSWORD from the environment and change the password.")
         registry.seed(db)
+        airport_directory.ensure_seed(db)       # the bundled airport seed; the maintained dataset is loaded separately (tools/load_airports.py)
+        ap = airport_directory.status(db)
+        if ap["using"] != "full":
+            log.warning("Airport directory: %s (%s records) — NOT the full directory. Load it: python -m app.airports_cli load --auto", ap["using_label"], ap["total_records"])
+        if db.scalar("flag_get", key="involvement_recheck") != deep_research.INVOLVEMENT_VERSION:          # once per rule version (4.9.0)
+            inv_out = deep_research.recheck_involvement(db, RequestMeta(ip="system", session_ref="bootstrap"))
+            db.run("flag_set", key="involvement_recheck", value=f'"{deep_research.INVOLVEMENT_VERSION}"')
+            if inv_out["changed"]:
+                log.warning("Person involvement re-check %s: %s examined, %s changed (%s press contacts, %s external advisers), %s opportunity links moved",
+                            deep_research.INVOLVEMENT_VERSION, inv_out["examined"], inv_out["changed"], inv_out["press_contact"], inv_out["external_adviser"],
+                            inv_out["links_moved"])
+        if db.scalar("flag_get", key="email_attribution_recheck") != deep_research.RECHECK_VERSION:   # once per rule version (4.7.0, 4.8.0)
+            out = deep_research.recheck_published_emails(db, RequestMeta(ip="system", session_ref="bootstrap"))
+            db.run("flag_set", key="email_attribution_recheck", value=f'"{deep_research.RECHECK_VERSION}"')
+            if out["examined"]:
+                log.warning("Person e-mail re-check %s: %s examined, %s confirmed, %s historical, %s flagged for review, %s verified kept",
+                            deep_research.RECHECK_VERSION, out["examined"], out["confirmed"], out["historical"], out["flagged"], out["verified_kept"])
         for model in SCORED.values():
             db.run("model_version_ensure", module=model.module, version=model.version, definition=model.definition(),
                    provisional=model.provisional)
@@ -70,6 +89,7 @@ def create_app(settings: config.Settings | None = None, db_factory: Callable[[],
     app.include_router(discovery_router)
     app.include_router(modules_router)
     app.include_router(intel_router)
+    app.include_router(workspace_router)
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception):  # never an empty success
@@ -93,8 +113,17 @@ def create_app(settings: config.Settings | None = None, db_factory: Callable[[],
                                  "release": config.RELEASE}, status_code=503)
         connectors = db.all("connectors_list")
         degraded = [c["code"] for c in connectors if c["status"] == "degraded"]
+        # readiness is not proof of full airport coverage: which directory is in use is reported separately
+        try:
+            ap = airport_directory.status(db)
+            airports = {"using": ap["using"], "full": ap["using"] == "full", "total_records": ap["total_records"],
+                        "dataset_version": (ap.get("dataset") or {}).get("version"),
+                        "note": "full airport directory in use" if ap["using"] == "full" else
+                                f"NOT the full airport directory ({ap['using_label']}, {ap['total_records']} records): load it — see Settings → Data sources"}
+        except Exception:  # noqa: BLE001
+            airports = {"using": "unknown", "full": False, "note": "airport directory status unavailable"}
         return {"status": "degraded" if degraded else "ready", "release": config.RELEASE, "build": settings.build_id,
-                "schema_revision": revision, "degraded_integrations": degraded}
+                "schema_revision": revision, "degraded_integrations": degraded, "airport_directory": airports}
 
     return app
 

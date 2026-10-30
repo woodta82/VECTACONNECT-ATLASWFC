@@ -7,12 +7,14 @@ import { Tag } from "@/components/Records";
 import { useGeography } from "@/components/Geo";
 import { Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
 import { KINDS } from "@/components/Research";
+import { RelationshipsViews } from "@/components/RelationshipsViews";
 import { qs } from "@/lib/api";
 import { dateOnly } from "@/lib/format";
 import { useApi } from "@/lib/useApi";
 
 type Row = { id: string; canonical_name: string; kind: string; kind_label: string; country: string | null; country_name: string | null; website: string | null;
              origin: string; airport_iata: string | null; carrier_type: string | null; carrier_type_label: string | null; iata_code: string | null;
+             freight_scope: string; freight_scope_label: string; in_cargo_scope: boolean; airports_served: string | null; contact_url: string | null;
              state: string; state_label: string; emails: number; emails_current: number; relationships: number; relationships_current: number; represented_by: number;
              people: number; evidence: number; opportunities: number; best_relevance: number | null; last_researched_at: string | null; verified_at: string | null };
 type Page = { items: Row[]; total: number; states: Record<string, string> };
@@ -31,16 +33,18 @@ function Companies() {
   const [country, setCountry] = useState(sp.get("country") ?? "");
   const [airport, setAirport] = useState(sp.get("airport") ?? "");
   const [origin, setOrigin] = useState(sp.get("origin") ?? "");
-  const [carrier, setCarrier] = useState(sp.get("carrier_type") ?? "");
+  const carrier = sp.get("carrier_type") ?? "";
   const [state, setState] = useState(sp.get("state") ?? "");
   const [q, setQ] = useState(sp.get("q") ?? "");
   const [sort, setSort] = useState(sp.get("sort") ?? "name");
+  const [scope, setScope] = useState(sp.get("scope") ?? "cargo");
   const discovery = sp.get("discovery") ?? "";
   const geo = useGeography();
-  const r = useApi<Page>(`/companies${qs({ kind, country, airport, origin, carrier_type: carrier, state, q, sort, discovery, limit: 200 })}`);
+  const r = useApi<Page>(`/companies${qs({ kind, country, airport, origin, carrier_type: carrier, state, q, sort, discovery, scope: scope === "all" ? "" : scope, limit: 200 })}`);
   return (
     <>
-      <PageHeader eyebrow="Companies" title="Who operates here and what can they do"
+      <RelationshipsViews current="companies" />
+      <PageHeader eyebrow="Relationships · Companies" title="Who operates here and what can they do"
                   description="Every organisation ATLAS has found in the open market, read from a supplied dataset, or loaded from WFC data: official website, published addresses, locations, services, parent or group, represented airlines or partners, relevant people and the evidence for each fact. Supplied data is shown as awaiting verification until research sources it or a person verifies it; a relevant company is not an opportunity."
                   actions={<Link className="btn btn-primary" href="/discovery">Research companies</Link>} />
       <div className="filters" role="search">
@@ -55,9 +59,10 @@ function Companies() {
           <option value="verified">Verified</option><option value="unverified">Anything not verified</option></select></label>
         <label className="field">Origin<select className="select" value={origin} onChange={(e) => setOrigin(e.target.value)}>
           {ORIGINS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
-        <label className="field">Airline type<select className="select" value={carrier} onChange={(e) => setCarrier(e.target.value)}>
-          <option value="">Any</option><option value="passenger_belly">Passenger airline (belly cargo)</option><option value="cargo_only">Cargo-only airline</option>
-          <option value="combination">Passenger and freighter</option></select></label>
+        <label className="field">Freight scope<select className="select" value={scope} onChange={(e) => setScope(e.target.value)}>
+          <option value="cargo">Air cargo scope (passenger-only excluded)</option><option value="belly">Belly cargo (passenger aircraft)</option>
+          <option value="freighter">Freighter cargo</option><option value="mixed">Mixed cargo operations</option><option value="cargo_services">Cargo services (non-airline)</option>
+          <option value="unresolved">Unresolved</option><option value="passenger_only">Passenger-only (outside scope)</option><option value="all">Everything</option></select></label>
         <label className="field">Sort by<select className="select" value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="name">Name (A–Z)</option><option value="relevance">Best relevance to a brief</option><option value="recent">Most recently updated</option></select></label>
       </div>
@@ -70,12 +75,12 @@ function Companies() {
       ) : (
         <TableWrap label="Companies">
           <table>
-            <thead><tr><th>Company</th><th>Kind</th><th>Country / airport</th><th>Status</th><th>Website</th><th className="num">E-mail</th><th className="num">Represents</th><th className="num">People</th><th className="num">Evidence</th><th className="num">Opportunities</th></tr></thead>
+            <thead><tr><th>Company</th><th>Kind / freight scope</th><th>Country / airports</th><th>Status</th><th>Website</th><th className="num">E-mail</th><th className="num">Represents</th><th className="num">People</th><th className="num">Evidence</th><th className="num">Opportunities</th></tr></thead>
             <tbody>{r.data.items.map((o) => (
               <tr key={o.id}>
                 <td><Link href={`/companies/${o.id}`}>{o.canonical_name}</Link>{o.best_relevance !== null && <div className="small muted">relevance {o.best_relevance}/100</div>}</td>
-                <td className="small">{o.kind_label}{o.carrier_type_label && <div className="muted">{o.carrier_type_label}</div>}{o.iata_code && <div className="muted">{o.iata_code}</div>}</td>
-                <td className="small">{o.country_name ?? <span className="muted">not established</span>}{o.airport_iata && <div className="muted">{o.airport_iata}</div>}</td>
+                <td className="small">{o.kind_label}<div className={o.in_cargo_scope ? "muted" : "action-error"}>{o.freight_scope_label}</div>{o.iata_code && <div className="muted">{o.iata_code}</div>}</td>
+                <td className="small">{o.country_name ?? <span className="muted">not established</span>}{(o.airports_served || o.airport_iata) && <div className="muted">{o.airports_served ?? o.airport_iata}</div>}</td>
                 <td><Tag text={o.state_label} tone={STATE_TONE[o.state]} />
                   <div className="small muted">{o.verified_at ? `verified ${dateOnly(o.verified_at)}` : o.last_researched_at ? `researched ${dateOnly(o.last_researched_at)}` : ""}</div></td>
                 <td className="small">{o.website ? <a href={o.website} target="_blank" rel="noreferrer noopener">{o.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}</a> : <span className="muted">—</span>}</td>

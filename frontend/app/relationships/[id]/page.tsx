@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Tag } from "@/components/Records";
+import { PersonEmail, type EmailResearch } from "@/components/Research";
 import { Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
 import { DuplicateReview, type Duplicate } from "@/components/Duplicates";
 import { ActionNote } from "@/components/Ui";
@@ -16,6 +17,9 @@ import { useApi } from "@/lib/useApi";
 type Person = { id: string; full_name: string; role_title: string | null; organisation: string | null; organisation_id: string | null; remit_text: string | null;
                 remit_basis: string | null; identity_confirmed_at: string | null; identity_basis: string | null; last_verified_at: string | null;
                 linkedin_profile_url: string | null; linkedin_search_url: string; linkedin_role_search_url: string | null; relationship_owner: string | null;
+                published_email: string | null; published_email_status: string | null; published_email_source_url: string | null;
+                research_status: { email?: EmailResearch } | null; involvement: string; involvement_basis: string | null;
+                involvement_org: string | null; involvement_set_by: string;
                 notes: string | null; next_action: string | null; next_action_due: string | null; state: string; state_label: string; origin: string;
                 merged_into_id: string | null; merged_into_name: string | null };
 
@@ -76,7 +80,7 @@ function Body({ id, d, reload }: { id: string; d: Detail; reload: () => void }) 
         {d.roles.length === 0 ? <p className="muted">No source binds a title or organisation to this person yet.</p> : (
           <ul className="list-plain small">{d.roles.map((r) => (
             <li key={r.id}><b>{r.role_title ?? "Title not stated"}</b>{r.role_status !== "current" ? ` (${r.role_status})` : ""} ·{" "}
-              {r.organisation_id ? <Link href={`/airlines-forwarders/${r.organisation_id}`}>{r.organisation}</Link> : r.organisation ?? "organisation not established"}
+              {r.organisation_id ? <Link href={`/companies/${r.organisation_id}`}>{r.organisation}</Link> : r.organisation ?? "organisation not established"}
               {r.organisation && <> · <Tag text={r.affiliation_label} tone={r.affiliation === "employee" ? "b-info" : r.affiliation === "unknown" ? "b-none" : "b-warn"} /></>}
               <div className="muted">{r.source === "before_upgrade" ? "Recorded before the evidence rules (28 Oct 2026); no passage attached" : r.binding}
                 {r.source === "ai" ? " · proposed by the configured AI extractor and confirmed by the rules" : ""}</div>
@@ -87,10 +91,17 @@ function Body({ id, d, reload }: { id: string; d: Detail; reload: () => void }) 
         <section className="panel" aria-label="Identity">
           <h2>Identity, role and remit</h2>
           <dl className="kv">
-            <dt>Organisation</dt><dd>{p.organisation_id ? <Link href={`/airlines-forwarders/${p.organisation_id}`}>{p.organisation}</Link> : p.organisation ?? "Not established"}</dd>
+            <dt>Organisation</dt><dd>{p.organisation_id ? <Link href={`/companies/${p.organisation_id}`}>{p.organisation}</Link> : p.organisation ?? "Not established"}</dd>
             <dt>Role</dt><dd>{p.role_title ?? "Not established"}</dd>
             <dt>Geographic remit</dt><dd>{p.remit_text ?? "Not established"}{p.remit_basis && <div className="small muted">{p.remit_basis}</div>}</dd>
+            <dt>Involvement</dt><dd><Tag text={INVOLVEMENT[p.involvement] ?? p.involvement} tone={p.involvement === "press_contact" || p.involvement === "external_adviser" ? "b-none" : p.involvement === "unresolved" ? "b-warn" : "b-good"} />
+              {p.involvement_org && <span className="small"> · {p.involvement_org}</span>}
+              <div className="small muted">{p.involvement_basis ?? "not established"}{p.involvement_set_by === "person" ? " (set by a person — research never changes it)" : ""}
+                {(p.involvement === "press_contact" || p.involvement === "external_adviser") && " · kept as an external contact; not counted as a commercial contact"}</div>
+              <InvolvementForm id={id} current={p.involvement} reload={reload} /></dd>
             <dt>Identity</dt><dd>{p.identity_confirmed_at ? <>Confirmed {dateOnly(p.identity_confirmed_at)}<div className="small muted">{p.identity_basis}</div></> : "Not confirmed: research candidate"}</dd>
+            <dt>Published e-mail</dt><dd><PersonEmail email={p.published_email} status={p.published_email_status} research={p.research_status?.email} source={p.published_email_source_url} />
+              <div className="small muted">{p.published_email_status === "under_review" ? "Kept with its evidence; a person decides whether it is this person's address." : "Shown only when a page ties the address to this person; never guessed."}</div></dd>
             <dt>LinkedIn</dt><dd>{p.linkedin_profile_url ? <a href={p.linkedin_profile_url} target="_blank" rel="noreferrer noopener">Confirmed profile</a>
               : <><a href={p.linkedin_search_url} target="_blank" rel="noreferrer noopener">Search for this person</a>{p.linkedin_role_search_url && <> · <a href={p.linkedin_role_search_url} target="_blank" rel="noreferrer noopener">search the role</a></>}
                 <div className="small muted">A search, not a confirmed profile.</div></>}</dd>
@@ -358,5 +369,29 @@ function EngagementForm({ id, opportunities, reload }: { id: string; opportuniti
       <div className="actions"><button className="btn" type="submit" disabled={a.busy || f.summary.trim().length < 3}>Record engagement</button></div>
       <ActionNote state={a} />
     </form>
+  );
+}
+
+const INVOLVEMENT: Record<string, string> = { employee: "Employee", appointed_representative: "Appointed representative", external_adviser: "External adviser",
+                                              press_contact: "Press / media contact", unresolved: "Involvement not established" };
+
+function InvolvementForm({ id, current, reload }: { id: string; current: string; reload: () => void }) {
+  const a = useAction();
+  const [inv, setInv] = useState(current);
+  const [basis, setBasis] = useState("");
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (await a.run(() => api.post(`/people/${id}/involvement`, { involvement: inv, basis }), "Involvement recorded")) { setBasis(""); reload(); }
+  }
+  return (
+    <details className="small"><summary>Correct the involvement</summary>
+      <form className="form-grid" onSubmit={submit}>
+        <label className="field">Involvement<select className="select" value={inv} onChange={(e) => setInv(e.target.value)}>
+          {Object.entries(INVOLVEMENT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+        <label className="field">What was checked, and where<input className="input" value={basis} onChange={(e) => setBasis(e.target.value)} minLength={10} required /></label>
+        <div className="actions"><button className="btn" type="submit" disabled={a.busy || basis.trim().length < 10}>Save</button></div>
+      </form>
+      <ActionNote state={a} />
+    </details>
   );
 }

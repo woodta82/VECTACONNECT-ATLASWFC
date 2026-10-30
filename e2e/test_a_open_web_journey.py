@@ -178,10 +178,12 @@ def test_q_open_web_discovery_without_registered_sources(page: Page):
     run_id = _search(page, mode="One country", country="Iceland", areas=["Technology and solutions"])
     run = _wait_run(page, run_id)
     assert run["outcome"] == "no_relevant_results" and all(w["status"] == "run" for w in run["counts"]["web_searches"]), run["outcome"]
-    # 8. the Overview and the Control panel show what was found
+    # 8. the Dashboard shows what was found (the Control panel's analytics live under its expandable detail; the old address redirects)
     go(page, "/")
-    expect(page.get_by_role("region", name="Priority opportunities")).to_contain_text("SAW-RFS-2026-07")
+    expect(page.get_by_role("region", name="Priority table")).to_contain_text("SAW-RFS-2026-07")
     go(page, "/control-panel")
-    expect(page.get_by_role("region", name="By market")).to_contain_text("Western Asia")
-    shot(page, "Q4-control-panel-after-open-web")
+    page.wait_for_url(re.compile(r"/$"), timeout=15000)
+    page.get_by_text("Score distribution, breakdowns and technical metrics").click()
+    expect(page.get_by_role("region", name="By market and capability area")).to_contain_text("Western Asia")
+    shot(page, "Q4-dashboard-after-open-web")
     assert not [e for e in page.errors if "pageerror" in e], page.errors  # type: ignore[attr-defined]

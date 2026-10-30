@@ -47,13 +47,16 @@ class DiscoveryRejected(Exception):
 
 
 def _brief_text(org: str | None, countries: list[str], region: str | None, module: str | None, role_focus: str | None,
-                purpose: str = "people", brief: str | None = None, airport_iata: str | None = None, kinds: list[str] | None = None) -> str:
+                purpose: str = "people", brief: str | None = None, airport_iata: str | None = None, kinds: list[str] | None = None,
+                airport_labels: list[str] | None = None) -> str:
     parts = []
     if brief:
         parts.append(brief.strip())
     if purpose == "companies":
         parts.append("Purpose: companies" + (f" ({', '.join(ci.KIND_LABELS.get(k, k) for k in kinds)})" if kinds else ""))
-    if airport_iata:
+    if airport_labels:
+        parts.append(("Airports: " if len(airport_labels) > 1 else "Airport: ") + ", ".join(airport_labels))
+    elif airport_iata:
         ap = airport(airport_iata)
         parts.append(f"Airport: {ap[0]} ({airport_iata})" if ap else f"Airport: {airport_iata}")
     if org:
@@ -76,9 +79,15 @@ def start(db: Database, settings: Settings, data: dict[str, Any], meta: RequestM
     if purpose not in PURPOSES:
         raise DiscoveryRejected(422, "purpose must be people or companies")
     brief_text = " ".join((data.get("brief") or "").split())[:600] or None
+    from . import airport_directory as ad
     airport_iata = (data.get("airport_iata") or "").strip().upper() or None
+    codes = [c for c in (data.get("airports") or []) if c and c.strip()] + ([airport_iata] if airport_iata else [])
+    found_airports, missing = ad.resolve_many(db, codes)
+    if missing:
+        raise DiscoveryRejected(422, f"airport(s) not in the directory: {', '.join(missing)} (search the directory by name, IATA or ICAO)")
+    airports = sorted({a["ident"] for a in found_airports})
     if airport_iata and not airport(airport_iata):
-        raise DiscoveryRejected(422, f"airport {airport_iata} is not in the reference list (use the IATA code of a major cargo airport)")
+        airport_iata = None                         # kept only when the seed knows the IATA code; the directory idents carry the scope
     kinds = [k for k in (data.get("organisation_kinds") or []) if k]
     if any(k not in ci.KIND_LABELS for k in kinds):
         raise DiscoveryRejected(422, "unknown organisation kind")
@@ -93,8 +102,10 @@ def start(db: Database, settings: Settings, data: dict[str, Any], meta: RequestM
         raise DiscoveryRejected(422, "unknown country code")
     if region:
         countries = list(REGIONS[region][2])
-    if airport_iata and not countries and not region:
-        countries = [airport(airport_iata)[2]]
+    if found_airports and not countries and not region:
+        countries = sorted({a["country"] for a in found_airports})
+    if found_airports and countries and any(a["country"] not in countries for a in found_airports):
+        raise DiscoveryRejected(422, "an airport chosen is outside the selected countries")
     if not (org_label or countries or role_focus or brief_text):
         raise DiscoveryRejected(422, "give a brief, an organisation, a country or region, or a role focus")
     if module and module not in ov.CATEGORY_LABELS:
@@ -104,11 +115,11 @@ def start(db: Database, settings: Settings, data: dict[str, Any], meta: RequestM
         oid = db.scalar("org_find_for_person", name=org_label, norm=re.sub(r"[^a-z0-9]", "", org_label.lower()))
         org_row = db.one("org_get_for_research", id=str(oid)) if oid else None
     brief = _brief_text((org_row or {}).get("name") or org_label, countries[:MAX_COUNTRIES], region, module, role_focus, purpose, brief_text,
-                        airport_iata, kinds)
+                        airport_iata, kinds, [ad.label(a) for a in found_airports])
     disc_id = str(db.scalar("disc_insert", org=str(org_row["id"]) if org_row else None, org_label=None if org_row else org_label,
                             countries=countries[:MAX_COUNTRIES], region=region, module=module, role_focus=role_focus, brief=brief,
                             by=data.get("requested_by_label"), session_ref=meta.session_ref, purpose=purpose, brief_text=brief_text,
-                            airport=airport_iata, kinds=kinds))
+                            airport=airport_iata, kinds=kinds, airports=airports))
     audit(db, "contact_discovery_started", meta, entity_type="discovery", entity_id=disc_id,
           detail={"brief": brief, "purpose": purpose, "organisation": bool(org_row), "countries": countries[:MAX_COUNTRIES]})
     return _run(db, settings, disc_id, meta, mode="start", fetch=fetch, transport=transport, search_transport=search_transport)
@@ -134,6 +145,7 @@ def _run(db: Database, settings: Settings, disc_id: str, meta: RequestMeta, *, m
     run = rr._Run(None, meta, org_names, org_names[:1], orgs, disc_id=disc_id, company_mode=(d["purpose"] == "companies"))
     fetch = fetch or (lambda url: retrieval.fetch(url, allow_private_hosts=frozenset(settings.retrieval_allow_private_hosts)))
     countries = list(d["countries"] or [])
+    from . import airport_directory as ad
     if mode == "start":
         rr._queue_org_pages(db, run)
         if d["organisation"] and not orgs:
@@ -146,7 +158,8 @@ def _run(db: Database, settings: Settings, disc_id: str, meta: RequestMeta, *, m
                                                modules=[d["capability_area"]] if d["capability_area"] else [],
                                                kinds=ci.kinds_for([d["capability_area"]] if d["capability_area"] else [], list(d.get("organisation_kinds") or [])),
                                                airport_iata=d.get("airport_iata"), organisation=d["organisation"],
-                                               max_per_country=max(settings.search_max_queries, 1))
+                                               max_per_country=max(settings.search_max_queries, 1),
+                                               airports=ad.idents_for(db, list(d.get("airports") or [])))
             if d["purpose"] == "people" and d["role_focus"]:
                 queries = plan.build_discovery_queries(module=d["capability_area"], organisation=d["organisation"],
                                                        countries=[c for c in (rr._country_name(c) for c in countries[:2]) if c],
@@ -158,7 +171,7 @@ def _run(db: Database, settings: Settings, disc_id: str, meta: RequestMeta, *, m
         searches = rr._run_searches(db, settings, run, queries, countries, search_transport)
     else:
         searches = list(d.get("searches") or [])
-        db.all("rdoc_requeue_failed", id=None, disc=disc_id)
+        db.all("rdoc_requeue_failed", id=None, disc=disc_id, org=None)
     ai_reason = ai_extraction.available(settings)
     if ai_reason:
         run.unavailable.append({"method": "configured_extractor", "reason": ai_reason})
@@ -182,7 +195,7 @@ def _run(db: Database, settings: Settings, disc_id: str, meta: RequestMeta, *, m
                 run.orgs = saved
                 rr._read_everything(db, settings, run, fetch, transport, ai_reason)
                 organisations = cmp.record_organisations(db, run, d)
-            for rd in db.all("rdoc_bodies", disc=disc_id):
+            for rd in db.all("rdoc_bodies", disc=disc_id, id=None, org=None):
                 rr._read_rules(db, run, rd, rd.get("body_text") or "", page_url=rd.get("url"))
                 db.run("rdoc_people", id=str(rd["id"]))
         cmp.score_organisations(db, d)
@@ -195,6 +208,11 @@ def _run(db: Database, settings: Settings, disc_id: str, meta: RequestMeta, *, m
         r = cr.score(role_title=p.get("role_title"), organisation=p.get("organisation"), organisation_kind=p.get("organisation_kind"),
                      countries=rel_countries, brief_module=d["capability_area"], brief_organisation=d["organisation"],
                      brief_countries=countries, brief_role_focus=d["role_focus"], binding=p.get("binding"), page_kind=p.get("page_kind"))
+        if p.get("involvement") in ("press_contact", "external_adviser"):
+            # kept with the actual role, but never ranked as a commercial contact
+            r = {**r, "score": 0, "excluded": True, "involvement": p["involvement"],
+                 "explanation": f"{'Press / media contact' if p['involvement'] == 'press_contact' else 'External adviser'}: kept as an external contact, "
+                                f"not ranked as a commercial contact ({p.get('involvement_basis') or 'see the evidence'})"}
         db.run("disc_person_relevance", disc=disc_id, person=str(p["person_id"]), score=r["score"], relevance=r)
         if d["capability_area"]:
             db.run("person_set_capability_area", id=str(p["person_id"]), module=d["capability_area"])
@@ -202,7 +220,7 @@ def _run(db: Database, settings: Settings, disc_id: str, meta: RequestMeta, *, m
     cov["limits_hit"] = sorted(set(run.limits_hit))
     cov["duplicates_flagged"] = run.duplicates
     people = db.all("disc_people", id=disc_id)
-    docs = db.all("rdoc_for_opp", id=None, disc=disc_id)
+    docs = db.all("rdoc_for_opp", id=None, disc=disc_id, org=None)
     read_any = any(x["status"] in ("read", "partial") for x in docs)
     ran_any = any(s["status"] == "run" for s in searches)
     incomplete = bool(cov["remaining"]) or bool(run.limits_hit)
@@ -239,8 +257,10 @@ def detail(db: Database, disc_id: str) -> dict[str, Any]:
     for p in people:
         p["linkedin_search_url"] = rel.linkedin_search_url(p["full_name"], p.get("organisation"))
         p["state_label"] = rel.STATE_LABELS.get(p.get("state") or "research_candidate", "Research candidate")
-    docs = db.all("rdoc_for_opp", id=None, disc=disc_id)
+    docs = db.all("rdoc_for_opp", id=None, disc=disc_id, org=None)
     _label(d)
+    from . import airport_directory as ad
+    d["airport_labels"] = [ad.label(a) for a in ad.idents_for(db, list(d.get("airports") or []))]
     organisations = db.all("disc_orgs", id=disc_id) if d["purpose"] == "companies" else []
     for o in organisations:
         o["kind_label"] = ci.KIND_LABELS.get(o["kind"], o["kind"])
@@ -272,13 +292,16 @@ def _label(d: dict[str, Any]) -> None:
     d["purpose_label"] = PURPOSE_LABELS.get(d.get("purpose") or "people", "People")
     ap = airport(d.get("airport_iata"))
     d["airport_name"] = ap[0] if ap else None
+    d["airport_labels"] = []
     d["organisation_kind_labels"] = [ci.KIND_LABELS.get(k, k) for k in (d.get("organisation_kinds") or [])]
 
 
 def list_discoveries(db: Database, limit: int = 20, purpose: str | None = None) -> list[dict[str, Any]]:
     out = db.all("disc_list", limit=limit, purpose=purpose)
+    from . import airport_directory as ad
     for d in out:
         _label(d)
+        d["airport_labels"] = [ad.label(a) for a in ad.idents_for(db, list(d.get("airports") or []))]
         for k in ("unavailable", "coverage", "searches"):
             d.pop(k, None)
     return out

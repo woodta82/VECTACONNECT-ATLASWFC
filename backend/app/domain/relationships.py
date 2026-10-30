@@ -227,8 +227,8 @@ COVERAGE_LABELS = {"existing_relationship": "Existing relationship", "introducti
 def coverage(people: Iterable[dict[str, Any]]) -> Coverage:
     c = Coverage()
     for p in people:
-        if p.get("link_status") == "not_relevant":
-            continue
+        if p.get("link_status") in ("not_relevant", "external_contact") or p.get("involvement") in ("press_contact", "external_adviser"):
+            continue                                   # a press contact or external adviser is never relationship coverage
         c.people_total += 1
         st = p.get("state")
         if st == "research_candidate":

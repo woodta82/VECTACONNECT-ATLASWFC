@@ -27,6 +27,10 @@ services:
     environment: *prod_env
     volumes: [atlas_snapshots:/var/lib/atlas/snapshots]
     restart: unless-stopped
+  airports:
+    environment:
+      <<: *prod_env
+      AIRPORTS_PACKAGE: ${AIRPORTS_PACKAGE:-}
   worker:
     environment: *prod_env
     volumes: [atlas_snapshots:/var/lib/atlas/snapshots]

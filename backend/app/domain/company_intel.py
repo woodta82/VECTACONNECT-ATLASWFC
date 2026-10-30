@@ -137,7 +137,8 @@ def airline_labels(codes: Iterable[str]) -> list[dict[str, str | None]]:
 
 
 # ------------------------------------------------------------------ 2. organisations named in public text
-_SUFFIX = (r"(?:NV|SA|BV|BVBA|SRL|SPRL|GmbH|AG|Ltd\.?|Limited|LLC|Inc\.?|Plc|PLC|S\.A\.|S\.p\.A\.|SAS|Pty|Pte|Co\.|Corp\.?|Group|Holding|Holdings|"
+_SUFFIX = (r"(?:NV|SA|BV|BVBA|SRL|SPRL|GmbH|AG|Ltd\.?|Limited|LLC|Inc\.?|Plc|PLC|S\.A\.|S\.p\.A\.|SpA|SAS|SARL|Sarl|EURL|Pty|Pte|Co\.|Corp\.?|Group|Holding|Holdings|"
+           r"UAB|AB|SIA|OÜ|Oy|Oyj|AS|ApS|A/S|Kft|Zrt|s\.r\.o\.|d\.o\.o\.|Sp\. z o\.o\.|Lda|LDA|Bhd|Sdn Bhd|FZE|FZCO|LLC|WLL|JSC|PJSC|"
            r"Aviation|Airlines|Airways|Air|Cargo|Logistics|Freight|Handling|Services|Forwarding|Express|Trucking|Transport|Airport Authority|"
            r"Airports Company|Airports Authority)")
 _NAME_WORD = r"[A-Z][A-Za-z0-9&'’\-]+"
@@ -366,11 +367,24 @@ def brief_terms(brief: str | None) -> str:
     return " ".join(words[:8])
 
 
+def airport_terms(airports: list[dict[str, Any]] | None) -> str:
+    """'("Kaunas Airport" OR KUN OR "Kaunas")' for the airports of a brief (name, IATA or ICAO code, city)."""
+    parts = []
+    for a in airports or []:
+        code = a.get("iata") or a.get("icao") or a.get("ident")
+        alts = [f'"{a["name"]}"'] + ([code] if code else []) + ([f'"{a["city"]}"'] if a.get("city") and a["city"] != a["name"] else [])
+        parts.append("(" + " OR ".join(alts) + ")")
+    return " OR ".join(parts) if len(parts) == 1 else ("(" + " OR ".join(parts) + ")" if parts else "")
+
+
 def build_purpose_queries(*, purpose: str, brief: str | None, countries: list[str | None], country_names: dict[str, str], modules: list[str],
-                          kinds: list[str], airport_iata: str | None, organisation: str | None, max_per_country: int = 8) -> list[PurposeQuery]:
+                          kinds: list[str], airport_iata: str | None, organisation: str | None, max_per_country: int = 8,
+                          airports: list[dict[str, Any]] | None = None) -> list[PurposeQuery]:
     where_parts: list[str] = []
     ap = airport(airport_iata)
-    if ap:
+    if airports:
+        where_parts.append(airport_terms(airports))
+    elif ap:
         where_parts.append(f'("{ap[0]}" OR {airport_iata.upper()} OR "{ap[1]}")')
     focus = f'"{organisation.strip()}"' if organisation and organisation.strip() else ""
     bt = brief_terms(brief)

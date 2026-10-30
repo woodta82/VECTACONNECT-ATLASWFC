@@ -18,6 +18,7 @@ from ..config import Settings
 from ..domain import retrieval
 from ..domain import relationships as rel
 from ..domain.attribution import AFFILIATION_LABELS
+from ..domain.involvement import LABELS as INVOLVEMENT_LABELS
 from ..reference.geography import COUNTRIES
 from ..repo.db import Database
 from .audit import RequestMeta, audit
@@ -285,10 +286,14 @@ def opportunity_relationships(db: Database, opp_id: str) -> dict[str, Any]:
     opp = _require(db.one("opportunity_get2", id=opp_id), "Opportunity")
     orgs = db.all("opportunity_organisations", id=opp_id)
     countries = [g["country_code"] for g in db.all("opportunity_geo", id=opp_id)]
-    people = db.all("rel_opportunity_people", id=opp_id)
-    for p in people:
+    linked = db.all("rel_opportunity_people", id=opp_id)
+    for p in linked:
         p["state_label"] = rel.STATE_LABELS[p["state"]]
         p["linkedin_search_url"] = rel.linkedin_search_url(p["full_name"], p.get("organisation"))
+        p["involvement_label"] = INVOLVEMENT_LABELS.get(p.get("involvement") or "unresolved")
+    # press contacts and external advisers: kept with their actual role, never counted as commercial contacts (coverage, gaps, ranking)
+    external = [p for p in linked if p.get("link_status") == "external_contact" or p.get("involvement") in ("press_contact", "external_adviser")]
+    people = [p for p in linked if p not in external]
     at_org = db.all("rel_org_people_not_linked", id=opp_id)
     for p in at_org:
         p["state_label"] = rel.STATE_LABELS[p["state"]]
@@ -314,11 +319,11 @@ def opportunity_relationships(db: Database, opp_id: str) -> dict[str, Any]:
         actions.append(f"Review {len(open_dups)} possible duplicate person record(s)")
     cov = rel.coverage(people + [dict(p, link_status="relevant") for p in at_org])
     routes = db.all("rel_routes_for_opp", id=opp_id)
-    return {"organisations": orgs, "people": people, "people_at_organisation": at_org, "coverage": cov.level,
+    return {"organisations": orgs, "people": people, "external_contacts": external, "people_at_organisation": at_org, "coverage": cov.level,
             "coverage_label": rel.COVERAGE_LABELS[cov.level], "searches": search_suggestions(opp["module"], orgs, countries),
             "target_roles": [{"key": r.key, "label": r.label} for r in rel.target_roles(opp["module"])],
             "latest_research": latest, "gaps": gaps, "actions": actions,
-            "documents": db.all("rdoc_for_opp", id=opp_id, disc=None),
+            "documents": db.all("rdoc_for_opp", id=opp_id, disc=None, org=None),
             "relationships": db.all("rel_relationships_for_opp", id=opp_id),
             "routes_available": [r for r in routes if r["status"] in ("available", "requested", "made")],
             "routes_possible": [r for r in routes if r["status"] == "possible"],
@@ -457,3 +462,22 @@ def track_signal(db: Database, signal_id: str, meta: RequestMeta) -> str:
                reason="market signal tracked as a commercial opportunity", session_ref=meta.session_ref)
         audit(tx, "signal_tracked", meta, entity_type="opportunity", entity_id=oid, detail={"signal": signal_id})
     return oid
+
+
+def set_involvement(db: Database, person_id: str, involvement: str, basis: str, meta: RequestMeta) -> dict[str, Any]:
+    """A person's correction of someone's involvement (employee, appointed representative, external adviser, press contact, unresolved).
+    It is never changed by later research; the person's opportunity links follow (external contact or candidate), except where a person
+    already marked the link relevant or not relevant."""
+    from ..domain import involvement as inv
+    if involvement not in inv.INVOLVEMENTS:
+        raise RelationshipRejected(422, f"involvement must be one of {', '.join(inv.INVOLVEMENTS)}")
+    if not basis or len(basis.strip()) < 10:
+        raise RelationshipRejected(422, "say what was checked and where (at least 10 characters)")
+    with db.transaction() as tx:
+        if not tx.scalar("person_involvement_by_person", id=person_id, inv=involvement, basis=f"set by a person: {basis.strip()}"):
+            raise RelationshipRejected(404, "Person not found")
+        moved = tx.all("opp_links_external_sync", id=person_id)
+        tx.scalar("rel_evidence_add2", person=person_id, supports="relevance", kind="note", doc=None, rdoc=None, url=None, quote=None,
+                  note=f"involvement set by a person: {inv.LABELS[involvement]} — {basis.strip()}", session_ref=meta.session_ref)
+    audit(db, "person_involvement_set", meta, entity_type="person", entity_id=person_id, detail={"involvement": involvement, "links": len(moved)})
+    return {"involvement": involvement, "involvement_label": inv.LABELS[involvement], "opportunity_links_updated": len(moved)}

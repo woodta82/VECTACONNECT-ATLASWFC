@@ -108,6 +108,7 @@ class SearchSpec:
     date_filter: str = "include_unknown"
     purpose: str = "opportunities"          # or 'market' (29 Oct 2026: research purposes)
     brief: str | None = None                # plain-language research request
+    airports: list[str] | None = None       # directory idents (30 Oct 2026): the airports the search is about
 
 
 def validate_spec(db: Database, spec: SearchSpec) -> SearchSpec:
@@ -143,16 +144,27 @@ def validate_spec(db: Database, spec: SearchSpec) -> SearchSpec:
     if spec.purpose not in ("opportunities", "market"):
         raise DiscoveryRejected(422, "purpose must be opportunities or market")
     brief = " ".join((spec.brief or "").split())[:600] or None
+    airports: list[str] = []
+    if spec.airports:
+        from . import airport_directory as ad
+        found, missing = ad.resolve_many(db, [a for a in spec.airports if a and a.strip()])
+        if missing:
+            raise DiscoveryRejected(422, f"airport(s) not in the directory: {', '.join(missing)}")
+        airports = sorted({a["ident"] for a in found})
+        if spec.geo_mode == "worldwide" and airports:
+            countries = sorted({a["country"] for a in found})
+        if spec.geo_mode in ("country", "countries") and countries and any(a["country"] not in countries for a in found):
+            raise DiscoveryRejected(422, "an airport chosen is outside the selected countries")
     return SearchSpec(spec.geo_mode, countries, regions, modules, (spec.organisation or "").strip() or None,
                       (spec.airline or "").strip() or None, (spec.keywords or "").strip() or None, spec.date_from, spec.date_to,
-                      (spec.name or "").strip() or None, spec.saved, spec.date_filter, spec.purpose, brief)
+                      (spec.name or "").strip() or None, spec.saved, spec.date_filter, spec.purpose, brief, airports)
 
 
 def create_search(db: Database, spec: SearchSpec) -> str:
     s = validate_spec(db, spec)
     return str(db.scalar("search_insert", name=s.name, saved=s.saved, geo_mode=s.geo_mode, countries=s.countries, regions=s.regions,
                          modules=s.modules, organisation=s.organisation, airline=s.airline, keywords=s.keywords,
-                         date_from=s.date_from, date_to=s.date_to, date_filter=s.date_filter, purpose=s.purpose, brief=s.brief))
+                         date_from=s.date_from, date_to=s.date_to, date_filter=s.date_filter, purpose=s.purpose, brief=s.brief, airports=s.airports or []))
 
 
 def _custom_regions(db: Database) -> dict[str, tuple[str, ...]]:
@@ -160,6 +172,16 @@ def _custom_regions(db: Database) -> dict[str, tuple[str, ...]]:
     for r in db.all("region_members"):
         out.setdefault(r["region_code"], []).append(r["country_code"])
     return {k: tuple(v) for k, v in out.items()}
+
+
+def with_airports(db: Database, search: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Decorates a search with the directory rows of its airports and the query terms naming them (30 Oct 2026)."""
+    if not search or not search.get("airports"):
+        return search
+    from . import airport_directory as ad
+    from ..domain.company_intel import airport_terms
+    rows = ad.idents_for(db, list(search["airports"]))
+    return dict(search, _airports=rows, _airport_terms=airport_terms(rows))
 
 
 def country_set(db: Database, search: dict[str, Any]) -> set[str] | None:
@@ -335,7 +357,7 @@ def _set_run_budget(tx: Database, run_id: str, p: dict[str, Any], budget_root: s
 
 def start_run(db: Database, settings: Settings, *, search_id: str | None = None, source_id: str | None = None,
               trigger: str = "manual", retry_of: str | None = None, budget_root: str | None = None) -> dict[str, Any]:
-    search = db.one("search_get", id=search_id) if search_id else None
+    search = with_airports(db, db.one("search_get", id=search_id)) if search_id else None
     if search_id and (search is None or search["deleted_at"] is not None):
         raise DiscoveryRejected(404, "search not found")
     p = plan(db, search, source_id, settings)
@@ -437,7 +459,7 @@ def execute_run(db: Database, settings: Settings, run_id: str, job_ctx: Any = No
         raise DiscoveryRejected(404, "run not found")
     if run["status"] in ("completed", "partial", "failed", "cancelled"):
         return {"run_id": run_id, "status": run["status"], "skipped": "already finished"}
-    search = db.one("search_get", id=str(run["search_id"])) if run["search_id"] else None
+    search = with_airports(db, db.one("search_get", id=str(run["search_id"]))) if run["search_id"] else None
     wanted = country_set(db, search) if search else None
     db.run("run_start", id=run_id)
     fetch = fetch or (lambda url: retrieval.fetch(url, allow_private_hosts=frozenset(settings.retrieval_allow_private_hosts)))
@@ -486,13 +508,14 @@ def _web_queries(src: dict[str, Any], search: dict[str, Any] | None, wanted: set
     s = search or {}
     names = {c: v[0] for c, v in COUNTRIES.items()}
     countries = sorted(wanted) if wanted is not None else [None]
+    ap_terms = s.get("_airport_terms") or ""
     if s.get("purpose") == "market":
         return ow.build_market_queries(countries=countries, country_names=names, brief_terms=brief_terms(s.get("brief")), keywords=s.get("keywords"),
-                                       organisation=s.get("organisation"), airline=s.get("airline"), max_per_country=MAX_WEB_QUERIES_PER_COUNTRY)
+                                       organisation=s.get("organisation"), airline=s.get("airline"), max_per_country=MAX_WEB_QUERIES_PER_COUNTRY, airport_terms=ap_terms)
     # a brief narrows the opportunity queries like keywords do, without filtering the results by its words
     kw = s.get("keywords") or (brief_terms(s.get("brief")) or None)
     return ow.build_queries(countries=countries, country_names=names, modules=list(s.get("modules") or []), keywords=kw,
-                            organisation=s.get("organisation"), airline=s.get("airline"), max_per_country=MAX_WEB_QUERIES_PER_COUNTRY)
+                            organisation=s.get("organisation"), airline=s.get("airline"), max_per_country=MAX_WEB_QUERIES_PER_COUNTRY, airport_terms=ap_terms)
 
 
 def _run_source(db: Database, settings: Settings, run_id: str, src: dict[str, Any], search: dict[str, Any] | None,

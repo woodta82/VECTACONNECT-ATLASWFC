@@ -1,6 +1,6 @@
 # Screens and workflows: VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE
 
-Release 4.5.0-wfc.16 · configured for World Freight Company · one shared username and password.
+Release 4.6.0-wfc.17 · configured for World Freight Company · one shared username and password.
 
 The product is organised around one journey:
 
@@ -13,20 +13,132 @@ create business** (Opportunities, including formal tenders).
 
 None of it needs WFC bookings, financial data, operational feeds or a complete capability register.
 
-## Primary screens (seven sections)
+## One workspace (five sections, 30 Oct 2026)
+
+Discover is the research process; Opportunities and Relationships hold the saved results; the Dashboard shows what deserves
+attention. The same list is never presented as several different products. Old addresses keep working (`/control-panel` opens the
+Dashboard; `/companies` and `/airlines-forwarders` are views under Relationships). No record or history was deleted.
 
 | Section | What it is for | Main contents |
 |---|---|---|
-| **Overview** (landing page) | The opportunity desktop | Filters: worldwide, region, one or several countries, opportunity category, organisation, tender status, deadline, progress, relationship coverage. Counts by record type. **Priority opportunities** (list or cards) with the reason for each position. **Upcoming stated deadlines**. **Recently discovered**. **Needs relationship research**. **With an existing relationship or introduction route**. **Relevant people identified recently**. **Saved searches** (with schedule and last run) and **recent changes** |
-| **Control panel** | The full system at a glance; opportunities per market and the score out of 100 | **Six separated summaries** at the top, each opening the filtered records: Commercial opportunities, Companies researched (with verified and supplied-awaiting-verification counts and the top countries), Relevant people identified, Relationship gaps and next actions, Important market developments, Tender deadlines (where applicable). Below them, the analytics with the same filters as the Overview. Totals (live opportunities, markets, average score, records with a relationship or introduction). **Live opportunities by region** (ring chart; a record counts once in every region it names). **Opportunities by score** (how many records fall in each 10-point range, and the four bands: Strong 75–100, Promising 55–74, Developing 35–54, Early 0–34). **By market** (UN M49 sub-regions) and **By capability area** lists with live counts and average score. **By country** table. **Score per opportunity**: every live record ranked by score, each with a **Breakdown** showing the points for stage (30), time to respond (15), evidence reviewed by a person (16), scope and status clear (4), relationship position (25) and source freshness (10), and the reason for each. Closed, cancelled, awarded, expired and historical records are not scored. The score is a provisional points score, not a probability of winning, and its weights are shown on the page |
-| **Opportunities** | Every record, searchable | Tabs: all, tenders and procurements, commercial opportunities, market signals, historical intelligence, out of scope. Same filters, text search, sort by priority, deadline or source date, list or card view, saved-only. Each row: title, organisation, geography, category, source date, stated deadline, status, priority explanation, relationship coverage. **Export CSV** (concise) and **Technical export** |
-| **Discover** | Research in public information for four purposes | **What are you looking for?** Opportunities, Companies, People or Market intelligence; none needs a tender or opportunity to exist first. **Companies**: a plain-language brief (e.g. "Find cargo GSAs operating in East Africa and the airlines they represent"), countries or region, airport, capability area and kinds of organisation; ATLAS reads public directories, the companies' own pages (profile, airlines represented, leadership, contact) and the authorised web search's results; each company is recorded with the passage naming it, its website when the page is on its own site, published e-mail addresses, the airlines it is stated to represent (cargo representation kept apart from passenger ticket-sales mandates), locations, services, parent or group, the people the pages bind to it, and a relevance to the brief out of 100 with every point explained. **People**: the same with a brief and role focus (as before). **Market intelligence**: a brief plus geography; procurement-portal search templates are not used; results are market signals, never tenders, never blocked for lacking a deadline. **Opportunities**: as before — search now, or save and schedule monitoring, by one country, several countries, a region or worldwide, with one or more of the nine capability categories and optional keywords or organisation. **The open web is searched by default** (the built-in "Open web" source through the server's search connector): no website needs registering first. Each run lists every public web search it ran (or could not run, with a link to open), every page it read, the results that needed registration, login or payment (labelled, not read, never bypassed, with a search for a public original), what it could not read and what remains. Outcomes stay distinct: results, no relevant results, search not configured, search failure, inaccessible sources, incomplete, partial coverage. A worldwide run never claims completeness. Registered sources remain optional monitoring inputs (Settings → Sources) |
-| **Companies** | Who operates here and what can they do | Every organisation found in the open market, read from a supplied list or loaded from WFC data: filters by kind, country, airport, status (researched — not yet verified; supplied — awaiting verification; verified), origin and airline type (passenger airline carrying belly cargo, cargo-only, combination); search by name, alias, represented airline or IATA code. The **company page**: profile (official website, what it does, locations, parent or group, capability areas), published e-mail addresses with where each was published and its status (supplied / published / verified / lapsed), represented airlines, partners and relationships with status (supplied / sourced / confirmed / lapsed / not established) and basis, relevant people with evidence and LinkedIn search, opportunities recorded from the company with the interpretation, and every evidence passage. Actions: edit the record (with a basis), **Verify record**, confirm or mark as lapsed an address or a representation (each with a basis), **Record a potential opportunity** (requires the interpretation; creates a commercial opportunity, never a tender). WFC agreement and forwarder figures stay under Airlines and Forwarders |
-| **Relationships** | People and routes | Everyone found or added, by research status: research candidate, identity and role confirmed, existing relationship, introduction available. Owner, linked opportunities, next action, LinkedIn (search or confirmed profile). **Possible duplicates** to review: records that share a name where the organisation is unknown or differs; merge (keeping every piece of evidence, reversible) or keep apart |
-| **Settings** | The technical controls | Sources, evidence review, scanning schedules and the job queue, AI budget caps and kill switch, shared password and sessions. Optional WFC-data tools: data imports, capability analyses, operational exceptions. **Data sources → Supplied lists**: an Excel station list (e.g. a GSA list for one airport: company, represented airlines, e-mail; airlines by type) loaded as a benchmark of the research output expected everywhere — preserved row by row, everything from it marked supplied — awaiting verification, never assumed current |
+| **Dashboard** (landing page) | What deserves attention, what changed, who is relevant, what to do next | Filters: worldwide, region, countries, **airports** (any airport in the directory), category, organisation, record type, tender status, deadline, progress, relationship coverage. **Four clickable summaries**: Priority opportunities, Deadlines approaching, Companies and people researched, Research gaps and next actions — each opens exactly the records it counts (the Opportunities page reads the summary's filters, including `live=true` and `needs=attention`, and says what it is showing). **Priority table**: opportunity, company, country / airport, status, relationship position, next action (a suggested action is marked as such), and the research state as its own tag (not started / incomplete / complete) — research completeness never moves an opportunity up; a fuller profile or a published e-mail is not a stronger opportunity. **Market signals** in their own panel, never mixed with opportunities ("not confirmed buying demand"). **Recent changes**. Supporting context: live opportunities by region (ring) and by country. **Expandable detail**: score distribution and bands, average points per part of the score, by market, by capability area (the former Control panel analytics). The order is a provisional points view, not a probability of winning |
+| **Discover** | Start research and see its progress | **What are you looking for?** Opportunities, Companies, People or Market intelligence, against a plain-language brief; none needs a tender or opportunity first. Geography: worldwide, region, countries, plus **airports chosen from the global directory** (name, IATA, ICAO or city; airports without an IATA code included; several at once; "all airports in this country" is the country scope). Companies: kinds of organisation; results with website, published e-mail, represented airlines (cargo kept apart from passenger ticket sales), people, evidence and the **assessment in separate parts** (fit with the brief, source evidence, research completeness, relationship position, opportunity status). Opportunities and Market intelligence: saved searches, schedules and runs as before, every run listing what it searched, read, could not read and what remains |
+| **Opportunities** | Saved commercial opportunities and linked market signals | Tabs and filters as before, plus airports. The **opportunity page** opens with the **research file** (below) |
+| **Relationships** | Companies and People as two connected views | A **Companies / People** switch at the top. **Companies**: every organisation found in the open market, read from a supplied list or loaded from WFC data; filters by kind, country, airport (office, station or served), status, origin and **freight scope** (air cargo scope by default — passenger-only excluded; belly cargo, freighter, mixed, cargo services, unresolved, passenger-only, everything); sort by name, fit or recency. **People**: everyone found or added, by research status, with health, owner, next action and LinkedIn (search or confirmed profile); possible duplicates to review |
+| **Settings** | Technical controls and optional data tools | Sources, evidence review, scanning schedules and the job queue, AI budget caps and kill switch, shared password and sessions. Data sources: WFC imports (optional), **Supplied lists** (station lists preserved as data awaiting verification), **Airport directory** (which dataset is loaded, provenance, version and refresh date; load or refresh OurAirports' `airports.csv` by upload, or `tools/load_airports.py` where the server has outbound access) |
 
-Pages reached from these: an **opportunity** (below), a **market signal**, a **person**, an **organisation profile**
-(from opportunities and people), a **discovery run**, and the Settings sub-pages.
+## The company page (one canonical record)
+
+Discovery, opportunity research, relationship research and staged research all update the same company record; the same company
+never needs a separate profile per screen. The page shows: official website **with the basis for believing it official** (the page
+names the organisation and the site name matches — similarity alone is never proof), contact page, freight scope with its basis,
+what it does, offices and locations, **airports** (office, station it operates, airport served from elsewhere, hub, gateway, each
+with status and basis), parent or group, capability areas; **Research progress** (the six stages and the status of every profile
+field: found / not searched yet / not found after research / source inaccessible / research incomplete, with the date); published
+e-mail addresses with department, status and where each was published; represented airlines, partners and relationships (supplied /
+sourced / confirmed / lapsed / not established, with basis); relevant people with role, remit, **published e-mail (never guessed)**,
+status and evidence; opportunities recorded from the company with the interpretation; every evidence passage with its source and
+date; **possible duplicates** (reviewed by a person; merges re-point every piece of evidence and are reversible). Actions: **Research
+this company** (staged, resumable), verify record, confirm or mark lapsed per address, representation and airport, edit with a basis,
+record a potential opportunity with the interpretation.
+
+## The person page
+
+Name, organisation (linking to the canonical company record), current role and remit with their evidence; identity confirmation;
+**published professional e-mail** where a page states one beside the name (otherwise: not searched yet / not found after research —
+never guessed); LinkedIn search or confirmed profile; relationship history, engagements, introduction routes and next action.
+
+## Staged, resumable research (30 Oct 2026)
+
+**Identify → resolve official identity → research company → research relevant people → connect relationships → assess commercial
+relevance.** Runs from an opportunity (Research file → Deep research) or a company (Research this company). Each stage ends done,
+incomplete (a limit was reached: continue), failed (the error is recorded), not run (no connector, no pages) or not applicable.
+When a website or contact route is missing after the first pass, a targeted follow-up search runs (`"<name>" official website`,
+`"<name>" contact`) before the field is called "not found after research". A counterparty that comes to light on a company page
+joins the queues of the stages that concern it. Query, page and budget limits are kept; unfinished work is disclosed and continuation
+never duplicates a record.
+
+**The work queue (amendment, 30 Oct 2026).** Each organisation-scoped stage (official identity, company, people, relevance) works through a
+persisted queue of organisations (`research_stage_items`), at most six per stage per run. The rest stay **pending**, visible on the company
+page (Research progress → Work queue) and in the research file; the stage shows "6 of 9 organisation(s) done, 3 pending" and is never
+**done** while one is pending. Continue research takes the pending ones first — never the first six again.
+
+**Person e-mail ownership (4.8.0).** An address is a person's only when the page ties it to that individual: it stands in the same sentence
+with nobody else named between; it sits in the person's labelled contact block; it is in a table row naming only that person; or it is
+named as the replacement of that person's withdrawn address. A local part that matches the person's name is shown as **supporting
+evidence only** — on its own the address is a candidate pending review (a supplier's or partner's namesake looks the same). An address
+on another domain than the organisation's is assigned only when the passage explains the relationship (subsidiary, appointed agent or
+GSA, adviser or consultant); otherwise it is pending review with "investigate the relationship". Supplier, partner and third-party press
+contacts are never a person's at the company. When two people of the same name are recorded, the passage must also name the person's
+organisation. Shared and departmental mailboxes are company contacts.
+
+**Involvement (4.9.0).** Every person carries an evidenced involvement: **employee**, **appointed representative** (GSA / GSSA, appointed
+agent), **external adviser**, **press / media contact** or **involvement not established**. A third-party press contact named in an
+announcement — or the company's own communications officer named as the media contact — is kept with the actual role and organisation as
+an **external contact**: shown in the research file under "External contacts (not commercial contacts)", never counted in relationship
+coverage, never ranked, never listed as a gap to chase. A commercial role named "for more information" (Head of Cargo Sales) stays a
+commercial contact. The person page shows the involvement and its basis; **Correct the involvement** records a person's decision, which
+research never changes.
+
+**Contact currency (4.8.0).** Wording that an address is obsolete, replaced, withdrawn, not monitored or a former employee's ("Do not use …
+no longer valid") marks it **historical**: kept as evidence and shown struck through, never offered as a current route; the replacement
+named alongside is current. When one source presents an address as current and another as obsolete, the conflict is shown (**Sources
+conflict — review before use**) and nothing is assigned until a person decides. "Published" never means deliverable: published addresses
+are labelled "deliverability not verified". An address a person verified is never changed by research; a contradicting source adds a
+re-check note.
+
+**Stage outcomes and retry (4.8.0).** Each stage ends **Complete**, **Complete with unresolved failures**, **Incomplete** (pending work),
+**Failed** or **Not run**; the research file, the company page and the Dashboard show the same overall state and completed / failed /
+pending counts. **Continue research** processes pending work only; **Retry failed** re-queues only the organisations that failed (the reason
+of the last failure is kept), reads their failed pages again and re-runs the stages blocked by the failure — completed work is not repeated.
+A result page that could not be read is a failure to retry, never "not found after research".
+
+## The research file (opportunity page)
+
+A concise summary first — what is happening and its source evidence; why it is relevant to WFC (labelled as ATLAS interpretation);
+organisations involved and their roles; geographic and airport scope (opportunity airports kept apart from company airports);
+services and freight capability categories; named people, current roles, geographic responsibilities, published e-mail and LinkedIn
+route; website, LinkedIn and e-mail routes per company; existing representation, partner and relationship evidence; what remains
+uncertain (every gap, field by field); a practical next action — then the supporting research: per company the field statuses and
+every evidence passage, the pages read and the searches run. The file is the record, not a longer AI summary.
+
+## Assessment in separate parts (30 Oct 2026)
+
+Shown separately and never added into one number: **fit with the research brief** (kind, geography and airport, freight scope, the
+brief's words), **strength of source evidence** (independent documents, own-site facts, supplied-only), **research completeness**
+(fields found / not searched / not found after research / inaccessible / incomplete), **relationship position**, **opportunity status
+and readiness**. Ranking follows fit, then evidence; an e-mail address or a fuller profile never raises fit; nothing implies a
+probability of winning.
+
+## Cargo-industry scope (30 Oct 2026)
+
+Focus: air cargo — GSAs/GSSAs, freight forwarders, handlers, road feeders, gateways and relevant providers. Belly cargo on passenger
+aircraft is included. Passenger ticket sales, tourism and passenger-only mandates are outside the scope: such a company is kept as a
+record, labelled **passenger-only (outside the freight scope)**, scored 0 for fit and excluded from the cargo view by default. Every
+company carries a freight-scope label with its basis: freighter cargo, belly cargo (passenger aircraft), mixed cargo operations, cargo
+services (non-airline), passenger-only, or unresolved. Airport selection is a scope and never a judgement of freight relevance; a
+company's office, the airports it serves, an airline's route and its representation territory, and a gateway and a final
+destination are distinct facts, each with its source.
+
+## The global airport directory (30 Oct 2026)
+
+`airport_directory` (migration wfc_0016): a maintained public dataset — OurAirports `airports.csv` (public domain) — searchable by
+name, IATA, ICAO, city and country, including airports without an IATA code, with type, status (closed airports are listed but not
+offered), aliases, the dataset's own id, provenance, version and refresh date (`reference_datasets`). A bundled seed of 424 major and
+secondary airports loads on a fresh install so an airport can be chosen before the dataset is loaded; the maintained dataset replaces
+every seed row it covers. Airport scope applies to discovery (all four purposes), companies (office / station / served), people (through
+their companies), opportunities (scope, origin, destination, gateway, station) and the Dashboard filters.
+
+**Which directory is in use (amendment, 30 Oct 2026).** Settings → Data sources → Airport directory shows **Bundled seed only**, **Partial
+directory** (a maintained file with fewer than 40,000 rows) or **Full directory**, with source, licence, version, publisher refresh date,
+load time and total records. The full file is loaded at deployment (the `airports` step), from a verified import package, or by upload.
+The picker searches name, city, country (code or name), IATA and ICAO, and the dataset's own identifier for airports without either;
+several can be chosen; choosing none means all airports in the chosen countries or region (worldwide when none). Directory inclusion is
+never evidence of cargo operations. After a failed load attempt the page says so ("The last load attempt … FAILED: …") and keeps
+the honest status. `/health/ready` reports `airport_directory.full`: a healthy application start is never proof of full airport coverage.
+
+Pages reached from these: an **opportunity** (below), a **market signal**, a **person**, a **company** (from opportunities,
+people and Relationships), a **discovery run**, and the Settings sub-pages.
 
 ## The opportunity page
 

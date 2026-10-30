@@ -9,6 +9,7 @@ import { useGeography } from "@/components/Geo";
 import { DuplicateReview, type Duplicate } from "@/components/Duplicates";
 import { HealthBadge, MOMENTUM_TONE, PersonLine, STAKEHOLDER_TYPES } from "@/components/Intelligence";
 import { RecentResearch, ResearchForm, ResearchResult, type Discovery, type DiscoveryDetail } from "@/components/Research";
+import { RelationshipsViews } from "@/components/RelationshipsViews";
 import { api, qs } from "@/lib/api";
 import { dateOnly } from "@/lib/format";
 import { useAction } from "@/lib/useAction";
@@ -52,7 +53,8 @@ export default function RelationshipsPage() {
   const reloadAll = () => { r.reload(); qu.reload(); disc.reload(); };
   return (
     <>
-      <PageHeader eyebrow="Relationships" title="People, relationships and introduction routes"
+      <RelationshipsViews current="people" />
+      <PageHeader eyebrow="Relationships · People" title="People, relationships and introduction routes"
                   description="Every person ATLAS has found in the open market or the team has added, with the evidence for who they are, the team's judgement of their part in the decision, the health of the relationship, who at WFC knows them and who could introduce us."
                   actions={<><a className="btn" href={exportHref}>Export CSV</a>
                              <button type="button" className="btn btn-primary" aria-expanded={discoverOpen} onClick={() => setDiscoverOpen((v) => !v)}>

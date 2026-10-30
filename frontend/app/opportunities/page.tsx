@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { EMPTY_FILTERS, filterQuery, RecordCards, RecordFilters, RecordTable, type Filters, type RecordRow, ViewToggle } from "@/components/Records";
 import { Empty, ErrorState, Loading, PageHeader, StaleBanner } from "@/components/States";
 import { Tabs } from "@/components/Ui";
@@ -11,15 +13,41 @@ type Page = { items: RecordRow[]; total: number; limit: number; offset: number; 
 type TypeTab = "" | "tender" | "commercial" | "market_signal" | "historical" | "excluded";
 const PAGE = 50;
 
+const TABS: TypeTab[] = ["tender", "commercial", "market_signal", "historical", "excluded"];
+
+/* The page opens with the filters in its address (a Dashboard summary, a country link), so a summary opens exactly the records it counts. */
+function fromUrl(sp: URLSearchParams): { filters: Filters; tab: TypeTab } {
+  const types = sp.get("types") ?? "";
+  const tab = (TABS as string[]).includes(types) ? (types as TypeTab) : "";
+  const countries = (sp.get("countries") ?? "").split(",").filter(Boolean);
+  const region = sp.get("region") ?? "";
+  return { tab, filters: { ...EMPTY_FILTERS, scope: region ? "region" : countries.length ? "countries" : "worldwide", region, countries,
+                           airports: (sp.get("airports") ?? "").split(",").filter(Boolean), modules: sp.get("modules") ?? "", org: sp.get("org") ?? "",
+                           tender: sp.get("tender") ?? "", progress: sp.get("progress") ?? "", coverage: sp.get("coverage") ?? "",
+                           deadline_days: sp.get("deadline_days") ?? "", types: tab ? "" : types } };
+}
+
 export default function OpportunitiesPage() {
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [tab, setTab] = useState<TypeTab>("");
+  return <Suspense fallback={<Loading what="opportunities" />}><Opportunities /></Suspense>;
+}
+
+function Opportunities() {
+  const sp = useSearchParams();
+  const [init] = useState(() => fromUrl(sp));
+  const [filters, setFilters] = useState<Filters>(init.filters);
+  const [tab, setTab] = useState<TypeTab>(init.tab);
+  const [live, setLive] = useState(sp.get("live") === "true");
+  const [needs, setNeeds] = useState(sp.get("needs") ?? "");
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"priority" | "deadline" | "source_date">("priority");
   const [saved, setSaved] = useState(false);
   const [view, setView] = useState<"list" | "cards">("list");
   const [offset, setOffset] = useState(0);
-  const params = { ...filterQuery({ ...filters, types: tab }), q: q || undefined, sort, saved: saved ? "true" : undefined };
+  const params = { ...filterQuery({ ...filters, types: tab || filters.types }), q: q || undefined, sort, saved: saved ? "true" : undefined,
+                   live: live ? "true" : undefined, needs: needs || undefined };
+  const narrowed = [filters.types && filters.types.split(",").map((t) => t.replace("_", " ")).join(" and "), live && "live only",
+                    needs === "attention" && "needing attention (no usable relationship, next action due within 14 days, or research incomplete)",
+                    filters.deadline_days && `deadline within ${filters.deadline_days} days`].filter(Boolean);
   const r = useApi<Page>(`/records${qs({ ...params, limit: PAGE, offset })}`);
   const reset = (fn: () => void) => { fn(); setOffset(0); };
   return (
@@ -31,6 +59,9 @@ export default function OpportunitiesPage() {
                     <a className="btn btn-ghost" href={`/api/reports/opportunities.csv${qs({ ...filterQuery(filters), module: filters.modules || undefined })}`}>Technical export (CSV)</a>
                   </>} />
       <RecordFilters value={filters} onChange={(f) => reset(() => setFilters(f))} showTypes={false} />
+      {narrowed.length > 0 && (
+        <div className="notice notice-info" role="status">Showing {narrowed.join(" · ")}.{" "}
+          <Link href="/opportunities" onClick={() => reset(() => { setFilters({ ...filters, types: "", deadline_days: "" }); setLive(false); setNeeds(""); })}>Show all records</Link></div>)}
       <Tabs<TypeTab> label="Record type" value={tab} onChange={(t) => reset(() => setTab(t))} tabs={[
         { id: "", label: "All" }, { id: "tender", label: "Tenders and procurements" }, { id: "commercial", label: "Commercial" },
         { id: "market_signal", label: "Market signals" }, { id: "historical", label: "Historical" }, { id: "excluded", label: "Out of scope" }]} />

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { AirportPicker } from "@/components/Airports";
 import { CountryPicker, RegionSelect } from "@/components/Geo";
 import { Badge, Empty, ErrorState, Loading, PageHeader, StaleBanner, TableWrap } from "@/components/States";
 import { ActionNote, Section } from "@/components/Ui";
@@ -107,6 +108,7 @@ export default function DiscoveryPage() {
 function SearchForm({ o, purpose, onSaved }: { o: Options; purpose: "opportunities" | "market"; onSaved: () => void }) {
   const router = useRouter();
   const [brief, setBrief] = useState("");
+  const [airports, setAirports] = useState<string[]>([]);
   const [mode, setMode] = useState<GeoMode>("country");
   const [countries, setCountries] = useState<string[]>([]);
   const [region, setRegion] = useState("");
@@ -123,12 +125,12 @@ function SearchForm({ o, purpose, onSaved }: { o: Options; purpose: "opportuniti
   const enabled = o.sources.filter((s) => s.enabled && s.type !== "web_search");
   const covering = enabled.filter((s) => mode === "worldwide" || s.global || (mode !== "region" && s.countries.some((c) => countries.includes(c))));
   const webOn = o.open_web.enabled && o.open_web.connected;
-  const ready = mode === "worldwide" || (mode === "region" ? region !== "" : countries.length > 0);
+  const ready = mode === "worldwide" || airports.length > 0 || (mode === "region" ? region !== "" : countries.length > 0);
 
   function body(save: boolean, runNow: boolean) {
     return { geo_mode: mode, countries: mode === "region" || mode === "worldwide" ? [] : countries, regions: mode === "region" ? [region] : [],
              modules, organisation: organisation || null, airline: airline || null, keywords: keywords || null, date_from: from || null,
-             date_to: to || null, date_filter: dateFilter, name: name || null, save, run_now: runNow, purpose, brief: brief.trim() || null };
+             date_to: to || null, date_filter: dateFilter, name: name || null, save, run_now: runNow, purpose, brief: brief.trim() || null, airports };
   }
   async function search(e: FormEvent) {
     e.preventDefault();
@@ -175,6 +177,7 @@ function SearchForm({ o, purpose, onSaved }: { o: Options; purpose: "opportuniti
           <CountryPicker value={countries} onChange={setCountries} max={mode === "country" ? 1 : 60} label={mode === "country" ? "Country" : "Countries"} />
         )}
         {mode === "region" && <RegionSelect value={region} onChange={setRegion} allowEmpty />}
+        <AirportPicker value={airports} onChange={setAirports} label="Airports (optional: narrows the search to these airports; any airport in the directory)" />
         <fieldset className="plain">
           <legend className="field">Capability areas (none selected = all nine)</legend>
           <div className="check-grid">

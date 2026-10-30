@@ -47,7 +47,7 @@ def test_health_reports_release_build_and_schema(client):
     live = client.get("/health/live").json()
     assert live["release"] == config.RELEASE and live["build"] == "pytest"
     ready = client.get("/health/ready")
-    assert ready.status_code == 200 and ready.json()["schema_revision"] == "wfc_0015"
+    assert ready.status_code == 200 and ready.json()["schema_revision"] == "wfc_0019"
 
 
 def test_every_business_route_requires_the_session(client):

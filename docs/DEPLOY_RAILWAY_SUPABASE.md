@@ -52,7 +52,7 @@ workflow on 28 Oct 2026 and carried into the release unchanged. The dependency i
 | Root directory | repository root | repository root | `frontend` |
 | Dockerfile path | `backend/Dockerfile` | `backend/Dockerfile` | `Dockerfile` |
 | Start command | (image default) | `python -m app.worker_main` | (image default) |
-| Pre-deploy command | `alembic upgrade head` | — | — |
+| Pre-deploy command | `alembic upgrade head && python -m app.airports_cli load --auto --if-stale 30 --optional` | — | — |
 | Health check path | `/health/ready` | — | `/` |
 | Port | 8000 | — | 3000 |
 | Public domain | no | no | **yes** |
@@ -84,14 +84,17 @@ Do not set `PROXY_SIGNATURE_SECRET` here: it is only for the Netlify front end (
 Railway's config-as-code files (`railway.json`) are marked deprecated by Railway, so this repository does not ship
 them; enter the settings above in each service.
 
-## 4. Check it
+## 4. Check it (release 4.9.0 and later)
 
-1. `https://<web>/api/health/ready` shows release `4.1.0-wfc.11` and `schema_revision` `wfc_0012`.
+1. `https://<web>/api/health/ready` shows the release in `VERSION`, the `schema_revision` in `backend/app/main.py`
+   (`EXPECTED_SCHEMA_REVISION`), and `airport_directory.full: true`. `"full": false` means the airport step could not load the
+   full directory: read its message in the `api` deploy log (pre-deploy) and Settings → Data sources → Airport directory.
 2. Sign in with the shared username and the bootstrap password; change the password under **Settings**; delete
    `LOGIN_BOOTSTRAP_PASSWORD` from `api` and redeploy it.
-3. **Settings → Sources**: register and enable the public sources the team is authorised to monitor.
-4. **Discover**: run a country search; open an opportunity; **Research relationships**.
+3. **Settings → Budget**: set the monthly cap, warning level and per-run cap before any research.
+4. Run `tools/deploy_check.py` (`prepare`, restart `api` and `worker`, `verify --browser`) from a machine that can reach the
+   deployment — see `docs/PILOT_RUNBOOK_4.9.0.md`.
 
-Until a provider key is set, research reads the opportunity's own documents with rules only, plus organisation websites
-you record; LinkedIn remains search links only. Every area that needs WFC data shows "Not connected" until files are
-imported under Settings, and none of them is needed for discovery.
+Until the search and extractor keys are set, research reads the opportunity's own documents with rules only, plus organisation websites
+you record; LinkedIn remains search links only. Every area that needs WFC data shows "Not connected" until files are imported under
+Settings, and none of them is needed for discovery.

@@ -1,0 +1,1545 @@
+{
+  "opportunity": {
+    "id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+    "title": "Nemunas Cargo Services UAB: Airline representation",
+    "record_type": "commercial",
+    "record_type_label": "Commercial opportunity",
+    "module": "airline_representation",
+    "category": "Airline representation",
+    "progress": "new",
+    "tender_status": null,
+    "tender_status_label": null,
+    "origin_interpretation": "Nemunas represents airlines at Kaunas; WFC could offer complementary cargo representation in the Baltics (person's reading, smoke test).",
+    "next_action": null,
+    "next_action_due": null
+  },
+  "summary": {
+    "what": {
+      "text": "Nemunas Cargo Services UAB: Airline representation",
+      "sources": [],
+      "source_count": 0
+    },
+    "why": {
+      "text": "A representation mandate (GSSA, GSA or cargo sales agency) for Nemunas Cargo Services UAB in Lithuania: WFC could bid to represent the airline's cargo there, or extend an existing mandate.",
+      "label": "ATLAS interpretation (not a source fact)",
+      "unconfirmed": [
+        "No open tender or procurement is confirmed: this is potential, not a bid opportunity"
+      ],
+      "priority_reason": "Commercial opportunity being tracked (new); evidence not yet reviewed; research candidates only"
+    },
+    "organisations": [
+      {
+        "id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+        "name": "Nemunas Cargo Services UAB",
+        "role": "issuer",
+        "kind_label": "GSA / GSSA (cargo sales agent)",
+        "freight_scope_label": "Cargo services (non-airline)",
+        "in_cargo_scope": true
+      },
+      {
+        "id": "0ad2cf5f-8bd2-41d3-bd49-c1c29b3884a2",
+        "name": "Kilimanjaro Example Cargo",
+        "role": "named in the research",
+        "kind_label": "Airline",
+        "freight_scope_label": "Freight scope unresolved",
+        "in_cargo_scope": true
+      },
+      {
+        "id": "6cba1720-a998-4993-9a5a-0c1dc46fe927",
+        "name": "Amber Example Air",
+        "role": "named in the research",
+        "kind_label": "Airline",
+        "freight_scope_label": "Belly cargo (passenger aircraft)",
+        "in_cargo_scope": true
+      }
+    ],
+    "geography": {
+      "countries": [
+        "Lithuania"
+      ],
+      "airports": [],
+      "company_airports": [
+        {
+          "company": "Nemunas Cargo Services UAB",
+          "label": "Kaunas Airport (KUN)",
+          "role": "Station (operates here)",
+          "status": "sourced"
+        },
+        {
+          "company": "Nemunas Cargo Services UAB",
+          "label": "Vilnius Airport (VNO)",
+          "role": "Served (from elsewhere)",
+          "status": "sourced"
+        }
+      ]
+    },
+    "services": {
+      "category": "Airline representation",
+      "service": null,
+      "related": []
+    },
+    "people": [
+      {
+        "id": "7817f51f-4056-4a72-ac64-fdc521664c20",
+        "full_name": "Ruta Kazlauskiene",
+        "role_title": "Managing Director",
+        "organisation": "Nemunas Cargo Services UAB",
+        "remit_countries": [],
+        "state_label": "Research candidate",
+        "role_on_opportunity": "named_in_source",
+        "linkedin_profile_url": null,
+        "linkedin_search_url": "https://www.linkedin.com/search/results/people/?keywords=Ruta%20Kazlauskiene%20Nemunas%20Cargo%20Services%20UAB",
+        "published_email": "ruta.kazlauskiene@nemunascargo.example",
+        "email_status": "found",
+        "published_email_status": "published",
+        "email_research": {
+          "at": "2026-10-30T08:36:20.289352+00:00",
+          "basis": "explicit_statement",
+          "detail": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "status": "found",
+          "supporting": [
+            "the local part is Ruta Kazlauskiene's own name"
+          ],
+          "basis_label": "stated in the same sentence as the person, nobody else between"
+        },
+        "relationships": 0,
+        "routes": 0,
+        "evidence_quote": "Ruta Kazlauskiene, Managing Director, Nemunas Cargo Services UAB.",
+        "source_url": "http://127.0.0.1:8089/nemunascargo/team.html"
+      },
+      {
+        "id": "d38ad822-4efd-46c9-9a1b-973df0233bf1",
+        "full_name": "Tomas Petrauskas",
+        "role_title": "Head of Cargo Sales",
+        "organisation": "Nemunas Cargo Services UAB",
+        "remit_countries": [],
+        "state_label": "Research candidate",
+        "role_on_opportunity": "commercial_leader",
+        "linkedin_profile_url": null,
+        "linkedin_search_url": "https://www.linkedin.com/search/results/people/?keywords=Tomas%20Petrauskas%20Nemunas%20Cargo%20Services%20UAB",
+        "published_email": null,
+        "email_status": "not_found_after_research",
+        "published_email_status": null,
+        "email_research": {
+          "at": "2026-10-30T08:36:33.300718+00:00",
+          "detail": "5 page(s) read; no address tied to the person",
+          "status": "not_found_after_research"
+        },
+        "relationships": 0,
+        "routes": 0,
+        "evidence_quote": "Tomas Petrauskas is Head of Cargo Sales at Nemunas Cargo Services UAB, responsible for Lithuania and Latvia.",
+        "source_url": "http://127.0.0.1:8089/nemunascargo/team.html"
+      }
+    ],
+    "routes": [
+      {
+        "company": "Nemunas Cargo Services UAB",
+        "website": "http://127.0.0.1:8089/nemunascargo/",
+        "contact_page": "http://127.0.0.1:8089/nemunascargo/contact.html",
+        "emails": [
+          {
+            "value": "cargo@nemunascargo.example",
+            "status": "published",
+            "status_label": "Published on a public page \u2014 deliverability not verified",
+            "department": "cargo",
+            "source_url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+            "current": true,
+            "note": "published on a page read by the research"
+          },
+          {
+            "value": "ops@nemunascargo.example",
+            "status": "published",
+            "status_label": "Published on a public page \u2014 deliverability not verified",
+            "department": "operations",
+            "source_url": "http://127.0.0.1:8089/nemunascargo/contact.html",
+            "current": true,
+            "note": "published on the organisation's own site"
+          },
+          {
+            "value": "ruta.kazlauskiene@nemunascargo.example",
+            "status": "published",
+            "status_label": "Published on a public page \u2014 deliverability not verified",
+            "department": "personal",
+            "source_url": "http://127.0.0.1:8089/nemunascargo/team.html",
+            "current": true,
+            "note": "published on a page read by the research"
+          },
+          {
+            "value": "sales@nemunascargo.example",
+            "status": "published",
+            "status_label": "Published on a public page \u2014 deliverability not verified",
+            "department": "sales",
+            "source_url": "http://127.0.0.1:8089/nemunascargo/contact.html",
+            "current": true,
+            "note": "published on the organisation's own site"
+          }
+        ]
+      },
+      {
+        "company": "Kilimanjaro Example Cargo",
+        "website": null,
+        "contact_page": null,
+        "emails": []
+      },
+      {
+        "company": "Amber Example Air",
+        "website": null,
+        "contact_page": null,
+        "emails": []
+      }
+    ],
+    "relationships": {
+      "coverage": "candidates_only",
+      "coverage_label": "Research candidates only",
+      "recorded": [],
+      "routes_available": [],
+      "routes_possible": [],
+      "representation": [
+        {
+          "company": "Nemunas Cargo Services UAB",
+          "counterparty": "Amber Example Air",
+          "relationship": "Cargo representation (GSA/GSSA)",
+          "status": "Sourced from a public page",
+          "basis": "stated by the page read: Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia."
+        },
+        {
+          "company": "Nemunas Cargo Services UAB",
+          "counterparty": "Kilimanjaro Example Cargo",
+          "relationship": "Cargo representation (GSA/GSSA)",
+          "status": "Sourced from a public page",
+          "basis": "stated by the page read: Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia."
+        }
+      ]
+    },
+    "uncertain": [
+      "No open tender or procurement is confirmed: this is potential, not a bid opportunity",
+      "Relationship research has not been run for this opportunity",
+      "No confirmed procurement or tender contact at Nemunas Cargo Services UAB",
+      "No confirmed head of cargo / commercial leader at Nemunas Cargo Services UAB",
+      "No confirmed country or regional representative at Nemunas Cargo Services UAB",
+      "No existing WFC relationship recorded with anyone at Nemunas Cargo Services UAB",
+      "No introduction route with a confirmed, willing introducer",
+      "Kilimanjaro Example Cargo: official website, contact page, relevant people \u2014 not found after research",
+      "Kilimanjaro Example Cargo: published e-mail addresses, services, offices and locations, airports served, represented airlines / partners \u2014 not searched yet",
+      "Kilimanjaro Example Cargo: freight scope unresolved",
+      "Amber Example Air: official website, contact page, relevant people \u2014 not found after research",
+      "Amber Example Air: published e-mail addresses, services, offices and locations, airports served, represented airlines / partners \u2014 not searched yet",
+      "Tomas Petrauskas: no published e-mail found after research"
+    ],
+    "next_action": "Run Research relationships"
+  },
+  "stages": [
+    {
+      "id": "470def84-9f3a-48de-958b-2b96377de272",
+      "entity_type": "opportunity",
+      "entity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+      "stage": "identify",
+      "status": "done",
+      "detail": "3 organisation(s) involved; 5 document(s) read",
+      "counts": {
+        "read": 5,
+        "documents": 5,
+        "organisations": 3,
+        "new_organisations": 0
+      },
+      "attempts": 1,
+      "started_at": "2026-10-30T08:36:32.428268+00:00",
+      "finished_at": "2026-10-30T08:36:32.707035+00:00",
+      "session_ref": "f35730e8b837",
+      "label": "Identify the organisations involved",
+      "status_label": "Complete",
+      "progress": null
+    },
+    {
+      "id": "081dbd0d-20df-4de2-a3d4-ce217c48652d",
+      "entity_type": "opportunity",
+      "entity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+      "stage": "identity",
+      "status": "done",
+      "detail": "0 website(s) resolved; 2 organisation(s) without a website examined",
+      "counts": {
+        "total": 2,
+        "failed": 0,
+        "pending": 0,
+        "skipped": 0,
+        "resolved": 0,
+        "attempted": 2,
+        "completed": 2,
+        "organisations": 3,
+        "taken_this_run": 2
+      },
+      "attempts": 1,
+      "started_at": "2026-10-30T08:36:32.708702+00:00",
+      "finished_at": "2026-10-30T08:36:33.016600+00:00",
+      "session_ref": "f35730e8b837",
+      "label": "Resolve official identity (website, contact page)",
+      "status_label": "Complete",
+      "progress": "2 completed, 0 failed, 0 pending of 2"
+    },
+    {
+      "id": "d1dc1d56-2bb6-43cb-bdae-494c858ab1f0",
+      "entity_type": "opportunity",
+      "entity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+      "stage": "company",
+      "status": "done",
+      "detail": "5 company page(s) read this run for 1 organisation(s)",
+      "counts": {
+        "total": 1,
+        "failed": 0,
+        "pending": 0,
+        "skipped": 0,
+        "attempted": 1,
+        "completed": 1,
+        "pages_read": 5,
+        "organisations": 3,
+        "taken_this_run": 1
+      },
+      "attempts": 1,
+      "started_at": "2026-10-30T08:36:33.018400+00:00",
+      "finished_at": "2026-10-30T08:36:33.223691+00:00",
+      "session_ref": "f35730e8b837",
+      "label": "Research the company (services, offices, airports, addresses, representation)",
+      "status_label": "Complete",
+      "progress": "1 completed, 0 failed, 0 pending of 1"
+    },
+    {
+      "id": "2905db6a-4f36-4ed5-bf34-1a3d5bcc9617",
+      "entity_type": "opportunity",
+      "entity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+      "stage": "people",
+      "status": "done",
+      "detail": "2 person(s) at 3 organisation(s); 0 published e-mail(s) attributed",
+      "counts": {
+        "total": 3,
+        "failed": 0,
+        "people": 2,
+        "pending": 0,
+        "skipped": 0,
+        "attempted": 3,
+        "completed": 3,
+        "emails_found": 0,
+        "organisations": 3,
+        "taken_this_run": 3
+      },
+      "attempts": 1,
+      "started_at": "2026-10-30T08:36:33.225247+00:00",
+      "finished_at": "2026-10-30T08:36:33.318161+00:00",
+      "session_ref": "f35730e8b837",
+      "label": "Research relevant people",
+      "status_label": "Complete",
+      "progress": "3 completed, 0 failed, 0 pending of 3"
+    },
+    {
+      "id": "bd61c9fb-ead0-4e52-b378-2ad39fecde9a",
+      "entity_type": "opportunity",
+      "entity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+      "stage": "relationships",
+      "status": "done",
+      "detail": "relationship position: Research candidates only; 0 relationship(s), 0 route(s) available",
+      "counts": {
+        "gaps": 6,
+        "people": 2,
+        "coverage": "candidates_only",
+        "relationships": 0,
+        "routes_possible": 0,
+        "routes_available": 0
+      },
+      "attempts": 1,
+      "started_at": "2026-10-30T08:36:33.320486+00:00",
+      "finished_at": "2026-10-30T08:36:33.356055+00:00",
+      "session_ref": "f35730e8b837",
+      "label": "Connect relationships and introduction routes",
+      "status_label": "Complete",
+      "progress": null
+    },
+    {
+      "id": "316b45ac-a490-4a94-a04d-22f36b970af7",
+      "entity_type": "opportunity",
+      "entity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+      "stage": "relevance",
+      "status": "done",
+      "detail": "3 organisation(s) assessed",
+      "counts": {
+        "total": 3,
+        "failed": 0,
+        "pending": 0,
+        "skipped": 0,
+        "assessed": 3,
+        "attempted": 3,
+        "completed": 3,
+        "out_of_scope": 0,
+        "organisations": [
+          {
+            "fit": 95,
+            "name": "Nemunas Cargo Services UAB",
+            "evidence": "well_sourced",
+            "fit_band": "strong",
+            "in_scope": true,
+            "completeness": 100,
+            "freight_scope": "cargo_services",
+            "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6"
+          },
+          {
+            "fit": 95,
+            "name": "Amber Example Air",
+            "evidence": "well_sourced",
+            "fit_band": "strong",
+            "in_scope": true,
+            "completeness": 0,
+            "freight_scope": "belly",
+            "organisation_id": "6cba1720-a998-4993-9a5a-0c1dc46fe927"
+          },
+          {
+            "fit": 60,
+            "name": "Kilimanjaro Example Cargo",
+            "evidence": "several",
+            "fit_band": "good",
+            "in_scope": true,
+            "completeness": 0,
+            "freight_scope": "unresolved",
+            "organisation_id": "0ad2cf5f-8bd2-41d3-bd49-c1c29b3884a2"
+          }
+        ]
+      },
+      "attempts": 1,
+      "started_at": "2026-10-30T08:36:33.358064+00:00",
+      "finished_at": "2026-10-30T08:36:33.407317+00:00",
+      "session_ref": "f35730e8b837",
+      "label": "Assess commercial relevance",
+      "status_label": "Complete",
+      "progress": "3 completed, 0 failed, 0 pending of 3"
+    }
+  ],
+  "queue": [
+    {
+      "stage": "company",
+      "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+      "organisation": "Nemunas Cargo Services UAB",
+      "status": "done",
+      "attempts": 1,
+      "detail": "5 page(s) read",
+      "updated_at": "2026-10-30T08:36:33.221294+00:00",
+      "status_label": "Done",
+      "stage_label": "Research the company (services, offices, airports, addresses, representation)"
+    },
+    {
+      "stage": "identity",
+      "organisation_id": "6cba1720-a998-4993-9a5a-0c1dc46fe927",
+      "organisation": "Amber Example Air",
+      "status": "done",
+      "attempts": 1,
+      "detail": "not found after 2 targeted search(es)",
+      "updated_at": "2026-10-30T08:36:32.862923+00:00",
+      "status_label": "Done",
+      "stage_label": "Resolve official identity (website, contact page)"
+    },
+    {
+      "stage": "identity",
+      "organisation_id": "0ad2cf5f-8bd2-41d3-bd49-c1c29b3884a2",
+      "organisation": "Kilimanjaro Example Cargo",
+      "status": "done",
+      "attempts": 1,
+      "detail": "not found after 2 targeted search(es)",
+      "updated_at": "2026-10-30T08:36:33.011487+00:00",
+      "status_label": "Done",
+      "stage_label": "Resolve official identity (website, contact page)"
+    },
+    {
+      "stage": "people",
+      "organisation_id": "6cba1720-a998-4993-9a5a-0c1dc46fe927",
+      "organisation": "Amber Example Air",
+      "status": "done",
+      "attempts": 1,
+      "detail": "0 person(s)",
+      "updated_at": "2026-10-30T08:36:33.305283+00:00",
+      "status_label": "Done",
+      "stage_label": "Research relevant people"
+    },
+    {
+      "stage": "people",
+      "organisation_id": "0ad2cf5f-8bd2-41d3-bd49-c1c29b3884a2",
+      "organisation": "Kilimanjaro Example Cargo",
+      "status": "done",
+      "attempts": 1,
+      "detail": "0 person(s)",
+      "updated_at": "2026-10-30T08:36:33.308500+00:00",
+      "status_label": "Done",
+      "stage_label": "Research relevant people"
+    },
+    {
+      "stage": "people",
+      "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+      "organisation": "Nemunas Cargo Services UAB",
+      "status": "done",
+      "attempts": 1,
+      "detail": "2 person(s)",
+      "updated_at": "2026-10-30T08:36:33.314981+00:00",
+      "status_label": "Done",
+      "stage_label": "Research relevant people"
+    },
+    {
+      "stage": "relevance",
+      "organisation_id": "6cba1720-a998-4993-9a5a-0c1dc46fe927",
+      "organisation": "Amber Example Air",
+      "status": "done",
+      "attempts": 0,
+      "detail": "assessed",
+      "updated_at": "2026-10-30T08:36:33.390458+00:00",
+      "status_label": "Done",
+      "stage_label": "Assess commercial relevance"
+    },
+    {
+      "stage": "relevance",
+      "organisation_id": "0ad2cf5f-8bd2-41d3-bd49-c1c29b3884a2",
+      "organisation": "Kilimanjaro Example Cargo",
+      "status": "done",
+      "attempts": 0,
+      "detail": "assessed",
+      "updated_at": "2026-10-30T08:36:33.398178+00:00",
+      "status_label": "Done",
+      "stage_label": "Assess commercial relevance"
+    },
+    {
+      "stage": "relevance",
+      "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+      "organisation": "Nemunas Cargo Services UAB",
+      "status": "done",
+      "attempts": 0,
+      "detail": "assessed",
+      "updated_at": "2026-10-30T08:36:33.376715+00:00",
+      "status_label": "Done",
+      "stage_label": "Assess commercial relevance"
+    }
+  ],
+  "progress": {
+    "total": 9,
+    "completed": 9,
+    "failed": 0,
+    "pending": 0,
+    "pages_queued": 0,
+    "state": "complete",
+    "state_label": "Research complete",
+    "tally": "9 completed, 0 failed, 0 pending"
+  },
+  "companies": [
+    {
+      "id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+      "name": "Nemunas Cargo Services UAB",
+      "role": "issuer",
+      "kind_label": "GSA / GSSA (cargo sales agent)",
+      "country_name": "Lithuania",
+      "website": "http://127.0.0.1:8089/nemunascargo/",
+      "website_basis": "the page names the organisation in its title or opening lines and the site name matches (127.0.0.1)",
+      "contact_url": "http://127.0.0.1:8089/nemunascargo/contact.html",
+      "freight_scope": "cargo_services",
+      "freight_scope_label": "Cargo services (non-airline)",
+      "in_cargo_scope": true,
+      "state_label": "Researched \u2014 not yet verified",
+      "verified_at": null,
+      "emails": [
+        {
+          "value": "cargo@nemunascargo.example",
+          "status": "published",
+          "status_label": "Published on a public page \u2014 deliverability not verified",
+          "department": "cargo",
+          "source_url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "current": true,
+          "note": "published on a page read by the research"
+        },
+        {
+          "value": "ops@nemunascargo.example",
+          "status": "published",
+          "status_label": "Published on a public page \u2014 deliverability not verified",
+          "department": "operations",
+          "source_url": "http://127.0.0.1:8089/nemunascargo/contact.html",
+          "current": true,
+          "note": "published on the organisation's own site"
+        },
+        {
+          "value": "ruta.kazlauskiene@nemunascargo.example",
+          "status": "published",
+          "status_label": "Published on a public page \u2014 deliverability not verified",
+          "department": "personal",
+          "source_url": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "current": true,
+          "note": "published on a page read by the research"
+        },
+        {
+          "value": "sales@nemunascargo.example",
+          "status": "published",
+          "status_label": "Published on a public page \u2014 deliverability not verified",
+          "department": "sales",
+          "source_url": "http://127.0.0.1:8089/nemunascargo/contact.html",
+          "current": true,
+          "note": "published on the organisation's own site"
+        }
+      ],
+      "airports": [
+        {
+          "label": "Kaunas Airport (KUN)",
+          "role": "Station (operates here)",
+          "status": "sourced"
+        },
+        {
+          "label": "Vilnius Airport (VNO)",
+          "role": "Served (from elsewhere)",
+          "status": "sourced"
+        }
+      ],
+      "offices": "Kaunas Airport",
+      "services": "We provide cargo sales, reservations and road feeder services for the airlines we represent, with offices in Kaunas, Lithuania and Riga, Latvia, serving Kaunas Airport (KUN) and Vilnius Airport (VNO).",
+      "parent_group": "Baltic Example Logistics Group",
+      "representation": [
+        {
+          "counterparty": "Amber Example Air",
+          "relationship": "Cargo representation (GSA/GSSA)",
+          "status": "Sourced from a public page",
+          "basis": "stated by the page read: Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia."
+        },
+        {
+          "counterparty": "Kilimanjaro Example Cargo",
+          "relationship": "Cargo representation (GSA/GSSA)",
+          "status": "Sourced from a public page",
+          "basis": "stated by the page read: Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia."
+        }
+      ],
+      "represented_by": [],
+      "people": 2,
+      "research": {
+        "score": 100,
+        "fields": [
+          {
+            "field": "website",
+            "label": "Official website",
+            "status": "found",
+            "detail": "http://127.0.0.1:8089/nemunascargo/",
+            "at": "2026-10-30T08:36:33.153661+00:00",
+            "status_label": "Found"
+          },
+          {
+            "field": "contact_page",
+            "label": "Contact page",
+            "status": "found",
+            "detail": "",
+            "at": "2026-10-30T08:36:33.216539+00:00",
+            "status_label": "Found"
+          },
+          {
+            "field": "emails",
+            "label": "Published e-mail addresses",
+            "status": "found",
+            "detail": "",
+            "at": "2026-10-30T08:36:33.200759+00:00",
+            "status_label": "Found"
+          },
+          {
+            "field": "services",
+            "label": "Services",
+            "status": "found",
+            "detail": "",
+            "at": "2026-10-30T08:36:33.206337+00:00",
+            "status_label": "Found"
+          },
+          {
+            "field": "locations",
+            "label": "Offices and locations",
+            "status": "found",
+            "detail": "",
+            "at": "2026-10-30T08:36:33.209116+00:00",
+            "status_label": "Found"
+          },
+          {
+            "field": "airports",
+            "label": "Airports served",
+            "status": "found",
+            "detail": "",
+            "at": "2026-10-30T08:36:33.211156+00:00",
+            "status_label": "Found"
+          },
+          {
+            "field": "representation",
+            "label": "Represented airlines / partners",
+            "status": "found",
+            "detail": "",
+            "at": "2026-10-30T08:36:33.212940+00:00",
+            "status_label": "Found"
+          },
+          {
+            "field": "people",
+            "label": "Relevant people",
+            "status": "found",
+            "detail": "2 person(s) bound to the organisation by its pages",
+            "at": "2026-10-30T08:36:33.312761+00:00",
+            "status_label": "Found"
+          }
+        ],
+        "found": 8,
+        "searched": 8,
+        "total": 8,
+        "explanation": "8 of 8 profile fields found; 0 not searched yet; 0 searched without result or incomplete"
+      },
+      "evidence_strength": {
+        "band": "well_sourced",
+        "documents": 11,
+        "own_site_facts": 13,
+        "supplied_facts": 0,
+        "explanation": "11 independent public documents; 13 fact(s) from the organisation's own site"
+      },
+      "evidence": [
+        {
+          "supports": "email",
+          "quote": "Nemunas Cargo Services UAB is a cargo GSSA based at Kaunas Airport (KUN). Contact: cargo@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "note": "published address in the sentence naming the organisation",
+          "observed_at": "2026-10-30T08:36:19.022943+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is a cargo GSSA based at Kaunas Airport (KUN). Contact: cargo@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "note": "named on a page read by the research (reading a web search result); kind: the sentence says 'GSSA'",
+          "observed_at": "2026-10-30T08:36:19.022943+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is a cargo GSSA based at Kaunas Airport (KUN). Contact: cargo@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "note": "the sentence says 'GSSA'",
+          "observed_at": "2026-10-30T08:36:19.022943+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "Nemunas Cargo Services UAB is a cargo GSSA based at Kaunas Airport (KUN). Contact: cargo@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "note": "airport EYKA (station) stated in the passage",
+          "observed_at": "2026-10-30T08:36:19.022943+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group.",
+          "url": "http://127.0.0.1:8089/nemunascargo/index.html",
+          "note": "named on a page read by the research (reading a web search result); kind: the sentence says 'general sales and service agent'",
+          "observed_at": "2026-10-30T08:36:19.915951+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group.",
+          "url": "http://127.0.0.1:8089/nemunascargo/index.html",
+          "note": "the sentence says 'general sales and service agent'",
+          "observed_at": "2026-10-30T08:36:19.915951+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group",
+          "url": "http://127.0.0.1:8089/nemunascargo/index.html",
+          "note": "airport EYKA (station) stated in the passage",
+          "observed_at": "2026-10-30T08:36:19.915951+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "the airlines we represent, with offices in Kaunas, Lithuania and Riga, Latvia, serving Kaunas Airport (KUN) and Vilnius Airport (VNO).",
+          "url": "http://127.0.0.1:8089/nemunascargo/index.html",
+          "note": "airport EYVI (served) stated in the passage",
+          "observed_at": "2026-10-30T08:36:19.915951+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "website",
+          "quote": null,
+          "url": "http://127.0.0.1:8089/nemunascargo/index.html",
+          "note": "the page names the organisation in its title or opening lines and the site name matches (127.0.0.1)",
+          "observed_at": "2026-10-30T08:36:19.915951+00:00",
+          "source_kind": "public_page"
+        },
+        {
+          "supports": "location",
+          "quote": "B Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group",
+          "url": "http://127.0.0.1:8089/nemunascargo/index.html",
+          "note": "airport EYKA (station) stated in the passage",
+          "observed_at": "2026-10-30T08:36:19.941924+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "the airlines we represent, with offices in Kaunas, Lithuania and Riga, Latvia, serving Kaunas Airport (KUN) and Vilnius Airport (VNO). Nemunas Cargo Services UAB Nemunas Ca",
+          "url": "http://127.0.0.1:8089/nemunascargo/index.html",
+          "note": "airport EYVI (served) stated in the passage",
+          "observed_at": "2026-10-30T08:36:19.941924+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "email",
+          "quote": "Cargo sales: sales@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/nemunascargo/contact.html",
+          "note": "published on the organisation's own site",
+          "observed_at": "2026-10-30T08:36:19.957726+00:00",
+          "source_kind": "public_page"
+        },
+        {
+          "supports": "email",
+          "quote": "Operations: ops@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/nemunascargo/contact.html",
+          "note": "published on the organisation's own site",
+          "observed_at": "2026-10-30T08:36:19.957726+00:00",
+          "source_kind": "public_page"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group.",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "named on a page read by the research (reading the organisation's own page); kind: the sentence says 'general sales and service agent'",
+          "observed_at": "2026-10-30T08:36:20.086303+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group.",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "the sentence says 'general sales and service agent'",
+          "observed_at": "2026-10-30T08:36:20.086303+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "airport EYKA (station) stated in the passage",
+          "observed_at": "2026-10-30T08:36:20.086303+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "the airlines we represent, with offices in Kaunas, Lithuania and Riga, Latvia, serving Kaunas Airport (KUN) and Vilnius Airport (VNO).",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "airport EYVI (served) stated in the passage",
+          "observed_at": "2026-10-30T08:36:20.086303+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "website",
+          "quote": null,
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "the page names the organisation in its title or opening lines and the site name matches (127.0.0.1)",
+          "observed_at": "2026-10-30T08:36:20.086303+00:00",
+          "source_kind": "public_page"
+        },
+        {
+          "supports": "location",
+          "quote": "B Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "airport EYKA (station) stated in the passage",
+          "observed_at": "2026-10-30T08:36:20.110957+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "the airlines we represent, with offices in Kaunas, Lithuania and Riga, Latvia, serving Kaunas Airport (KUN) and Vilnius Airport (VNO). Nemunas Cargo Services UAB Nemunas Ca",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "airport EYVI (served) stated in the passage",
+          "observed_at": "2026-10-30T08:36:20.110957+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "email",
+          "quote": "Ruta Kazlauskiene, Managing Director, Nemunas Cargo Services UAB. E-mail: ruta.kazlauskiene@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "note": "published address in the sentence naming the organisation",
+          "observed_at": "2026-10-30T08:36:20.522720+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Ruta Kazlauskiene, Managing Director, Nemunas Cargo Services UAB. E-mail: ruta.kazlauskiene@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "note": "named on a page read by the research (reading a page linked from the organisation's site); kind: the passage does not say what the organisation is",
+          "observed_at": "2026-10-30T08:36:20.522720+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "website",
+          "quote": null,
+          "url": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "note": "the page names the organisation in its title or opening lines and the site name matches (127.0.0.1)",
+          "observed_at": "2026-10-30T08:36:20.522720+00:00",
+          "source_kind": "public_page"
+        },
+        {
+          "supports": "email",
+          "quote": "E-mail: ruta.kazlauskiene@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "note": "published on the organisation's own site",
+          "observed_at": "2026-10-30T08:36:20.534922+00:00",
+          "source_kind": "public_page"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "named on a page read by the research (reading a page linked from the organisation's site); kind: the sentence says 'GSSA'",
+          "observed_at": "2026-10-30T08:36:20.559059+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "the sentence says 'GSSA'",
+          "observed_at": "2026-10-30T08:36:20.559059+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "representation",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "Cargo representation (GSA/GSSA) stated in the passage",
+          "observed_at": "2026-10-30T08:36:20.559059+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "website",
+          "quote": null,
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "the page names the organisation in its title or opening lines and the site name matches (127.0.0.1)",
+          "observed_at": "2026-10-30T08:36:20.559059+00:00",
+          "source_kind": "public_page"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group.",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "named on a page read by the research (reading the organisation's own page); kind: the sentence says 'general sales and service agent'",
+          "observed_at": "2026-10-30T08:36:32.550272+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group.",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "the sentence says 'general sales and service agent'",
+          "observed_at": "2026-10-30T08:36:32.550272+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "airport EYKA (station) stated in the passage",
+          "observed_at": "2026-10-30T08:36:32.550272+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "the airlines we represent, with offices in Kaunas, Lithuania and Riga, Latvia, serving Kaunas Airport (KUN) and Vilnius Airport (VNO).",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "airport EYVI (served) stated in the passage",
+          "observed_at": "2026-10-30T08:36:32.550272+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "website",
+          "quote": null,
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "the page names the organisation in its title or opening lines and the site name matches (127.0.0.1)",
+          "observed_at": "2026-10-30T08:36:32.550272+00:00",
+          "source_kind": "public_page"
+        },
+        {
+          "supports": "location",
+          "quote": "B Nemunas Cargo Services UAB is a cargo general sales and service agent (GSSA) based at Kaunas Airport (KUN), part of Baltic Example Logistics Group",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "airport EYKA (station) stated in the passage",
+          "observed_at": "2026-10-30T08:36:32.575824+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "location",
+          "quote": "the airlines we represent, with offices in Kaunas, Lithuania and Riga, Latvia, serving Kaunas Airport (KUN) and Vilnius Airport (VNO). Nemunas Cargo Services UAB Nemunas Ca",
+          "url": "http://127.0.0.1:8089/nemunascargo/",
+          "note": "airport EYVI (served) stated in the passage",
+          "observed_at": "2026-10-30T08:36:32.575824+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "The airline's cargo sales in Lithuania are currently handled by Nemunas Cargo Services UAB.",
+          "url": "http://127.0.0.1:8089/lt-news/amber-gssa.html",
+          "note": "named on a page read by the research (reading a web search result); kind: the sentence says 'airline'",
+          "observed_at": "2026-10-30T08:36:32.597545+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "The airline's cargo sales in Lithuania are currently handled by Nemunas Cargo Services UAB.",
+          "url": "http://127.0.0.1:8089/lt-news/amber-gssa.html",
+          "note": "the sentence says 'airline'",
+          "observed_at": "2026-10-30T08:36:32.597545+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "email",
+          "quote": "Ruta Kazlauskiene, Managing Director, Nemunas Cargo Services UAB. E-mail: ruta.kazlauskiene@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "note": "published address in the sentence naming the organisation",
+          "observed_at": "2026-10-30T08:36:32.608697+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Ruta Kazlauskiene, Managing Director, Nemunas Cargo Services UAB. E-mail: ruta.kazlauskiene@nemunascargo.example.",
+          "url": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "note": "named on a page read by the research (reading a web search result); kind: the passage does not say what the organisation is",
+          "observed_at": "2026-10-30T08:36:32.608697+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "website",
+          "quote": null,
+          "url": "http://127.0.0.1:8089/nemunascargo/team.html",
+          "note": "the page names the organisation in its title or opening lines and the site name matches (127.0.0.1)",
+          "observed_at": "2026-10-30T08:36:32.608697+00:00",
+          "source_kind": "public_page"
+        }
+      ]
+    },
+    {
+      "id": "0ad2cf5f-8bd2-41d3-bd49-c1c29b3884a2",
+      "name": "Kilimanjaro Example Cargo",
+      "role": "named in the research",
+      "kind_label": "Airline",
+      "country_name": null,
+      "website": null,
+      "website_basis": null,
+      "contact_url": null,
+      "freight_scope": "unresolved",
+      "freight_scope_label": "Freight scope unresolved",
+      "in_cargo_scope": true,
+      "state_label": "Recorded",
+      "verified_at": null,
+      "emails": [],
+      "airports": [],
+      "offices": null,
+      "services": null,
+      "parent_group": null,
+      "representation": [],
+      "represented_by": [
+        {
+          "id": "2654dd77-ae4b-498c-a763-e06e0773f9fd",
+          "agent_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+          "agent": "Nemunas Cargo Services UAB",
+          "agent_country": "LT",
+          "relationship": "cargo_representation",
+          "status": "sourced",
+          "basis": "stated by the page read: Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "airport_iata": null,
+          "territory_countries": [
+            "LT"
+          ]
+        }
+      ],
+      "people": 0,
+      "research": {
+        "score": 0,
+        "fields": [
+          {
+            "field": "website",
+            "label": "Official website",
+            "status": "not_found_after_research",
+            "detail": "2 targeted search(es) run; no page stating the organisation's name on a matching site",
+            "at": "2026-10-30T08:36:33.007151+00:00",
+            "status_label": "Not found after research"
+          },
+          {
+            "field": "contact_page",
+            "label": "Contact page",
+            "status": "not_found_after_research",
+            "detail": "no official site found",
+            "at": "2026-10-30T08:36:33.009713+00:00",
+            "status_label": "Not found after research"
+          },
+          {
+            "field": "emails",
+            "label": "Published e-mail addresses",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.033635+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "services",
+            "label": "Services",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.036208+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "locations",
+            "label": "Offices and locations",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.038132+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "airports",
+            "label": "Airports served",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.039815+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "representation",
+            "label": "Represented airlines / partners",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.042284+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "people",
+            "label": "Relevant people",
+            "status": "not_found_after_research",
+            "detail": "no page read names a person with a title bound to the organisation",
+            "at": "2026-10-30T08:36:33.306899+00:00",
+            "status_label": "Not found after research"
+          }
+        ],
+        "found": 0,
+        "searched": 3,
+        "total": 8,
+        "explanation": "0 of 8 profile fields found; 5 not searched yet; 3 searched without result or incomplete"
+      },
+      "evidence_strength": {
+        "band": "several",
+        "documents": 2,
+        "own_site_facts": 0,
+        "supplied_facts": 0,
+        "explanation": "2 independent public documents"
+      },
+      "evidence": [
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "named on a page read by the research (reading a page linked from the organisation's site); kind: named as the represented party of a sales agent",
+          "observed_at": "2026-10-30T08:36:20.545811+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "named as the represented party of a sales agent",
+          "observed_at": "2026-10-30T08:36:20.545811+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "named on a page read by the research (reading a page linked from the organisation's site); kind: a known airline name",
+          "observed_at": "2026-10-30T08:36:20.885103+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "a known airline name",
+          "observed_at": "2026-10-30T08:36:20.885103+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "named on a page read by the research (reading a page linked from the organisation's site); kind: a known airline name",
+          "observed_at": "2026-10-30T08:36:32.641069+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "a known airline name",
+          "observed_at": "2026-10-30T08:36:32.641069+00:00",
+          "source_kind": "research_document"
+        }
+      ]
+    },
+    {
+      "id": "6cba1720-a998-4993-9a5a-0c1dc46fe927",
+      "name": "Amber Example Air",
+      "role": "named in the research",
+      "kind_label": "Airline",
+      "country_name": "Lithuania",
+      "website": null,
+      "website_basis": null,
+      "contact_url": null,
+      "freight_scope": "belly",
+      "freight_scope_label": "Belly cargo (passenger aircraft)",
+      "in_cargo_scope": true,
+      "state_label": "Researched \u2014 not yet verified",
+      "verified_at": null,
+      "emails": [],
+      "airports": [],
+      "offices": null,
+      "services": null,
+      "parent_group": null,
+      "representation": [],
+      "represented_by": [
+        {
+          "id": "40b36d3d-a858-4681-a34b-bd48777b1033",
+          "agent_id": "4efa2f0a-e359-4399-afa3-529301db6346",
+          "agent": "Baltic Ticket Centre UAB",
+          "agent_country": "LT",
+          "relationship": "passenger_representation",
+          "status": "sourced",
+          "basis": "stated by the page read: Baltic Ticket Centre UAB is the GSA for passenger ticket sales of Amber Example Air in Lithuania. Contact: tickets@balticticket.example.",
+          "airport_iata": null,
+          "territory_countries": [
+            "LT"
+          ]
+        },
+        {
+          "id": "93963fb6-a287-42df-8212-e998e67caf7f",
+          "agent_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+          "agent": "Nemunas Cargo Services UAB",
+          "agent_country": "LT",
+          "relationship": "cargo_representation",
+          "status": "sourced",
+          "basis": "stated by the page read: Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "airport_iata": null,
+          "territory_countries": [
+            "LT"
+          ]
+        }
+      ],
+      "people": 0,
+      "research": {
+        "score": 0,
+        "fields": [
+          {
+            "field": "website",
+            "label": "Official website",
+            "status": "not_found_after_research",
+            "detail": "2 targeted search(es) run; no page stating the organisation's name on a matching site",
+            "at": "2026-10-30T08:36:32.857655+00:00",
+            "status_label": "Not found after research"
+          },
+          {
+            "field": "contact_page",
+            "label": "Contact page",
+            "status": "not_found_after_research",
+            "detail": "no official site found",
+            "at": "2026-10-30T08:36:32.860628+00:00",
+            "status_label": "Not found after research"
+          },
+          {
+            "field": "emails",
+            "label": "Published e-mail addresses",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.022631+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "services",
+            "label": "Services",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.024359+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "locations",
+            "label": "Offices and locations",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.027009+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "airports",
+            "label": "Airports served",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.029328+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "representation",
+            "label": "Represented airlines / partners",
+            "status": "not_searched",
+            "detail": "no official website to read",
+            "at": "2026-10-30T08:36:33.031403+00:00",
+            "status_label": "Not searched yet"
+          },
+          {
+            "field": "people",
+            "label": "Relevant people",
+            "status": "not_found_after_research",
+            "detail": "no page read names a person with a title bound to the organisation",
+            "at": "2026-10-30T08:36:33.303431+00:00",
+            "status_label": "Not found after research"
+          }
+        ],
+        "found": 0,
+        "searched": 3,
+        "total": 8,
+        "explanation": "0 of 8 profile fields found; 5 not searched yet; 3 searched without result or incomplete"
+      },
+      "evidence_strength": {
+        "band": "well_sourced",
+        "documents": 4,
+        "own_site_facts": 0,
+        "supplied_facts": 0,
+        "explanation": "4 independent public documents"
+      },
+      "evidence": [
+        {
+          "supports": "identity",
+          "quote": "Baltic Ticket Centre UAB is the GSA for passenger ticket sales of Amber Example Air in Lithuania. Contact: tickets@balticticket.example.",
+          "url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "note": "named on a page read by the research (reading a web search result); kind: named as the represented party of a sales agent",
+          "observed_at": "2026-10-30T08:36:18.995354+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Baltic Ticket Centre UAB is the GSA for passenger ticket sales of Amber Example Air in Lithuania. Contact: tickets@balticticket.example.",
+          "url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "note": "named as the represented party of a sales agent",
+          "observed_at": "2026-10-30T08:36:18.995354+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Baltic Ticket Centre UAB is the GSA for passenger ticket sales of Amber Example Air in Lithuania. Contact: tickets@balticticket.example.",
+          "url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "note": "named on a page read by the research (reading a web search result); kind: a known airline name",
+          "observed_at": "2026-10-30T08:36:19.270023+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Baltic Ticket Centre UAB is the GSA for passenger ticket sales of Amber Example Air in Lithuania. Contact: tickets@balticticket.example.",
+          "url": "http://127.0.0.1:8089/lt-cargo/directory.html",
+          "note": "a known airline name",
+          "observed_at": "2026-10-30T08:36:19.270023+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "named on a page read by the research (reading a page linked from the organisation's site); kind: a known airline name",
+          "observed_at": "2026-10-30T08:36:20.540111+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "a known airline name",
+          "observed_at": "2026-10-30T08:36:20.540111+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Amber Example Air invites expressions of interest from cargo GSSA providers for Lithuania and Latvia from April 2027, as its current cargo representation agreement ends.",
+          "url": "http://127.0.0.1:8089/lt-news/amber-gssa.html",
+          "note": "named on a page read by the research (reading a web search result); kind: a known airline name",
+          "observed_at": "2026-10-30T08:36:32.588037+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Amber Example Air invites expressions of interest from cargo GSSA providers for Lithuania and Latvia from April 2027, as its current cargo representation agreement ends.",
+          "url": "http://127.0.0.1:8089/lt-news/amber-gssa.html",
+          "note": "a known airline name",
+          "observed_at": "2026-10-30T08:36:32.588037+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "identity",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "named on a page read by the research (reading a page linked from the organisation's site); kind: a known airline name",
+          "observed_at": "2026-10-30T08:36:32.631628+00:00",
+          "source_kind": "research_document"
+        },
+        {
+          "supports": "kind",
+          "quote": "Nemunas Cargo Services UAB is the cargo GSSA for Amber Example Air and Kilimanjaro Example Cargo in Lithuania and Latvia.",
+          "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+          "note": "a known airline name",
+          "observed_at": "2026-10-30T08:36:32.631628+00:00",
+          "source_kind": "research_document"
+        }
+      ]
+    }
+  ],
+  "supporting": {
+    "documents": [
+      {
+        "id": "c6a3133a-9c1a-4b0d-bd25-fed167188208",
+        "opportunity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+        "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+        "organisation": "Nemunas Cargo Services UAB",
+        "origin": "organisation_page",
+        "url": "http://127.0.0.1:8089/nemunascargo/",
+        "source_document_id": null,
+        "title": "Nemunas Cargo Services (fixture)",
+        "page_kind": "other",
+        "found_via": "website recorded for the organisation",
+        "status": "read",
+        "status_reason": null,
+        "sections_total": 1,
+        "sections_read": 1,
+        "ai_status": "budget_refused",
+        "ai_sections_read": 0,
+        "people_found": 0,
+        "added_at": "2026-10-30T08:36:32.439857+00:00",
+        "fetched_at": "2026-10-30T08:36:32.460856+00:00",
+        "updated_at": "2026-10-30T08:36:33.269574+00:00"
+      },
+      {
+        "id": "ef122758-d758-41d8-aa6c-c6c5b94213a6",
+        "opportunity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+        "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+        "organisation": "Nemunas Cargo Services UAB",
+        "origin": "followed_link",
+        "url": "http://127.0.0.1:8089/nemunascargo/airlines.html",
+        "source_document_id": null,
+        "title": "Airlines we represent \u2014 Nemunas Cargo Services (fixture)",
+        "page_kind": "other",
+        "found_via": "link 'Airlines we represent' on http://127.0.0.1:8089/nemunascargo/",
+        "status": "read",
+        "status_reason": null,
+        "sections_total": 1,
+        "sections_read": 1,
+        "ai_status": "not_run",
+        "ai_sections_read": 0,
+        "people_found": 0,
+        "added_at": "2026-10-30T08:36:32.467722+00:00",
+        "fetched_at": "2026-10-30T08:36:32.515675+00:00",
+        "updated_at": "2026-10-30T08:36:33.289441+00:00"
+      },
+      {
+        "id": "db028e42-7d57-4342-b411-2fc104462c56",
+        "opportunity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+        "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+        "organisation": "Nemunas Cargo Services UAB",
+        "origin": "followed_link",
+        "url": "http://127.0.0.1:8089/nemunascargo/contact.html",
+        "source_document_id": null,
+        "title": "Contact \u2014 Nemunas Cargo Services (fixture)",
+        "page_kind": "other",
+        "found_via": "link 'Contact' on http://127.0.0.1:8089/nemunascargo/",
+        "status": "read",
+        "status_reason": null,
+        "sections_total": 1,
+        "sections_read": 1,
+        "ai_status": "not_run",
+        "ai_sections_read": 0,
+        "people_found": 0,
+        "added_at": "2026-10-30T08:36:32.470480+00:00",
+        "fetched_at": "2026-10-30T08:36:32.524231+00:00",
+        "updated_at": "2026-10-30T08:36:33.290990+00:00"
+      },
+      {
+        "id": "951f334f-04e6-4480-bdb7-e61c3c6a4c39",
+        "opportunity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+        "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+        "organisation": "Nemunas Cargo Services UAB",
+        "origin": "search_result",
+        "url": "http://127.0.0.1:8089/lt-news/amber-gssa.html",
+        "source_document_id": null,
+        "title": "Amber Example Air seeks cargo GSSA partners for Lithuania and Latvia (fixture)",
+        "page_kind": "news",
+        "found_via": "search: \"Nemunas Cargo Services UAB\" (\"procurement\" OR \"tender\") Lithuania",
+        "status": "read",
+        "status_reason": null,
+        "sections_total": 1,
+        "sections_read": 1,
+        "ai_status": "not_run",
+        "ai_sections_read": 0,
+        "people_found": 0,
+        "added_at": "2026-10-30T08:36:32.444445+00:00",
+        "fetched_at": "2026-10-30T08:36:32.475712+00:00",
+        "updated_at": "2026-10-30T08:36:33.271954+00:00"
+      },
+      {
+        "id": "04feebee-1d3c-484c-956a-3fbe548e317d",
+        "opportunity_id": "b3041ba4-b712-48d3-a1c0-7f2ee0104fe6",
+        "organisation_id": "a6f876ac-dda9-49f8-b2fc-545853cf54a6",
+        "organisation": "Nemunas Cargo Services UAB",
+        "origin": "search_result",
+        "url": "http://127.0.0.1:8089/nemunascargo/team.html",
+        "source_document_id": null,
+        "title": "Our leadership \u2014 Nemunas Cargo Services (fixture)",
+        "page_kind": "leadership",
+        "found_via": "search: \"Nemunas Cargo Services UAB\" (\"head of cargo\" OR \"cargo director\") Lithuania",
+        "status": "read",
+        "status_reason": null,
+        "sections_total": 1,
+        "sections_read": 1,
+        "ai_status": "not_run",
+        "ai_sections_read": 0,
+        "people_found": 2,
+        "added_at": "2026-10-30T08:36:32.448400+00:00",
+        "fetched_at": "2026-10-30T08:36:32.486853+00:00",
+        "updated_at": "2026-10-30T08:36:33.287423+00:00"
+      }
+    ],
+    "latest_research": null,
+    "searches": [],
+    "linkedin_searches": [
+      {
+        "organisation": "Nemunas Cargo Services UAB",
+        "role": "Procurement or tender contact",
+        "country": "Lithuania",
+        "url": "https://www.linkedin.com/search/results/people/?keywords=Nemunas%20Cargo%20Services%20UAB%20procurement%20Lithuania",
+        "kind": "linkedin_search"
+      },
+      {
+        "organisation": "Nemunas Cargo Services UAB",
+        "role": "Head of cargo / commercial leader",
+        "country": "Lithuania",
+        "url": "https://www.linkedin.com/search/results/people/?keywords=Nemunas%20Cargo%20Services%20UAB%20head%20of%20cargo%20Lithuania",
+        "kind": "linkedin_search"
+      },
+      {
+        "organisation": "Nemunas Cargo Services UAB",
+        "role": "Country or regional representative",
+        "country": "Lithuania",
+        "url": "https://www.linkedin.com/search/results/people/?keywords=Nemunas%20Cargo%20Services%20UAB%20country%20manager%20Lithuania",
+        "kind": "linkedin_search"
+      }
+    ],
+    "target_roles": [
+      {
+        "key": "procurement_contact",
+        "label": "Procurement or tender contact"
+      },
+      {
+        "key": "commercial_leader",
+        "label": "Head of cargo / commercial leader"
+      },
+      {
+        "key": "regional_representative",
+        "label": "Country or regional representative"
+      }
+    ]
+  },
+  "rule": "The file is the record: every statement carries its source or says it was not found. Research completeness and relationship position are shown beside fit and evidence, never added into one number. Not a probability of winning."
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AirportPicker } from "@/components/Airports";
 import { CountryPicker, RegionSelect } from "@/components/Geo";
 import { TableWrap } from "@/components/States";
 import { MODULES } from "@/lib/constants";
@@ -15,15 +16,16 @@ export type RecordRow = {
   review_state: string | null; created_at: string;
 };
 
-export type Filters = { scope: "worldwide" | "region" | "countries"; region: string; countries: string[]; modules: string; org: string;
+export type Filters = { scope: "worldwide" | "region" | "countries"; region: string; countries: string[]; airports: string[]; modules: string; org: string;
                         tender: string; progress: string; coverage: string; deadline_days: string; types: string };
-export const EMPTY_FILTERS: Filters = { scope: "worldwide", region: "", countries: [], modules: "", org: "", tender: "", progress: "",
+export const EMPTY_FILTERS: Filters = { scope: "worldwide", region: "", countries: [], airports: [], modules: "", org: "", tender: "", progress: "",
                                         coverage: "", deadline_days: "", types: "" };
 
 export function filterQuery(f: Filters): Record<string, string> {
   const q: Record<string, string> = {};
   if (f.scope === "region" && f.region) q.region = f.region;
   if (f.scope === "countries" && f.countries.length) q.countries = f.countries.join(",");
+  if (f.airports.length) q.airports = f.airports.join(",");
   for (const k of ["modules", "org", "tender", "progress", "coverage", "deadline_days", "types"] as const) if (f[k]) q[k] = f[k];
   return q;
 }
@@ -54,6 +56,7 @@ export function RecordFilters({ value, onChange, showTypes = true }: { value: Fi
         </div>
         {value.scope === "region" && <RegionSelect value={value.region} onChange={(region) => set({ region })} />}
         {value.scope === "countries" && <div style={{ flex: "1 1 260px" }}><CountryPicker value={value.countries} onChange={(countries) => set({ countries })} /></div>}
+        <div style={{ flex: "1 1 260px" }}><AirportPicker value={value.airports} onChange={(airports) => set({ airports })} label="Airports (optional)" hint="Any airport: name, IATA, ICAO or city" /></div>
         <label className="field">Category
           <select className="select" value={value.modules} onChange={(e) => set({ modules: e.target.value })}>
             <option value="">All nine categories</option>

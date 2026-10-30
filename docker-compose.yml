@@ -37,6 +37,19 @@ services:
     depends_on: { migrate: { condition: service_completed_successfully } }
     expose: ["8000"]
 
+  # The global airport directory (OurAirports airports.csv, public domain): loaded after the migration from a verified import package when
+  # AIRPORTS_PACKAGE points at one mounted into the container, else downloaded; skipped when loaded within 30 days. A failure (no outbound
+  # access) is reported and the application runs on the bundled seed; Settings -> Data sources says which directory is in use.
+  airports:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    command: ["python", "-m", "app.airports_cli", "load", "--auto", "--if-stale", "30", "--optional"]
+    environment:
+      <<: *api_env
+      AIRPORTS_PACKAGE: ${AIRPORTS_PACKAGE:-}
+    volumes: ["${AIRPORTS_PACKAGE_DIR:-./deploy/airports-package}:/srv/airports-package:ro"]
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    restart: "no"
+
   worker:
     build: { context: ., dockerfile: backend/Dockerfile }
     command: ["python", "-m", "app.worker_main"]

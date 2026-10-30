@@ -1,4 +1,190 @@
 # VECTA Connect / ATLAS / DYNAMIC MARKET INTELLIGENCE
+## Release `4.9.0-wfc.20`, 30 October 2026: operational pilot release — contact involvement, pilot kit; deployment and real-source pilot NOT executed
+
+Amendment of 30 Oct 2026 ("The next release must be an operational pilot release"). Features paused. Design, simplified workspace, one
+shared login, nine freight categories, belly-cargo inclusion and optional WFC data unchanged; the marketing website is not in this
+repository. Schema `wfc_0019` (`docs/MIGRATION_SUMMARY_4.9.0.md`). Results and the executed / simulated / not-executed split:
+`docs/REGRESSION_REPORT_4.9.0.md`. Steps to complete the pilot: `docs/PILOT_RUNBOOK_4.9.0.md`.
+
+**1. Contact involvement (done).** Employee · appointed representative · external adviser · press / media contact · not established, each
+with its basis. Press contacts and external advisers are kept with their actual role as external contacts and excluded from relationship
+coverage, ranking, discovery's people ranking and the research file's commercial people and gaps. One-time re-check of recorded
+candidates; a person's correction survives later research.
+
+**2–5. Deployment, full airport directory, real-source pilot, manual check: NOT EXECUTED.** The build session has no outbound network
+(publisher, search provider, websites, npm, PyPI, Docker registries) and does not deploy (no connector is used; deployment is from the team's own hosting account). Provided instead: `tools/deploy_check.py`
+(post-deploy checks against the real URL, including a browser pass), `tools/pilot.py` (the three workflows with budget cap, cost, time
+and a manual review sheet), the airport load in the `api` pre-deploy step, and the runbook with the smallest setup actions.
+
+**6. User journey (done on the local stack).** Journey S extended: pages added in the browser, Continue research, external contacts,
+current-only contact routes, next action saved and shown on the Dashboard, no duplicates.
+
+**7. Verification.** Backend **1428 passed**; browser journeys **35 passed** (local stack); type check, lint, ESLint clean; both new scripts
+validated end to end on the local stack (not a deployment). Details: `docs/REGRESSION_REPORT_4.9.0.md`.
+
+## Release `4.8.0-wfc.19`, 30 October 2026: evidence-backed contact ownership and currency, truthful failures, airport verification
+
+Amendment of 30 Oct 2026 ("Continue from atlas-wfc-4.7.0-wfc.18 … prioritise accuracy and completion"). Design, consolidated workspace,
+single shared login, public-source discovery without tender-platform registration, the nine freight categories, belly-cargo inclusion,
+country / regional / worldwide search and optional WFC operational data are unchanged. Schema `wfc_0018` (additive;
+`docs/MIGRATION_SUMMARY_4.8.0.md`). Exact cases, results and the executed / simulated / not-executed split: `docs/REGRESSION_REPORT_4.8.0.md`.
+
+**1. Ownership needs explicit evidence.** A local part matching a person's name is supporting evidence only; on its own the address is a
+candidate pending review. An address on another domain is assigned only when the passage explains the relationship (subsidiary, appointed
+agent or GSA, adviser); otherwise "investigate". Supplier, partner and third-party contacts are never a person's at the company. Same-name
+people need the organisation named. The external-supplier example (reconstructed — not included in the instruction) is a regression test.
+
+**2. Currency.** Obsolete, replaced, withdrawn, not-monitored and former-employee wording marks an address historical: kept as evidence,
+struck through, never a current route; a named replacement is current. Conflicting sources go to review and are shown. Published never means
+deliverable. A one-time re-check (rule 4.8.0) re-examines recorded addresses; verified ones are never changed; every outcome is evidence-noted
+and audited.
+
+**3. Truthful stage outcomes.** Complete · Complete with unresolved failures · Incomplete (pending work) · Failed · Not run, with the same
+completed / failed / pending counts on the research file, company page and Dashboard. **Retry failed** re-queues only failed organisations
+and re-reads their failed pages; Continue processes pending work only. An unreadable result page is a failure, never "not found". Found and
+fixed during verification: pages added after research was complete were never read while the state said "complete".
+
+**4. Airports.** Readiness and start-up logs state whether the full directory is in use; a failed load is recorded and shown; selection
+beyond the seed is tested. **The full dataset was NOT loaded**: this environment cannot reach the publisher.
+
+**5. Real-source demonstration: NOT EXECUTED** (no outbound access, no search or extractor key). The script now requires `--inputs
+REAL|SIMULATED` and its report separates failures, incorrect associations, missed information and costs.
+
+**6. Verification.** Backend **1419 passed**; browser journeys **35 passed** (clean stack); type check, lint and ESLint clean; demonstration
+script smoke run passed (SIMULATED). No check ran against a production stack. Details and the one open observation: `docs/REGRESSION_REPORT_4.8.0.md`.
+
+## Release `4.7.0-wfc.18`, 30 October 2026: correct contact attribution, truthful resumable research, the full airport directory
+
+Amendment of 30 Oct 2026 ("Continue from atlas-wfc-4.6.0-wfc.17 …"). The consolidated workspace, visual design, Poppins, the nine
+freight categories, public-source discovery, country / regional / worldwide search and the one shared login are unchanged; no primary
+screen was added. WFC operational data stays optional; the marketing website is not in this repository. Schema `wfc_0017` (additive;
+`docs/MIGRATION_SUMMARY_4.7.0.md`). The amendment checklist (passed / failed / simulated / not executed) is `docs/AMENDMENT_CHECKLIST_4.7.0.md`.
+
+**1. Person-to-e-mail attribution** (`domain/email_attribution.py`). The first-address-in-the-sentence rule is gone. An address is a
+person's only when the page ties it to that individual (own name as the local part; same sentence with nobody named between; the person's
+labelled contact block; a table row naming only them). Shared and departmental mailboxes are company contacts; third-party press contacts
+belong to nobody at the company; ambiguous addresses are candidates pending review; a contradicting page flags a re-check; a verified
+address is never changed by research. The Jane Smith / John Brown case is reproduced in tests. Addresses assigned by the earlier rule are
+re-checked once on upgrade: confirmed ones gain their basis, uncertain ones keep value and evidence and become **under review**.
+
+**2. Truthful, resumable research.** The six-organisation slicing is replaced by a persisted work queue per stage
+(`research_stage_items`). At most six organisations per stage per run; the rest stay pending and visible; every stage records total /
+attempted / completed / failed / pending; a stage is never done while one is pending; continuation takes the pending ones first. Tested with
+nine organisations over several runs.
+
+**3. The global airport directory.** A deployment step (`airports` service, `python -m app.airports_cli load --auto`) loads OurAirports'
+`airports.csv` after the migration, from a verified import package (SHA-256 and counts recomputed; tampering refused) or by download. The
+Airport directory page states **Bundled seed only / Partial / Full** with source, version, refresh date, load time and total records.
+Selection by name, city, country (code or name), IATA, ICAO and the dataset's own id (airports without IATA), several at once, and
+all-airports country / region / worldwide scopes is tested through the API; directory inclusion creates no cargo claim.
+**Not achieved in this environment:** the full file could not be downloaded (no outbound access), so no package is included and the
+local stack runs on the seed. The full directory is loaded at deployment where the server can reach the publisher, or from a package
+built elsewhere (`deploy/airports-package/README.md`).
+
+**4. Real-input demonstration.** `tools/public_source_demo.py` runs the whole sequence against a deployment with the search connector and
+the configured extractor: company discovery without a tender, official websites, services and airports, people with attributed roles and
+e-mails, representation, a linked opportunity (tracked or recorded by a person, never automatic), honest gaps; it writes the queries,
+sources, gaps and costs, and a review sheet. **It was NOT executed**: this environment has no outbound access and no search or AI key.
+Everything below is SIMULATED (fixture pages, scripted search, scripted extractor).
+
+**5. The Dashboard.** Four summaries, priority table and recent changes unchanged as the main experience; analytics stay collapsed.
+Each summary now opens exactly the records it counts (the Opportunities page reads its filters; `live=true`, `needs=attention` share the
+Dashboard's rules; the Dashboard's own filters are carried into the links). The research state is a separate tag on each row; research
+candidates no longer rank above "nobody identified"; a test proves deep research and a published e-mail do not move an opportunity up.
+
+**6. Canonical records.** Tests prove: continuation creates no duplicate company or person; a person's website correction survives further
+research; a page presenting a different site flags **Changed evidence — re-check** (and a different e-mail flags the person) until a person
+decides; a confirmed identity survives research; the same company and person details appear in Relationships, on the company page and in
+the opportunity's research file.
+
+**7. Verification.** Backend **1398 passed**; browser journeys **35 passed** (clean stack); type check, lint and ESLint clean;
+the demonstration script passed an end-to-end smoke run on the local stack (SIMULATED). See the checklist. Backend suite on PostgreSQL 16; browser journeys on the local stack (API +
+built web app + PostgreSQL, the shared login, fixture site and stand-ins). The "real production stack" (a deployment with its keys and
+network) was not available here.
+
+## Release `4.6.0-wfc.17`, 30 October 2026: one workspace, staged research, a global airport directory, cargo scope, canonical records
+
+Instruction of 30 Oct 2026 ("Continue from atlas-wfc-4.5.0-wfc.16 … consolidate the workspace and deepen research"). Continues
+from 4.5.0-wfc.16; nothing is removed, no record or history is deleted. Visual identity, Poppins, colours, components and responsive
+design are unchanged; the public marketing website is not in this repository and is untouched. Schema `wfc_0016` (additive; summary in
+`docs/MIGRATIONS.md`).
+
+**1. One workspace.** Five sections: **Dashboard** (the Overview and the Control panel consolidated; `/control-panel` redirects to it),
+**Discover** (the research process and its progress), **Opportunities** (saved commercial opportunities and linked market signals),
+**Relationships** (Companies and People as two connected views, with a switch at the top), **Settings** (technical controls and
+optional data tools). The same list is no longer presented as several products; old URLs keep working through redirects and
+contextual links.
+
+**2. The Dashboard** answers what deserves attention, what changed, who is relevant and what to do next: four clickable summaries
+(priority opportunities, deadlines approaching, companies and people researched, research gaps and next actions), a compact priority
+table (opportunity, company, country/airport, status, relationship position, next action — a suggested action is marked as such) and
+a short recent-changes list. Market signals have their own panel ("not confirmed buying demand"). The region ring and the country table
+stay as supporting context; score distributions, breakdowns and technical metrics moved into an expandable detail
+(`services/dashboard.py`, `GET /dashboard`).
+
+**3–5. A complete research file, built by staged, resumable research.** `services/deep_research.py` runs identify → resolve official
+identity → research company → research relevant people → connect relationships → assess commercial relevance, from an opportunity
+(Research file → Deep research) or from a company (Research this company). Every stage enriches the same canonical company and person
+records through the existing evidence pipeline; each ends done / incomplete / failed / not run / not applicable, and each profile field
+carries its own status — found, not searched yet, **not found after research**, source inaccessible, research incomplete. A website or
+contact route missing after the first pass gets a targeted follow-up search before it is called not found; a website is recorded only
+when the page itself names the organisation and the site name matches (similarity alone is never proof); e-mails are never guessed
+(a person's published address is taken only from a passage beside the name). A counterparty that comes to light later leaves the
+identity and company stages incomplete so a continuation covers it; continuation never duplicates a record. The opportunity page opens
+with the research file: a concise summary (what is happening and its evidence, why it matters, organisations and roles, geographic and
+airport scope, services and categories, named people with roles, remits, e-mail and LinkedIn routes, representation and relationship
+evidence, what remains uncertain, the next action), the supporting research below.
+
+**6. A maintained global airport directory** replaces the 148-airport shortlist: `airport_directory` loaded from OurAirports'
+`airports.csv` (public domain) with provenance, version, the publisher's refresh date, type, status (closed listed, not offered),
+aliases and the dataset's own id; searchable by name, IATA, ICAO, city and country, airports without an IATA code included, several
+at once, "all airports in this country / region" as a scope. A bundled seed of 424 airports loads on a fresh install so an airport can
+be chosen before the dataset is loaded (the page says which is in place). Airport scope applies to all four Discover purposes,
+companies (office / station / served / gateway, each a distinct fact with its source), opportunities (scope / origin / destination /
+gateway) and the Dashboard and Opportunities filters. **The full dataset could not be downloaded in this build environment** (no
+outbound access): the loader (`tools/load_airports.py --download`, or upload under Settings → Data sources → Airport directory) is
+tested against a sample in the dataset's own format, including an airport without an IATA code and a closed one; the seed is a
+starting set, not the directory.
+
+**7. Cargo-industry scope.** Every company carries a freight scope with its basis: freighter cargo, belly cargo (passenger aircraft),
+mixed cargo operations, cargo services (non-airline), **passenger-only (outside the freight scope)**, or unresolved. Belly carriers are
+retained; passenger ticket sales, tourism and passenger-only mandates are labelled, scored 0 for fit and excluded from the cargo view by
+default. Airport selection stays separate from freight-relevance assessment.
+
+**8. Relevance apart from completeness.** `domain/assessment.py` shows five parts separately — fit with the brief, strength of source
+evidence, research completeness, relationship position, opportunity status and readiness — explained in plain language. Ranking
+follows fit, then evidence; an e-mail address or a fuller profile never raises fit; nothing implies a probability of winning.
+
+**9. One canonical company and person record.** Discovery, opportunity research, relationship research and staged research update the
+same entities; offices, airports and representations link to the company; source-level evidence, conflicting facts and confirmed
+corrections are preserved. Possible duplicates are flagged for review (same normalised name, same website host, long shared name
+core) and merged only by a person; a merge re-points every contact, evidence passage, relationship, airport, person, opportunity,
+discovery link and supplied row, keeps the merged name as an alias, and is reversible.
+
+**10. Proved in journey S** (`e2e/test_c_workspace_research_journey.py`, SIMULATED fixtures): a country and an airport outside the old
+shortlist (Lithuania, Kaunas KUN chosen from the directory); cargo companies discovered without a tender; a company's website, services,
+people and published contact routes researched in stages; a commercial opportunity found from a public announcement and deeply
+researched; the same company and people reused across the opportunity and Relationships (one record each); incomplete research
+continued without duplicating records; the result and next action on the Dashboard (also filtered by airport); belly-cargo carrier
+retained and passenger-only sales excluded; honest gaps where public information is unavailable (website not found after research;
+e-mail not found; fields not searched yet).
+
+**Checks on this release:**
+- backend: **1371 passed** (new: `tests/integration/test_deep_research.py` — directory search and dataset loading, the six
+  stages and the research file, continuation without duplicates, honest statuses without a connector, duplicate review and reversible
+  merges; `tests/sql/test_migration_0016.py`);
+- browser journeys: **35 passed**, including journey S and every earlier journey (updated where they read the Overview or the
+  Control panel, which are now the Dashboard);
+- type check, lint and ESLint clean.
+
+**Real public-source demonstration: NOT available in this session.** No search key (Brave or Claude API) and no AI key were supplied,
+and this build environment has no outbound access to public sites or package registries. Every result in the evidence is SIMULATED
+(fixture pages served locally, a scripted search stand-in and a scripted extractor) and is labelled so in the tests and journeys.
+With keys set, the same stages run against the public web under the same limits (`tools/live_trial.py`, `tools/live_research_trial.py`).
+
+**One shared login**, unchanged. Public-source discovery without tender-platform registration, all nine freight categories and optional
+WFC operational enrichment are unchanged.
+
 ## Release `4.5.0-wfc.16`, 29 October 2026: four research purposes; company and people intelligence without a tender
 
 Clarification of 29 Oct 2026 (superseding any tender-led reading of the earlier instructions) and the BRU spreadsheet instruction

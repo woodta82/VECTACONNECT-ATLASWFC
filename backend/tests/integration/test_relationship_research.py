@@ -102,7 +102,9 @@ def test_research_follows_the_organisations_own_links_binds_roles_and_reports_co
     lee = next(f for f in out2["found"] if f["name"] == "John Lee")
     assert (lee["organisation"], lee["affiliation"]) == ("Blue Ridge Handling", "partner")
     lee_id = _person(db, "John Lee")[0][0]
-    assert db.pg.val(f"SELECT organisation_label FROM people WHERE id = '{lee_id}'") == "Blue Ridge Handling"
+    # since 30 Oct 2026 the partner named in the research is a canonical company record, so the person points at it (no label)
+    assert db.pg.val(f"SELECT coalesce(o.canonical_name, p.organisation_label) FROM people p LEFT JOIN organisations o ON o.id = p.organisation_id "
+                     f"WHERE p.id = '{lee_id}'") == "Blue Ridge Handling"
     ev = rs.person_detail(db, lee_id)
     assert {e["supports"] for e in ev["evidence"]} >= {"relevance", "role", "organisation"}
     assert ev["roles"][0]["affiliation"] == "partner" and "Blue Ridge Handling" in ev["roles"][0]["quote"]

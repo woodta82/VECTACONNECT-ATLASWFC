@@ -97,7 +97,8 @@ def priority(r: dict[str, Any], now: datetime | None = None) -> tuple[tuple, str
         reasons.append({"existing_relationship": "existing relationship recorded", "introduction_available": "introduction available",
                         "people_confirmed": "people confirmed, no relationship yet", "candidates_only": "research candidates only",
                         "none": "no relationship research yet"}.get(cov, cov))
-    cov_rank = {"existing_relationship": 0, "introduction_available": 1, "people_confirmed": 2, "candidates_only": 3}.get(r.get("coverage") or "", 4)
+    # research candidates are research completeness, not a relationship: they rank with "nobody identified" (a fuller profile is not a stronger opportunity)
+    cov_rank = {"existing_relationship": 0, "introduction_available": 1, "people_confirmed": 2}.get(r.get("coverage") or "", 3)
     created = _as_dt(r.get("created_at")) or now
     key = (tier, days if (tier == 0 and days is not None) else 10**6, 0 if reviewed else 1, cov_rank, -created.timestamp(), str(r.get("id")))
     return key, "; ".join(reasons)
